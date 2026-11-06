@@ -368,6 +368,163 @@ body {
   animation: qd-pulse 1600ms var(--qd-ease-move) infinite;
 }
 
+/*
+ * Партия (этап 5). Частое действие - мало движения: варианты ответа (10 раз за партию)
+ * получают только каскад появления и отклик на нажатие. Редкие моменты (VS, итоги) - ярче.
+ */
+@keyframes qd-slide-l {
+  from {
+    opacity: 0;
+    transform: translateX(-56px);
+  }
+}
+@keyframes qd-slide-r {
+  from {
+    opacity: 0;
+    transform: translateX(56px);
+  }
+}
+@keyframes qd-count {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes qd-cascade {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+@keyframes qd-flash {
+  0% {
+    filter: brightness(1);
+  }
+  35% {
+    filter: brightness(1.35);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+/* Тряска - только сигнал ошибки (мой неверный ответ), больше нигде. */
+@keyframes qd-shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+@keyframes qd-pts {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes qd-tick {
+  0%,
+  100% {
+    transform: none;
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+@keyframes qd-pop-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@keyframes qd-confetti {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -150px, 0) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--qd-dx, 0px), 110px, 0) rotate(var(--qd-rot, 240deg));
+  }
+}
+
+/* VS: карточки съезжаются (перемещение по экрану), цифра отсчёта увеличивается. */
+.qd-slide-l {
+  animation: qd-slide-l 300ms var(--qd-ease-move) both;
+}
+.qd-slide-r {
+  animation: qd-slide-r 300ms var(--qd-ease-move) both;
+}
+.qd-pop-late {
+  animation: qd-pop 300ms var(--qd-ease-ui) 200ms both;
+}
+.qd-pop-out {
+  animation: qd-pop-out 150ms var(--qd-ease-ui) both;
+}
+.qd-count {
+  display: block;
+  animation: qd-count 300ms var(--qd-ease-ui) both;
+}
+/* Варианты нового вопроса выезжают каскадом по 50 мс (задержку ставит экран). */
+.qd-cascade {
+  animation: qd-cascade 240ms var(--qd-ease-ui) both;
+}
+/* Раскрытие: вспышка верного, тряска моего неверного, «+870» взлетает. */
+.qd-flash {
+  animation: qd-flash 420ms var(--qd-ease-ui) both;
+}
+.qd-shake {
+  animation: qd-shake 320ms var(--qd-ease-ui) both;
+}
+.qd-pts {
+  display: inline-block;
+  animation: qd-pts 300ms var(--qd-ease-ui) 80ms both;
+}
+.qd-pts-2 {
+  display: inline-block;
+  animation: qd-pts 300ms var(--qd-ease-ui) 140ms both;
+}
+/* Таймер на последних 5 с: непрерывное движение - linear. */
+.qd-tick {
+  animation: qd-tick 1000ms linear infinite;
+}
+/* Итоги - редкий момент: конфетти разлетаются один раз. */
+.qd-confetti {
+  animation: qd-confetti var(--qd-cd, 2000ms) var(--qd-ease-ui) var(--qd-cdl, 0ms) both;
+}
+
 /* Шторка: перетаскивание без анимации, возврат на место - по кривой шторки. */
 .qd-sheet-drag {
   touch-action: none;
@@ -384,17 +541,31 @@ body {
   .qd-toast-in,
   .qd-strip-in,
   .qd-sheet-in,
-  .qd-backdrop-in {
+  .qd-backdrop-in,
+  .qd-slide-l,
+  .qd-slide-r,
+  .qd-pop-late,
+  .qd-count,
+  .qd-cascade,
+  .qd-pts,
+  .qd-pts-2 {
     animation: qd-fade-in 160ms var(--qd-ease-ui) both;
-    animation-delay: 0ms;
+    animation-delay: 0ms !important;
   }
   .qd-toast-out,
   .qd-sheet-out,
-  .qd-backdrop-out {
+  .qd-backdrop-out,
+  .qd-pop-out {
     animation: qd-fade-out 120ms var(--qd-ease-ui) both;
   }
-  .qd-pulse {
+  .qd-pulse,
+  .qd-tick,
+  .qd-flash,
+  .qd-shake {
     animation: none;
+  }
+  .qd-confetti {
+    display: none;
   }
   .qd-press:active:not(:disabled) {
     transform: none;

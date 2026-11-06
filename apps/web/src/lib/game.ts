@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { copyTextToClipboard, openLink, shareMessage, shareURL } from '@tma.js/sdk-react';
 import {
+  ACTIVE_PHASES,
   FINAL_PHASES,
   type ClientToServerEvents,
   type GameCategory,
@@ -15,6 +16,7 @@ import {
   type PlayerProfile,
 } from '@quiz-duel/shared';
 import { createSocket, measureClockOffset, type GameSocket } from './socket';
+import { haptic } from './telegram';
 
 export type LinkErrorKind = 'taken' | 'notFound' | 'expired' | 'cancelled' | 'finished' | 'busy';
 export type ToastKind = 'success' | 'error' | 'info';
@@ -48,6 +50,13 @@ interface GameStore {
   /** Действия, ответ на которые ещё не пришёл: их кнопки неактивны. */
   pending: Record<string, boolean>;
   toast: ToastState | null;
+  /**
+   * Мой выбор, который уже ушёл на сервер, но ещё не подтверждён снимком.
+   * Нужен только для мгновенного отклика на тап; засчитывает ответ сервер.
+   */
+  picked: { gameId: string; index: number; position: number } | null;
+  /** Открыт диалог «Выйти из партии?». */
+  exitAsk: boolean;
 }
 
 export const useGame = create<GameStore>(() => ({
@@ -62,6 +71,8 @@ export const useGame = create<GameStore>(() => ({
   invite: null,
   pending: {},
   toast: null,
+  picked: null,
+  exitAsk: false,
 }));
 
 const set = useGame.setState;
@@ -125,7 +136,9 @@ function applyView(view: GameView, meta?: GameStateMeta) {
     if (meta.seatFreed === 'timeout') showToast('info', 'toast.slotFreed');
     else showToast('info', 'toast.oppLeft', { opp: cur.opponent.name });
   }
-  set({ game: view });
+  // Партия закончилась (или ещё не началась) - диалог выхода больше не нужен.
+  const exitAsk = get().exitAsk && ACTIVE_PHASES.includes(view.phase);
+  set({ game: view, exitAsk });
 }
 
 function failure(result: { ok: false; error: GameErrorCode; busyGameId?: string }) {
@@ -348,6 +361,54 @@ export const gameActions = {
     if (!get().consent) return;
     set({ consent: null });
     showToast('info', 'consent.declined');
+  },
+
+  // -------------------------------------------------------------------------
+  // Партия
+
+  /**
+   * Тап по варианту. Выбор сразу подсвечивается, но засчитывает его только сервер
+   * (время и очки - по его часам). Отказ (опоздал, вопрос уже закрыт) - подсветка
+   * снимается, экран берёт свежий снимок.
+   */
+  async answer(position: number) {
+    const g = get().game;
+    const q = g?.question;
+    if (!g || !q || g.phase !== 'question' || g.myAnswer || get().conn !== 'online' || get().exitAsk) return;
+    const picked = get().picked;
+    if (picked && picked.gameId === g.id && picked.index === q.index) return;
+    set({ picked: { gameId: g.id, index: q.index, position } });
+    haptic.select();
+    const res = await request('game:answer', { gameId: g.id, questionIndex: q.index, optionIndex: position }, 'answer');
+    if (res.ok) {
+      applyView(res.game);
+      return;
+    }
+    // Вопрос уже закрыт или ответ опоздал - выбор не засчитан.
+    const now = get().picked;
+    if (now && now.gameId === g.id && now.index === q.index) set({ picked: null });
+    if (res.error === 'internal' || res.error === 'rate_limited') showToast('error', 'toast.connection');
+    void gameActions.resync(g.id);
+  },
+
+  openExit() {
+    const g = get().game;
+    if (g && ACTIVE_PHASES.includes(g.phase)) set({ exitAsk: true });
+  },
+
+  closeExit() {
+    set({ exitAsk: false });
+  },
+
+  /** «Выйти» в диалоге: сдача, сопернику сразу техническая победа. */
+  async forfeit() {
+    const g = get().game;
+    if (!g) return;
+    const res = await request('game:forfeit', { gameId: g.id });
+    set({ exitAsk: false });
+    if (res.ok) applyView(res.game);
+    else if (res.error === 'wrong_phase') void gameActions.resync(g.id);
+    else showToast('error', 'toast.connection');
   },
 
   /** Документы в Telegraph: Telegram открывает их через Instant View, не выходя из приложения. */

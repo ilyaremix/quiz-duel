@@ -72,9 +72,9 @@ describe('полная партия', () => {
     s = ok(r);
     expect(r.ok && r.events.map((e) => e.type)).toEqual(['ready', 'countdown']);
     expect(s.questions).toHaveLength(10);
-    expect(nextWakeAt(s)).toBe(T0 + 3000 + 3000);
+    expect(nextWakeAt(s)).toBe(T0 + 3000 + TIMINGS.countdownMs);
 
-    let now = T0 + 6000;
+    let now = T0 + 3000 + TIMINGS.countdownMs;
     s = ok(tick(s, now, deps));
     let expectIlya = 0;
     let expectMark = 0;
@@ -494,8 +494,9 @@ describe('снимок для клиента', () => {
 
   it('итог глазами каждого; посторонний снимка не получает', () => {
     const s = ok(forfeit(startedDuel().s, MARK, T0 + 7000));
-    expect(viewFor(s, ILYA, 'ru', bank, T0)!.result).toEqual({ reason: 'forfeit', outcome: 'win', technical: true });
-    expect(viewFor(s, MARK, 'ru', bank, T0)!.result).toEqual({ reason: 'forfeit', outcome: 'loss', technical: true });
+    expect(viewFor(s, ILYA, 'ru', bank, T0)!.result).toMatchObject({ reason: 'forfeit', outcome: 'win', technical: true });
+    expect(viewFor(s, MARK, 'ru', bank, T0)!.result).toMatchObject({ reason: 'forfeit', outcome: 'loss', technical: true });
+    expect(viewFor(s, ILYA, 'ru', bank, T0)!.result).toMatchObject({ leaverId: MARK, stats: { correct: 0, played: 0, avgMs: null } });
     expect(viewFor(s, ANNA, 'ru', bank, T0)).toBeNull();
   });
 });

@@ -1,4 +1,15 @@
-import { init, isTMA, miniApp, retrieveRawInitData, themeParams, viewport } from '@tma.js/sdk-react';
+import {
+  backButton,
+  closingBehavior,
+  hapticFeedback,
+  init,
+  isTMA,
+  miniApp,
+  retrieveRawInitData,
+  swipeBehavior,
+  themeParams,
+  viewport,
+} from '@tma.js/sdk-react';
 
 export interface TelegramSession {
   /** Подписанная строка initData - её проверяет сервер. */
@@ -51,8 +62,66 @@ function setupSdk() {
       .catch(() => undefined);
   }
 
+  // Кнопка «Назад», жесты и подтверждение закрытия - для партии (setGameGuards, onBack).
+  backButton.mount.ifAvailable();
+  swipeBehavior.mount.ifAvailable();
+  closingBehavior.mount.ifAvailable();
+
   miniApp.ready.ifAvailable();
 }
+
+/** Вызов SDK, который вне Telegram (или в старом клиенте) просто ничего не делает. */
+function safe(fn: () => unknown) {
+  try {
+    fn();
+  } catch {
+    // Нет метода в этой версии Telegram - не критично для игры.
+  }
+}
+
+/**
+ * Во время партии свайп вниз не закрывает приложение, а закрытие крестиком
+ * спрашивает подтверждение. Вне партии - как обычно.
+ */
+export function setGameGuards(on: boolean) {
+  safe(() => (on ? swipeBehavior.disableVertical.ifAvailable() : swipeBehavior.enableVertical.ifAvailable()));
+  safe(() => (on ? closingBehavior.enableConfirmation.ifAvailable() : closingBehavior.disableConfirmation.ifAvailable()));
+}
+
+/**
+ * Системная кнопка «Назад» Telegram. Показывается, пока жив обработчик; возвращает отписку.
+ * На компьютере то же действие висит на Escape - удобно и в Telegram Desktop, и при отладке в браузере.
+ */
+export function onBack(handler: () => void): () => void {
+  let off: (() => void) | undefined;
+  safe(() => {
+    backButton.show.ifAvailable();
+    const res = backButton.onClick.ifAvailable(handler);
+    if (res.ok) off = res.data;
+  });
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') handler();
+  };
+  window.addEventListener('keydown', onKey);
+  return () => {
+    window.removeEventListener('keydown', onKey);
+    safe(() => off?.());
+    safe(() => backButton.hide.ifAvailable());
+  };
+}
+
+/** Вибрация: лёгкая на выбор ответа, success / error на раскрытии, сильная на победу, тики на последних секундах. */
+export const haptic = {
+  select: () => safe(() => hapticFeedback.impactOccurred.ifAvailable('light')),
+  tick: () => safe(() => hapticFeedback.selectionChanged.ifAvailable()),
+  success: () => safe(() => hapticFeedback.notificationOccurred.ifAvailable('success')),
+  error: () => safe(() => hapticFeedback.notificationOccurred.ifAvailable('error')),
+  win: () =>
+    safe(() => {
+      hapticFeedback.notificationOccurred.ifAvailable('success');
+      hapticFeedback.impactOccurred.ifAvailable('heavy');
+    }),
+};
 
 /** Вне Telegram возвращает null - тогда показываем заглушку «Откройте в Telegram». */
 export function setupTelegram(): TelegramSession | null {

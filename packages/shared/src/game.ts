@@ -1,5 +1,5 @@
 import type { Outcome } from './elo.js';
-import type { GameCategory } from './categories.js';
+import type { Category, GameCategory } from './categories.js';
 
 /**
  * Фазы партии: waiting (ждём соперника) → lobby (оба на месте) → countdown (3 с)
@@ -47,6 +47,8 @@ export interface QuestionView {
   index: number;
   total: number;
   questionId: string;
+  /** Тема самого вопроса (в «Миксе» у каждого своя). */
+  category: Category;
   text: string;
   /** Варианты уже в порядке экрана. Какой из них верный - не сообщается до раскрытия. */
   options: string[];
@@ -66,6 +68,25 @@ export interface RevealView {
   correctPosition: number;
   me: RevealSide;
   opponent: RevealSide | null;
+}
+
+/** Мои цифры за партию для экрана итогов. */
+export interface ResultStats {
+  /** Верных ответов. */
+  correct: number;
+  /** Сколько вопросов успели сыграть (закрыть); при технической победе может быть меньше 10. */
+  played: number;
+  /** Среднее время по всем моим ответам партии (мс); null - ни одного ответа. */
+  avgMs: number | null;
+}
+
+export interface GameResultView {
+  reason: FinishReason;
+  outcome: Outcome;
+  technical: boolean;
+  /** Кто сдался или не вернулся (для технического исхода). */
+  leaverId: number | null;
+  stats: ResultStats;
 }
 
 /**
@@ -92,6 +113,6 @@ export interface GameView {
   opponentAnswered: boolean;
   /** Раскрытие закрытого вопроса: только в фазе reveal. Разбор всей партии - отдельным запросом. */
   reveal: RevealView | null;
-  result: { reason: FinishReason; outcome: Outcome; technical: boolean } | null;
+  result: GameResultView | null;
   cancelReason: CancelReason | null;
 }

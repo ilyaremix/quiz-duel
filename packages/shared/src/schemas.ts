@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import { CONSENT_DOCS, type ConsentDoc } from './api.js';
 import { GAME_ID_RE } from './links.js';
+import { QUESTIONS_PER_GAME } from './questions.js';
 import { GAME_CATEGORIES, type GameCategory } from './categories.js';
 
 type Tuple<T> = readonly [T, ...T[]];
@@ -18,6 +19,12 @@ export const CreateGamePayloadSchema = z.strictObject({
 export const GameIdPayloadSchema = z.strictObject({ gameId });
 
 export const SyncPayloadSchema = z.strictObject({ gameId: gameId.optional() });
+
+export const AnswerPayloadSchema = z.strictObject({
+  gameId,
+  questionIndex: z.number().int().min(0).max(QUESTIONS_PER_GAME - 1),
+  optionIndex: z.number().int().min(0).max(3),
+});
 
 export const ReadyPayloadSchema = z.strictObject({ gameId, ready: z.boolean() });
 

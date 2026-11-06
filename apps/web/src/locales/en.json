@@ -8,7 +8,8 @@
     "questions_one": "{{count}} question",
     "questions_other": "{{count}} questions",
     "next": "Next",
-    "skip": "Skip"
+    "skip": "Skip",
+    "you": "You"
   },
   "s01": {
     "aria": "Loading",
@@ -58,7 +59,8 @@
   "badge": {
     "online": "Online",
     "ready": "Ready",
-    "offline": "Offline"
+    "offline": "Offline",
+    "answered": "Answered"
   },
   "toast": {
     "copied": "Link copied",
@@ -79,6 +81,10 @@
     },
     "offline": {
       "title": "Reconnecting…"
+    },
+    "disconnect": {
+      "title": "Opponent disconnected",
+      "text": "Technical win in"
     }
   },
   "s03": {
@@ -189,15 +195,6 @@
       "text": "Finish your current duel first - you can’t play two games at once"
     }
   },
-  "stub": {
-    "title": "The duel has started!",
-    "text": "Question {{n}} of 10 is already running on the server. The question and reveal screens arrive in the next stage",
-    "finished": "Game over",
-    "finishedText": "The results screen arrives in one of the next stages",
-    "noAnswers": "Game cancelled",
-    "noAnswersText": "Nobody answered a single question, so the game was unrated",
-    "home": "Home"
-  },
   "s24": {
     "outside": {
       "title": "Open in Telegram",
@@ -256,5 +253,77 @@
     "wrong": "Wrong answer",
     "mine": "Your answer",
     "opp": "Opponent’s answer"
+  },
+  "score": {
+    "aria": "Score",
+    "answered": "Opponent answered",
+    "offline": "Offline",
+    "opp": "Opponent"
+  },
+  "units": {
+    "sec": "{{t}} s"
+  },
+  "s08": {
+    "title": "The duel begins",
+    "sub": "10 questions · 15 seconds each",
+    "aria": "Starting in {{n}}",
+    "words": {
+      "w3": "Ready…",
+      "w2": "Set…",
+      "w1": "Go!"
+    }
+  },
+  "s09": {
+    "optionsAria": "Answer options",
+    "waiting": "Waiting for opponent…",
+    "offline": "No connection - you can’t answer yet",
+    "timeout": "Time’s up",
+    "pillOk": "{{who}}: correct, +{{n}}",
+    "pillBad": "{{who}}: wrong, 0 points",
+    "pillLate": "{{who}}: time’s up",
+    "exit": {
+      "title": "Leave the game?",
+      "text": "Your opponent gets a technical win right away and you get a loss",
+      "stay": "Stay",
+      "leave": "Leave"
+    }
+  },
+  "s12": {
+    "title": {
+      "win": "Victory!",
+      "loss": "Defeat",
+      "draw": "Draw",
+      "techWin": "Victory!",
+      "techLoss": "Defeat"
+    },
+    "sub": {
+      "win": "You beat {{opp}}",
+      "loss": "{{opp}} was faster",
+      "draw": "Level scores - no winner",
+      "techWin": "Your opponent left the game and didn’t return",
+      "techWinForfeit": "Your opponent left the game",
+      "techLoss": "You left the game early",
+      "techLossAbandoned": "You didn’t return within 30 seconds"
+    },
+    "techWin": "Technical win",
+    "techLoss": "Technical loss",
+    "scoreAria": "Score",
+    "correct": "{{n}} correct",
+    "avg": "{{t}} avg",
+    "rematch": "Rematch",
+    "share": "Share result",
+    "review": "Review",
+    "home": "Home",
+    "rmLeft": "Your opponent left the game",
+    "cancelled": {
+      "noAnswers": {
+        "title": "Game cancelled",
+        "text": "Nobody answered a single question, so the game doesn’t count for rating"
+      },
+      "other": {
+        "title": "Game cancelled",
+        "text": "This game ended without a result"
+      }
+    }
   }
 }

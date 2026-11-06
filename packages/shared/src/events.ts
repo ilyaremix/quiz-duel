@@ -1,7 +1,7 @@
 /**
  * Типы событий Socket.IO. Общие для клиента и сервера, поэтому
  * имя события или его данные нельзя поменять только с одной стороны.
- * Этап 1: приветствие и часы. Этап 4: лобби. Вопросы, ответы и реванш - этапы 5-7.
+ * Этап 1: приветствие и часы. Этап 4: лобби. Этап 5: ответы и сдача. Реванш - этап 7.
  */
 import type { GameView, PlayerProfile } from './game.js';
 import type { GameCategory } from './categories.js';
@@ -39,6 +39,12 @@ export type GameErrorCode =
   | 'not_participant'
   | 'wrong_phase'
   | 'not_creator'
+  /** Ответ на вопрос, который уже закрыт или ещё не начат (сверяется номер вопроса). */
+  | 'wrong_question'
+  /** Нет варианта с таким номером. */
+  | 'bad_option'
+  /** Ответ дошёл после конца таймера и допуска на сеть - не засчитан. */
+  | 'late'
   /** Данные события не прошли проверку схемой. */
   | 'invalid'
   | 'rate_limited'
@@ -72,6 +78,23 @@ export interface SyncPayload {
 export interface ReadyPayload {
   gameId: string;
   ready: boolean;
+}
+
+export interface AnswerPayload {
+  gameId: string;
+  /** Номер вопроса 0-9: ответ на чужой или закрытый вопрос отклоняется. */
+  questionIndex: number;
+  /** Номер варианта на экране 0-3 (порядок вариантов у обоих игроков одинаковый). */
+  optionIndex: number;
+}
+
+export interface AnswerResult {
+  /**
+   * true - ответ принят; false - на этот вопрос игрок уже ответил (двойной тап,
+   * повтор после переподключения): засчитан первый ответ, повтор ничего не меняет.
+   */
+  accepted: boolean;
+  game: GameView;
 }
 
 export interface GameResult {
@@ -116,6 +139,10 @@ export interface ClientToServerEvents {
   'game:cancel': (payload: GameIdPayload, ack: AckFn<GameResult>) => void;
   /** Соперник выходит из лобби (место сразу освобождается). */
   'game:leave': (payload: GameIdPayload, ack: AckFn) => void;
+  /** Ответ на текущий вопрос. Время и очки считает сервер. */
+  'game:answer': (payload: AnswerPayload, ack: AckFn<AnswerResult>) => void;
+  /** «Выйти из партии»: сразу техническая победа сопернику. */
+  'game:forfeit': (payload: GameIdPayload, ack: AckFn<GameResult>) => void;
 }
 
 /** Данные, которые сервер кладёт в socket.data после проверки initData. */

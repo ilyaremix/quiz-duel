@@ -2,6 +2,7 @@ import type { Server as HttpServer } from 'node:http';
 import { Server } from 'socket.io';
 import type { z } from 'zod';
 import {
+  AnswerPayloadSchema,
   CreateGamePayloadSchema,
   GameIdPayloadSchema,
   ReadyPayloadSchema,
@@ -120,6 +121,8 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
       on('game:ready', ReadyPayloadSchema, (p) => games.ready(userId, p.gameId, p.ready));
       on('game:cancel', GameIdPayloadSchema, (p) => games.cancel(userId, p.gameId));
       on('game:leave', GameIdPayloadSchema, (p) => games.leave(userId, p.gameId));
+      on('game:answer', AnswerPayloadSchema, (p) => games.answer(userId, p.gameId, p.questionIndex, p.optionIndex));
+      on('game:forfeit', GameIdPayloadSchema, (p) => games.forfeit(userId, p.gameId));
     }
 
     socket.on('disconnect', () => {

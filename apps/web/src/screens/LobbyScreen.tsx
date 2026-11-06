@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { GameView } from '@quiz-duel/shared';
+import { TIMINGS, type GameView } from '@quiz-duel/shared';
 import { DisconnectBanner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { CategoryChip } from '../components/CategoryTile';
@@ -32,7 +32,8 @@ export function LobbyScreen({ game }: { game: GameView }) {
           ? 'oppReady'
           : 'none';
 
-  const startIn = Math.max(1, Math.ceil(((game.phaseEndsAt ?? now) - now) / 1000));
+  // Лобби-часть отсчёта: после неё ещё 3 с экрана VS.
+  const startIn = Math.max(1, Math.ceil(((game.phaseEndsAt ?? now) - TIMINGS.vsMs - now) / 1000));
   const meStatus: PlayerStatus = me.ready ? 'ready' : 'notready';
   const oppStatus: PlayerStatus = !opp.online ? 'offline' : opp.ready ? 'ready' : 'notready';
 

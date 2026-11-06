@@ -14,7 +14,7 @@ export function avatarColor(id: number): string {
   return COLORS[Math.abs(id) % COLORS.length]!;
 }
 
-export type AvatarBadge = 'none' | 'online' | 'ready' | 'offline';
+export type AvatarBadge = 'none' | 'online' | 'ready' | 'answered' | 'offline';
 
 interface AvatarProps {
   id: number;
@@ -30,10 +30,12 @@ interface AvatarProps {
 const BADGES = {
   online: { bg: 'var(--qd-correct)', fg: 'var(--qd-on-fill)', glyph: null },
   ready: { bg: 'var(--qd-correct)', fg: 'var(--qd-on-fill)', glyph: 'check' },
+  /** Ответил на текущий вопрос (какой вариант - не видно). */
+  answered: { bg: 'var(--qd-brand)', fg: '#FFFFFF', glyph: 'check' },
   offline: { bg: 'var(--tg-theme-hint-color)', fg: 'var(--qd-on-fill)', glyph: 'offline' },
 } as const;
 
-/** Аватар из Telegram; без фото - цветной круг с инициалом. Бейдж: в сети, готов, не в сети. */
+/** Аватар из Telegram; без фото - цветной круг с инициалом. Бейдж: в сети, готов, ответил, не в сети. */
 export function Avatar({ id, name, photoUrl, size = 44, ring = 'none', on = 'page', badge = 'none' }: AvatarProps) {
   const { t } = useTranslation();
   const [broken, setBroken] = useState(false);

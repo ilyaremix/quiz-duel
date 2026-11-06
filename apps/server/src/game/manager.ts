@@ -20,6 +20,7 @@ import {
   type GameFailure,
   type GameStateMeta,
   type GameView,
+  type AnswerResult,
   type InviteResult,
 } from '@quiz-duel/shared';
 import type { QuestionBank } from '../questions/bank.js';
@@ -97,6 +98,9 @@ function mapError(error: GameError): GameErrorCode {
     case 'not_participant':
     case 'wrong_phase':
     case 'not_creator':
+    case 'wrong_question':
+    case 'bad_option':
+    case 'late':
       return error;
     default:
       return 'wrong_phase';
@@ -336,6 +340,37 @@ export class GameManager {
     });
     const prepared = await entry.invite;
     return { ok: true, link, preparedMessageId: prepared?.id ?? null };
+  }
+
+  // -------------------------------------------------------------------------
+  // Партия
+
+  /**
+   * Ответ на текущий вопрос. Время считает сервер: от старта вопроса до этой
+   * минуты по его часам, клиентские метки не принимаются. Повтор (двойной тап,
+   * повторная отправка после переподключения) идемпотентен: засчитан первый ответ,
+   * повтор возвращает accepted: false и ничего не меняет.
+   */
+  async answer(userId: number, gameId: string, questionIndex: number, optionIndex: number): Promise<Result<AnswerResult>> {
+    // Время фиксируем по приходу события, а не когда до него дойдёт очередь партии.
+    const at = this.now();
+    const entry = await this.entry(gameId);
+    if (!entry) return fail('not_found');
+    return this.run(entry, async () => {
+      if (!machine.playerOf(entry.state, userId)) return fail('not_participant');
+      const step = machine.answer(entry.state, userId, questionIndex, optionIndex, at, this.deps);
+      if (!step.ok) {
+        if (step.error === 'already_answered') return { ok: true as const, accepted: false, game: this.viewOf(entry.state, userId)! };
+        return fail(mapError(step.error));
+      }
+      await this.apply(entry, step);
+      return { ok: true as const, accepted: true, game: this.viewOf(entry.state, userId)! };
+    });
+  }
+
+  /** «Выйти из партии»: сразу техническая победа сопернику, без 30 с ожидания. */
+  async forfeit(userId: number, gameId: string): Promise<Result<{ game: GameView }>> {
+    return this.mutate(userId, gameId, async (entry) => machine.forfeit(entry.state, userId, this.now()));
   }
 
   // -------------------------------------------------------------------------

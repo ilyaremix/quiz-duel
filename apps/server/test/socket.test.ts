@@ -155,6 +155,49 @@ describe('Socket.IO: лобби с двумя настоящими клиент�
     expect(again.hello.currentGameId).toBe(gameId);
   });
 
+  it('партия: ответ, повтор после переподключения, раскрытие у обоих, сдача', async () => {
+    const url = await startGameServer();
+    let a = await player(url, ilya);
+    const created = await a.socket.emitWithAck('game:create', { category: 'science' });
+    if (!created.ok) throw new Error(created.error);
+    const gameId = created.game.id;
+    const b = await player(url, mark);
+    await b.socket.emitWithAck('game:join', { gameId });
+    await a.socket.emitWithAck('game:ready', { gameId, ready: true });
+    const questionA = nextState(a.socket, 'question');
+    const questionB = nextState(b.socket, 'question');
+    await b.socket.emitWithAck('game:ready', { gameId, ready: true });
+    const [qa, qb] = await Promise.all([questionA, questionB]);
+    expect(qa.question?.questionId).toBe(qb.question?.questionId);
+    expect(qa.question?.endsAt).toBe(qb.question?.endsAt);
+
+    const first = await a.socket.emitWithAck('game:answer', { gameId, questionIndex: 0, optionIndex: 2 });
+    expect(first.ok && first.accepted).toBe(true);
+
+    // Свернул и вернулся: снимок помнит выбор, повтор ответа не принимается.
+    a.socket.close();
+    a = await player(url, ilya);
+    expect(a.hello.currentGameId).toBe(gameId);
+    const synced = await a.socket.emitWithAck('game:sync', { gameId });
+    expect(synced.ok && synced.game).toMatchObject({ phase: 'question', myAnswer: { position: 2 } });
+    const repeat = await a.socket.emitWithAck('game:answer', { gameId, questionIndex: 0, optionIndex: 1 });
+    expect(repeat.ok && repeat.accepted).toBe(false);
+    expect(await a.socket.emitWithAck('game:answer', { gameId, questionIndex: 0, optionIndex: 7 })).toEqual({ ok: false, error: 'invalid' });
+
+    const revealA = nextState(a.socket, 'reveal');
+    const revealB = nextState(b.socket, 'reveal');
+    await b.socket.emitWithAck('game:answer', { gameId, questionIndex: 0, optionIndex: 0 });
+    const [ra, rb] = await Promise.all([revealA, revealB]);
+    expect(ra.reveal?.correctPosition).toBe(rb.reveal?.correctPosition);
+    expect(ra.reveal?.me.position).toBe(2);
+    expect(rb.reveal?.opponent?.position).toBe(2);
+
+    const finishedB = nextState(b.socket, 'finished');
+    const gave = await a.socket.emitWithAck('game:forfeit', { gameId });
+    expect(gave.ok && gave.game.result).toMatchObject({ outcome: 'loss', technical: true, reason: 'forfeit' });
+    expect((await finishedB).result).toMatchObject({ outcome: 'win', technical: true, leaverId: ilya.id });
+  }, 20_000);
+
   it('невалидные данные события - отказ invalid, соединение живо', async () => {
     const url = await startGameServer();
     const a = await player(url, ilya);

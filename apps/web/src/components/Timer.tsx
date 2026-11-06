@@ -35,7 +35,8 @@ export function Timer({ seconds, total = 15, pct, live = false }: TimerProps) {
         />
       </div>
       <span
-        className="qd-num box-border flex h-9 min-w-12 items-center justify-center rounded-[18px] px-2.5 text-[17px] font-extrabold transition-colors duration-200"
+        // Последние 5 с: цифра «тикает» раз в секунду (непрерывное движение - linear).
+        className={`${live && urgent ? 'qd-tick ' : ''}qd-num box-border flex h-9 min-w-12 items-center justify-center rounded-[18px] px-2.5 text-[17px] font-extrabold transition-colors duration-200`}
         style={
           urgent
             ? { background: 'var(--qd-wrong-tint)', color: 'var(--qd-wrong-text)' }

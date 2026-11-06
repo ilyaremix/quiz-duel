@@ -1,4 +1,14 @@
-import { OPEN_PHASES, TIMINGS, type GameView, type Lang, type PlayerProfile, type PlayerView, type RevealSide } from '@quiz-duel/shared';
+import {
+  OPEN_PHASES,
+  TIMINGS,
+  type GameResultView,
+  type GameView,
+  type Lang,
+  type PlayerProfile,
+  type PlayerView,
+  type ResultStats,
+  type RevealSide,
+} from '@quiz-duel/shared';
 import type { QuestionBank } from '../questions/bank.js';
 import { otherOf, outcomeFor, playerOf, type GameState, type PlayerState } from './machine.js';
 
@@ -20,6 +30,30 @@ const playerView = (state: GameState, p: PlayerState, profileOf: ProfileLookup):
       : null,
   score: p.score,
 });
+
+/** Цифры игрока за сыгранные (закрытые) вопросы. */
+export function statsOf(state: GameState, p: PlayerState): ResultStats {
+  const answers = p.answers.slice(0, state.closed).filter((a) => a !== null);
+  return {
+    correct: answers.filter((a) => a.correct).length,
+    played: state.closed,
+    avgMs: answers.length ? Math.round(answers.reduce((sum, a) => sum + a.timeMs, 0) / answers.length) : null,
+  };
+}
+
+function resultFor(state: GameState, me: PlayerState): GameResultView | null {
+  const outcome = outcomeFor(state, me.userId);
+  if (!state.finish || !outcome) return null;
+  const technical = state.finish.reason !== 'completed';
+  const winner = state.finish.winnerId;
+  return {
+    reason: state.finish.reason,
+    outcome,
+    technical,
+    leaverId: technical && winner !== null ? (otherOf(state, winner)?.userId ?? null) : null,
+    stats: statsOf(state, me),
+  };
+}
 
 /**
  * Снимок партии для одного игрока на его языке. Верный вариант и чужой выбор
@@ -56,7 +90,6 @@ export function viewFor(
   }
 
   const myCurrent = state.phase === 'question' ? me.answers[i] : undefined;
-  const outcome = outcomeFor(state, viewerId);
 
   return {
     id: state.id,
@@ -76,6 +109,7 @@ export function viewFor(
             index: i,
             total: state.questions.length,
             questionId: gq.id,
+            category: source.category,
             text: source[lang].text,
             options: gq.order.map((o) => source[lang].options[o]!),
             startedAt: state.questionStartedAt!,
@@ -85,10 +119,7 @@ export function viewFor(
     myAnswer: myCurrent ? { position: myCurrent.position } : null,
     opponentAnswered: state.phase === 'question' && Boolean(opp?.answers[i]),
     reveal,
-    result:
-      state.finish && outcome
-        ? { reason: state.finish.reason, outcome, technical: state.finish.reason !== 'completed' }
-        : null,
+    result: resultFor(state, me),
     cancelReason: state.cancelReason,
   };
 }
