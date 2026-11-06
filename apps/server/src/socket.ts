@@ -28,10 +28,22 @@ export interface SocketDeps {
   log: FastifyBaseLogger;
   /** Без менеджера сокет умеет только приветствие и часы (тесты авторизации). */
   games?: GameManager;
+  /** Часы сервера: те же, что у менеджера партий, - по ним клиент сверяет свои. */
+  now?: () => number;
+  /** Пинг Socket.IO (по умолчанию HEARTBEAT). */
+  heartbeat?: { intervalMs: number; timeoutMs: number };
 }
 
 /** Комната игрока: все его вкладки и устройства. */
 export const userRoom = (userId: number) => `user:${userId}`;
+
+/**
+ * Как быстро сервер замечает «молча» пропавший телефон (ушёл в метро, сел заряд):
+ * пинг каждые 10 с, нет ответа 8 с - подключение закрыто. Стандартные 25 + 20 с
+ * давали бы до 45 с задержки, и отсчёт 30 с до технической победы начинался бы поздно.
+ * Свёрнутое на несколько секунд приложение при этом не считается ушедшим.
+ */
+export const HEARTBEAT = { intervalMs: 10_000, timeoutMs: 8_000 } as const;
 
 /** Сколько игровых событий можно прислать с одного подключения за окно. */
 const EVENT_LIMIT = { max: 30, windowMs: 10_000 } as const;
@@ -52,7 +64,10 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
     // Игровые события маленькие; большой пакет - это ошибка или атака.
     maxHttpBufferSize: 16 * 1024,
     serveClient: false,
+    pingInterval: (deps.heartbeat ?? HEARTBEAT).intervalMs,
+    pingTimeout: (deps.heartbeat ?? HEARTBEAT).timeoutMs,
   });
+  const now = deps.now ?? Date.now;
 
   // Без верного initData соединение не устанавливается вообще.
   io.use((socket, next) => {
@@ -76,7 +91,7 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
     const games = deps.games;
 
     socket.on('time:sync', (ack) => {
-      if (typeof ack === 'function') ack({ serverNow: Date.now() });
+      if (typeof ack === 'function') ack({ serverNow: now() });
     });
 
     // Скользящее окно событий на подключение.
@@ -130,7 +145,7 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
     });
 
     const hello = (currentGameId: string | null) => {
-      if (socket.connected) socket.emit('session:hello', { userId, serverNow: Date.now(), currentGameId });
+      if (socket.connected) socket.emit('session:hello', { userId, serverNow: now(), currentGameId });
     };
     // connect() сразу считает новое подключение, поэтому закрытие старых ниже
     // не делает игрока «офлайн» даже на мгновение.

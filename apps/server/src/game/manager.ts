@@ -49,6 +49,22 @@ export interface InviteMaker {
   prepare(input: { userId: number; gameId: string; link: string; category: GameCategory; lang: UserCard['lang']; creatorName: string }): Promise<PreparedInvite | null>;
 }
 
+/**
+ * Часы и таймеры сервера. В бою - настоящие; в тестах с настоящими сокетами их
+ * подменяют часами, которые умеют «перематывать» время (30 с ожидания за миллисекунды).
+ */
+export interface ServerClock {
+  now(): number;
+  setTimeout(fn: () => void, ms: number): unknown;
+  clearTimeout(handle: unknown): void;
+}
+
+export const realClock: ServerClock = {
+  now: () => Date.now(),
+  setTimeout: (fn, ms) => setTimeout(fn, ms),
+  clearTimeout: (handle) => clearTimeout(handle as NodeJS.Timeout),
+};
+
 type Log = { error: (obj: object, msg?: string) => void; warn: (obj: object, msg?: string) => void; info: (obj: object, msg?: string) => void };
 
 export interface ManagerDeps {
@@ -62,6 +78,9 @@ export interface ManagerDeps {
   docsVersion: string;
   log: Log;
   invites?: InviteMaker;
+  /** Часы и таймеры (по умолчанию настоящие). */
+  clock?: ServerClock;
+  /** Только часы (тесты менеджера с фейковыми таймерами vitest). */
   now?: () => number;
   newId?: () => string;
   rng?: Rng;
@@ -72,8 +91,8 @@ export type Result<T> = ({ ok: true } & T) | GameFailure;
 interface Entry {
   state: GameState;
   queue: Promise<unknown>;
-  timer: NodeJS.Timeout | null;
-  evictTimer: NodeJS.Timeout | null;
+  timer: unknown;
+  evictTimer: unknown;
   /** Что видели игроки - подгружается перед выбором вопросов. */
   seen: Map<string, number> | null;
   invite: Promise<PreparedInvite | null> | null;
@@ -117,10 +136,17 @@ export class GameManager {
   private readonly creates = new Map<number, number[]>();
   private readonly deps: MachineDeps;
   private readonly now: () => number;
+  private readonly clock: ServerClock;
   private stopped = false;
+  /**
+   * Сервер останавливается: отключения сокетов в этот момент - не уход игроков,
+   * их не записываем, иначе после перезапуска у кого-то шёл бы отсчёт до техпоражения.
+   */
+  private shuttingDown = false;
 
   constructor(private readonly d: ManagerDeps) {
-    this.now = d.now ?? Date.now;
+    this.clock = d.clock ?? (d.now ? { ...realClock, now: d.now } : realClock);
+    this.now = () => this.clock.now();
     const rng = d.rng ?? secureRng;
     this.deps = {
       correctOf: (id) => {
@@ -157,15 +183,29 @@ export class GameManager {
   stop() {
     this.stopped = true;
     for (const entry of this.games.values()) {
-      if (entry.timer) clearTimeout(entry.timer);
-      if (entry.evictTimer) clearTimeout(entry.evictTimer);
+      if (entry.timer) this.clock.clearTimeout(entry.timer);
+      if (entry.evictTimer) this.clock.clearTimeout(entry.evictTimer);
+      entry.timer = null;
+      entry.evictTimer = null;
     }
+  }
+
+  /**
+   * Корректная остановка (SIGTERM при выкатке): таймеры стоп, присутствие игроков
+   * больше не меняется, ждём, пока допишутся уже начатые изменения партий.
+   * Вызывать до закрытия сокетов и базы.
+   */
+  async shutdown(): Promise<void> {
+    this.shuttingDown = true;
+    this.stop();
+    await Promise.all([...this.games.values()].map((entry) => entry.queue));
   }
 
   // -------------------------------------------------------------------------
   // Подключения
 
   async connect(userId: number): Promise<string | null> {
+    if (this.shuttingDown) return null;
     const count = (this.online.get(userId) ?? 0) + 1;
     this.online.set(userId, count);
     await this.refreshCards([userId]);
@@ -175,6 +215,7 @@ export class GameManager {
   }
 
   async disconnect(userId: number): Promise<void> {
+    if (this.shuttingDown) return;
     const count = (this.online.get(userId) ?? 1) - 1;
     if (count > 0) {
       this.online.set(userId, count);
@@ -507,12 +548,12 @@ export class GameManager {
   }
 
   private schedule(entry: Entry) {
-    if (entry.timer) clearTimeout(entry.timer);
+    if (entry.timer) this.clock.clearTimeout(entry.timer);
     entry.timer = null;
     if (this.stopped) return;
     const at = machine.nextWakeAt(entry.state);
     if (at === null) return;
-    entry.timer = setTimeout(() => {
+    entry.timer = this.clock.setTimeout(() => {
       entry.timer = null;
       void this.run(entry, () => this.apply(entry, machine.tick(entry.state, this.now(), this.deps)));
     }, Math.max(0, at - this.now()));
@@ -520,10 +561,11 @@ export class GameManager {
 
   private scheduleEvict(entry: Entry) {
     if (entry.evictTimer || this.stopped) return;
-    entry.evictTimer = setTimeout(() => {
+    entry.evictTimer = this.clock.setTimeout(() => {
       if (FINAL_PHASES.includes(entry.state.phase) && this.games.get(entry.state.id) === entry) this.games.delete(entry.state.id);
     }, KEEP_FINISHED_MS);
-    entry.evictTimer.unref?.();
+    // Таймер выгрузки не должен держать процесс (тесты, остановка сервера).
+    (entry.evictTimer as { unref?: () => void } | null)?.unref?.();
   }
 
   private viewOf(state: GameState, userId: number): GameView | null {

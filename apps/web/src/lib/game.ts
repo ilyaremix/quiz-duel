@@ -8,6 +8,8 @@ import { copyTextToClipboard, openLink, shareMessage, shareURL } from '@tma.js/s
 import {
   ACTIVE_PHASES,
   FINAL_PHASES,
+  measureClockOffset,
+  TIMINGS,
   type ClientToServerEvents,
   type GameCategory,
   type GameErrorCode,
@@ -15,8 +17,8 @@ import {
   type GameView,
   type PlayerProfile,
 } from '@quiz-duel/shared';
-import { createSocket, measureClockOffset, type GameSocket } from './socket';
-import { haptic } from './telegram';
+import { createSocket, type GameSocket } from './socket';
+import { haptic, onResume } from './telegram';
 
 export type LinkErrorKind = 'taken' | 'notFound' | 'expired' | 'cancelled' | 'finished' | 'busy';
 export type ToastKind = 'success' | 'error' | 'info';
@@ -36,7 +38,11 @@ export interface ConsentAsk {
 }
 
 interface GameStore {
-  conn: 'connecting' | 'online' | 'reconnecting' | 'replaced';
+  /**
+   * replaced - партию забрало другое устройство этого игрока («Играть здесь» вернёт её);
+   * auth - сервер не принял initData (устарел после суток с открытым приложением): «Откройте заново».
+   */
+  conn: 'connecting' | 'online' | 'reconnecting' | 'replaced' | 'auth';
   clockOffset: number;
   game: GameView | null;
   /** Игрок ушёл на главную, а дуэль идёт: на главной плашка «Вернуться». */
@@ -103,6 +109,8 @@ let socket: GameSocket | null = null;
 let pendingJoin: string | null = null;
 let helloSeen = false;
 let consentSender: (() => Promise<void>) | null = null;
+/** Смещение часов уже измерено по time:sync (до этого - грубая оценка по приветствию). */
+let clockMeasured = false;
 
 type EventName = keyof ClientToServerEvents;
 type PayloadOf<E extends EventName> = Parameters<ClientToServerEvents[E]>[0];
@@ -110,13 +118,18 @@ type AckOf<E extends EventName> = Extract<Parameters<ClientToServerEvents[E]>[1]
 type ResultOf<E extends EventName> = Parameters<AckOf<E>>[0];
 
 /** Событие с ответом. Нет связи или сервер молчит 8 с - ошибка internal, кнопка снова активна. */
-async function request<E extends EventName>(event: E, payload: PayloadOf<E>, busyKey: string = event): Promise<ResultOf<E>> {
+async function request<E extends EventName>(
+  event: E,
+  payload: PayloadOf<E>,
+  busyKey: string = event,
+  timeoutMs = 8_000,
+): Promise<ResultOf<E>> {
   const s = socket;
   if (!s) return { ok: false, error: 'internal' } as ResultOf<E>;
   set((st) => ({ pending: { ...st.pending, [busyKey]: true } }));
   try {
     // Типы Socket.IO не выводят ack для обобщённого имени события, поэтому приводим вручную.
-    const timed = s.timeout(8_000) as unknown as { emitWithAck: (e: string, p: unknown) => Promise<unknown> };
+    const timed = s.timeout(timeoutMs) as unknown as { emitWithAck: (e: string, p: unknown) => Promise<unknown> };
     return (await timed.emitWithAck(event, payload)) as ResultOf<E>;
   } catch {
     return { ok: false, error: 'internal' } as ResultOf<E>;
@@ -141,6 +154,73 @@ function applyView(view: GameView, meta?: GameStateMeta) {
   set({ game: view, exitAsk });
 }
 
+/** Часы сервера: 3 замера time:sync, берётся самый быстрый. Сбитые часы телефона не мешают таймеру. */
+async function syncClock(timeoutMs = 5_000): Promise<boolean> {
+  const s = socket;
+  if (!s?.connected) return false;
+  try {
+    const { offset } = await measureClockOffset(s, { timeoutMs });
+    clockMeasured = true;
+    set({ clockOffset: offset });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Мой выбор после переподключения. Если сервер его не получил (ушёл в момент обрыва),
+ * а вопрос ещё идёт - отправляем ещё раз: ответ идемпотентен, второй раз не засчитают.
+ * Если вопрос уже закрыт - подсветка больше не нужна.
+ */
+function reconcilePick(view: GameView) {
+  const p = get().picked;
+  if (!p || p.gameId !== view.id) return;
+  if (view.phase !== 'question' || view.question?.index !== p.index) return set({ picked: null });
+  if (view.myAnswer || get().pending.answer || get().conn !== 'online') return;
+  if (serverNow() > view.question.endsAt + TIMINGS.answerGraceMs) return set({ picked: null });
+  void sendAnswer(view.id, p.index, p.position);
+}
+
+async function sendAnswer(gameId: string, index: number, position: number) {
+  const res = await request('game:answer', { gameId, questionIndex: index, optionIndex: position }, 'answer');
+  if (res.ok) {
+    applyView(res.game);
+    return;
+  }
+  if (res.error !== 'internal' && res.error !== 'rate_limited') {
+    // Сервер отказал явно (опоздал, вопрос уже закрыт) - выбор не засчитан, подсветку снимаем.
+    const now = get().picked;
+    if (now && now.gameId === gameId && now.index === index) set({ picked: null });
+  }
+  // Нет ответа сервера - неизвестно, дошёл ли выбор: свежий снимок решит, нужно ли отправить ещё раз.
+  void gameActions.resync(gameId);
+}
+
+/**
+ * Вернулись из фона. Сокет может «думать», что жив, хотя телефон давно потерял
+ * соединение (iOS и Android усыпляют свёрнутые приложения): короткий time:sync
+ * проверяет связь и заодно уточняет часы. Не ответил за 3 с - переподключаемся сразу,
+ * не дожидаясь пинга. После этого - свежий снимок партии.
+ */
+async function wake() {
+  const s = socket;
+  const conn = get().conn;
+  if (!s || conn === 'replaced' || conn === 'auth' || conn === 'connecting') return;
+  if (!s.connected) {
+    if (!s.active) s.connect();
+    return;
+  }
+  if (!(await syncClock(3_000))) {
+    if (!s.connected || get().conn === 'replaced') return;
+    set({ conn: 'reconnecting' });
+    s.disconnect().connect();
+    return;
+  }
+  const cur = get().game;
+  if (cur && !isFinal(cur)) await gameActions.resync(cur.id);
+}
+
 function failure(result: { ok: false; error: GameErrorCode; busyGameId?: string }) {
   const kind = LINK_ERRORS[result.error];
   if (kind) set({ linkError: { kind, busyGameId: result.busyGameId } });
@@ -156,11 +236,11 @@ export const gameActions = {
     set({ linkEntry: Boolean(startGameId) });
     socket = createSocket(initDataRaw);
 
-    socket.on('session:hello', ({ currentGameId }) => {
+    socket.on('session:hello', ({ currentGameId, serverNow: helloNow }) => {
+      // Грубая поправка сразу (точность - задержка сети), точная - тремя замерами ниже.
+      if (!clockMeasured) set({ clockOffset: helloNow - Date.now() });
       set({ conn: 'online' });
-      measureClockOffset(socket!)
-        .then((clockOffset) => set({ clockOffset }))
-        .catch(() => undefined);
+      void syncClock();
 
       const first = !helloSeen;
       helloSeen = true;
@@ -180,9 +260,18 @@ export const gameActions = {
     socket.on('disconnect', () => {
       if (get().conn !== 'replaced') set({ conn: 'reconnecting' });
     });
-    socket.on('connect_error', () => {
-      if (get().conn !== 'replaced') set({ conn: helloSeen ? 'reconnecting' : 'connecting' });
+    socket.on('connect_error', (error: Error & { data?: { error?: string } }) => {
+      if (get().conn === 'replaced') return;
+      // Подпись initData не прошла (или устарела): повтор не поможет, нужен новый вход из бота.
+      const code = error.data?.error;
+      if (code === 'invalid_init_data' || code === 'unauthorized') {
+        socket?.disconnect();
+        set({ conn: 'auth' });
+        return;
+      }
+      set({ conn: helloSeen ? 'reconnecting' : 'connecting' });
     });
+    onResume(() => void wake());
   },
 
   /** «Играть здесь» после session:replaced. */
@@ -195,7 +284,10 @@ export const gameActions = {
   async resync(gameId: string) {
     const res = await request('game:sync', { gameId });
     if (res.ok) {
-      if (res.game) set({ game: res.game });
+      if (res.game) {
+        set({ game: res.game });
+        reconcilePick(res.game);
+      }
       return;
     }
     if (res.error === 'not_participant') {
@@ -369,7 +461,8 @@ export const gameActions = {
   /**
    * Тап по варианту. Выбор сразу подсвечивается, но засчитывает его только сервер
    * (время и очки - по его часам). Отказ (опоздал, вопрос уже закрыт) - подсветка
-   * снимается, экран берёт свежий снимок.
+   * снимается. Нет ответа (обрыв связи) - после переподключения выбор уходит ещё раз
+   * (reconcilePick), сервер примет только первый.
    */
   async answer(position: number) {
     const g = get().game;
@@ -379,16 +472,7 @@ export const gameActions = {
     if (picked && picked.gameId === g.id && picked.index === q.index) return;
     set({ picked: { gameId: g.id, index: q.index, position } });
     haptic.select();
-    const res = await request('game:answer', { gameId: g.id, questionIndex: q.index, optionIndex: position }, 'answer');
-    if (res.ok) {
-      applyView(res.game);
-      return;
-    }
-    // Вопрос уже закрыт или ответ опоздал - выбор не засчитан.
-    const now = get().picked;
-    if (now && now.gameId === g.id && now.index === q.index) set({ picked: null });
-    if (res.error === 'internal' || res.error === 'rate_limited') showToast('error', 'toast.connection');
-    void gameActions.resync(g.id);
+    await sendAnswer(g.id, q.index, position);
   },
 
   openExit() {

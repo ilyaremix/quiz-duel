@@ -110,6 +110,35 @@ export function onBack(handler: () => void): () => void {
   };
 }
 
+/**
+ * Приложение снова на экране: развернули из фона, вернулись в Telegram из другого
+ * приложения или из свёрнутого состояния. Telegram сообщает об этом своим событием
+ * (miniApp.isActive), браузер - visibilitychange; срабатывает не чаще раза в секунду.
+ */
+export function onResume(handler: () => void): () => void {
+  let lastAt = 0;
+  const fire = () => {
+    const now = Date.now();
+    if (now - lastAt < 1_000) return;
+    lastAt = now;
+    handler();
+  };
+  const onVisibility = () => {
+    if (document.visibilityState === 'visible') fire();
+  };
+  document.addEventListener('visibilitychange', onVisibility);
+  let off: (() => void) | undefined;
+  safe(() => {
+    off = miniApp.isActive.sub((active: boolean) => {
+      if (active) fire();
+    });
+  });
+  return () => {
+    document.removeEventListener('visibilitychange', onVisibility);
+    safe(() => off?.());
+  };
+}
+
 /** Вибрация: лёгкая на выбор ответа, success / error на раскрытии, сильная на победу, тики на последних секундах. */
 export const haptic = {
   select: () => safe(() => hapticFeedback.impactOccurred.ifAvailable('light')),

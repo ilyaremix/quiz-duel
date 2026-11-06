@@ -133,6 +133,8 @@ function InTelegram({ session }: { session: TelegramSession }) {
     );
   }
   if (conn === 'replaced') return <FallbackScreen kind="otherDevice" onAction={gameActions.takeOver} />;
+  // Сокет не принял initData (приложение открыто больше суток) - как и с REST, нужен новый вход.
+  if (conn === 'auth') return <FallbackScreen kind="session" onAction={closeMiniApp} />;
   // Пока не пришло первое приветствие сокета или не решился вход по ссылке, главную не показываем:
   // игрок может быть в партии.
   if (conn === 'connecting' || (linkEntry && !linkError && !consent)) return <LoadingScreen />;

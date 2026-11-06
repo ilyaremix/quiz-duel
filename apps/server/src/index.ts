@@ -5,7 +5,7 @@ import { buildApp } from './http/app.js';
 import { attachSocket, socketNotifier, type IoServer } from './socket.js';
 import { botInvites, configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
 import { createPrismaGamesRepo } from './game/repo.js';
-import { GameManager } from './game/manager.js';
+import { GameManager, realClock } from './game/manager.js';
 import { loadQuestionBank } from './questions/bank.js';
 import { syncQuestions } from './questions/sync.js';
 
@@ -43,6 +43,7 @@ async function main() {
     docsVersion: env.DOCS_VERSION,
     log: app.log,
     invites: bot ? botInvites(bot) : undefined,
+    clock: realClock,
   });
   // Партии, шедшие до перезапуска, поднимаются из базы; просроченные фазы закрываются сразу.
   const restored = await games.restore();
@@ -54,6 +55,7 @@ async function main() {
     origin: webOrigin(env),
     log: app.log,
     games,
+    now: realClock.now,
   });
 
   await app.listen({ host: env.HOST, port: env.PORT });
@@ -70,7 +72,9 @@ async function main() {
     app.log.info({ signal }, 'shutting down');
     try {
       await bot?.stop();
-      games.stop();
+      // Сначала партии: таймеры стоп, начатые изменения дописываются в базу. Отключения
+      // сокетов при остановке - не уход игроков, отсчёт до техпоражения из-за выкатки не пойдёт.
+      await games.shutdown();
       await new Promise<void>((resolve) => (io ? io.close(() => resolve()) : resolve()));
       await app.close();
       await prisma.$disconnect();
