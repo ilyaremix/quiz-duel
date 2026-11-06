@@ -4,6 +4,7 @@ import type { z } from 'zod';
 import {
   AnswerPayloadSchema,
   CreateGamePayloadSchema,
+  EmptyPayloadSchema,
   GameIdPayloadSchema,
   ReadyPayloadSchema,
   ReactPayloadSchema,
@@ -58,6 +59,11 @@ export function socketNotifier(getIo: () => IoServer | null): GameNotifier {
     },
     reaction(userId, event) {
       getIo()?.to(userRoom(userId)).emit('game:reaction', event);
+    },
+    queue(userId, event) {
+      const room = getIo()?.to(userRoom(userId));
+      if (event.type === 'matched') room?.emit('queue:matched', { gameId: event.gameId });
+      else room?.emit('queue:timeout');
     },
   };
 }
@@ -143,6 +149,8 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
       on('game:cancel', GameIdPayloadSchema, (p) => games.cancel(userId, p.gameId));
       on('game:leave', GameIdPayloadSchema, (p) => games.leave(userId, p.gameId));
       on('game:answer', AnswerPayloadSchema, (p) => games.answer(userId, p.gameId, p.questionIndex, p.optionIndex));
+      on('queue:join', EmptyPayloadSchema, () => games.queueJoin(userId));
+      on('queue:leave', EmptyPayloadSchema, async () => games.queueLeave(userId));
       on('game:share', GameIdPayloadSchema, (p) => games.share(userId, p.gameId));
       on('game:react', ReactPayloadSchema, (p) => games.react(userId, p.gameId, p.emoji));
       on('game:forfeit', GameIdPayloadSchema, (p) => games.forfeit(userId, p.gameId));

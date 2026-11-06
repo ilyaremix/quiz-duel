@@ -44,3 +44,5 @@ export const ConsentRequestSchema = z.strictObject({
 export const SettingsRequestSchema = z
   .strictObject({ notifications: z.boolean().optional(), writeAccess: z.literal(true).optional() })
   .refine((v) => v.notifications !== undefined || v.writeAccess !== undefined, 'empty');
+
+export const EmptyPayloadSchema = z.strictObject({});

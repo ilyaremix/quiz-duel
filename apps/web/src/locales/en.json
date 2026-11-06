@@ -536,5 +536,24 @@
       "stay": "Stay",
       "leave": "Leave"
     }
+  },
+  "s07": {
+    "badge": "Quick game · {{cat}}",
+    "aria": "Searching for an opponent",
+    "searching": {
+      "title": "Finding an opponent",
+      "sub": "Matching you with a player of similar rating"
+    },
+    "notFound": {
+      "title": "No one found",
+      "sub": "Nobody turned up within a minute. Invite a friend or practice"
+    },
+    "elapsed": "Searching for",
+    "range": "Opponent rating",
+    "widen": "widens every 5 s",
+    "cancel": "Cancel",
+    "create": "Create duel",
+    "training": "Practice",
+    "retry": "Search again"
   }
 }

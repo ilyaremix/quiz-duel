@@ -147,6 +147,18 @@ export interface ShareResult {
   link: string;
 }
 
+/** Быстрая игра: игрок встал в очередь. */
+export interface QueueJoined {
+  /** Когда начался поиск (мс, время сервера) - от него секундомер и окно рейтинга. */
+  since: number;
+  rating: number;
+}
+
+/** Быстрая игра: соперник найден - оба уже в лобби этой партии. */
+export interface QueueMatched {
+  gameId: string;
+}
+
 /** Пояснение к снимку: почему он пришёл (для тостов). */
 export interface GameStateMeta {
   /** Место соперника освободилось: не вернулся за 60 с (timeout) или сам вышел (left). */
@@ -163,6 +175,10 @@ export interface ServerToClientEvents {
   'game:state': (view: GameView, meta?: GameStateMeta) => void;
   /** Реакция в лобби, на раскрытии или на итогах. В снимок партии не попадает. */
   'game:reaction': (event: ReactionEvent) => void;
+  /** Быстрая игра: соперник найден (снимок лобби приходит отдельным game:state). */
+  'queue:matched': (event: QueueMatched) => void;
+  /** Быстрая игра: за 60 с никого не нашли - игрок больше не в очереди. */
+  'queue:timeout': () => void;
 }
 
 export interface ClientToServerEvents {
@@ -183,6 +199,10 @@ export interface ClientToServerEvents {
   'game:leave': (payload: GameIdPayload, ack: AckFn) => void;
   /** Ответ на текущий вопрос. Время и очки считает сервер. */
   'game:answer': (payload: AnswerPayload, ack: AckFn<AnswerResult>) => void;
+  /** Быстрая игра: встать в очередь (повторный вызов - та же очередь, тот же since). */
+  'queue:join': (payload: Record<string, never>, ack: AckFn<QueueJoined>) => void;
+  /** Быстрая игра: «Отмена». */
+  'queue:leave': (payload: Record<string, never>, ack: AckFn) => void;
   /** «Поделиться результатом» на итогах дуэли: карточка «Победа 8 420 : 6 100» с кнопкой «Сыграть со мной». */
   'game:share': (payload: GameIdPayload, ack: AckFn<ShareResult>) => void;
   /** Реакция сопернику: один из 6 эмодзи, не чаще раза в 2 с (иначе rate_limited). */

@@ -41,6 +41,8 @@ export interface ConsentAsk {
   category: GameCategory | null;
   /** После принятия - тренировка, а не дуэль. */
   solo?: boolean;
+  /** После принятия - быстрая игра. */
+  quick?: boolean;
 }
 
 interface GameStore {
@@ -83,6 +85,8 @@ interface GameStore {
   bubbles: Record<number, { id: number; emoji: Reaction; at: number }>;
   /** До какого времени строка реакций неактивна (кулдаун 2 с). */
   reactUntil: number;
+  /** Быстрая игра: идёт поиск (с какого времени по часам сервера, мой рейтинг) или «Никого не нашли». */
+  search: { since: number; rating: number } | 'notFound' | null;
 }
 
 export type Tab = 'home' | 'rating' | 'profile';
@@ -108,6 +112,7 @@ export const useGame = create<GameStore>(() => ({
   achievements: false,
   bubbles: {},
   reactUntil: 0,
+  search: null,
 }));
 
 const set = useGame.setState;
@@ -199,6 +204,7 @@ function applyView(view: GameView, meta?: GameStateMeta) {
     return;
   }
   if (!cur && isFinal(view)) return;
+  if (!cur && get().search) set({ search: null });
   // Пометка «реванш принят» пришла раньше самой партии (обрыв) - забираем её сами.
   if (view.rematch?.status === 'accepted' && view.rematch.nextGameId && cur?.rematch?.status !== 'accepted') {
     void fetchRematch(view.rematch.nextGameId, view.id);
@@ -332,12 +338,23 @@ export const gameActions = {
         void gameActions.resync(cur.id);
       } else if (currentGameId) {
         void gameActions.resync(currentGameId);
+      } else if (!first && typeof get().search === 'object' && get().search) {
+        // Переподключились во время поиска: сервер вычеркнул нас из очереди - встаём снова.
+        void gameActions.quickJoin(true);
       } else if (first && resultsGameId) {
         // Закрыли приложение посреди дуэли, а она закончилась без нас: сразу итоги, а не главная.
         void gameActions.resync(resultsGameId);
       }
     });
     socket.on('game:state', (view, meta) => applyView(view, meta));
+    socket.on('queue:matched', ({ gameId }) => {
+      set({ search: null });
+      haptic.success();
+      void gameActions.resync(gameId);
+    });
+    socket.on('queue:timeout', () => {
+      if (get().search) set({ search: 'notFound' });
+    });
     socket.on('game:reaction', ({ gameId, userId, emoji }) => {
       if (get().game?.id !== gameId) return;
       set((st) => ({ bubbles: { ...st.bubbles, [userId]: { id: ++bubbleSeq, emoji, at: Date.now() } } }));
@@ -612,6 +629,26 @@ export const gameActions = {
     else set({ categorySheet: true, categoryMode: 'solo' });
   },
 
+  /** «Быстрая игра»: встать в очередь (экран 7). Соперник найден - придёт снимок лобби. */
+  async quickJoin(docsAccepted: boolean) {
+    if (!docsAccepted) return set({ consent: { inviter: null, gameId: null, category: null, quick: true } });
+    const res = await request('queue:join', {}, 'queue');
+    if (res.ok) {
+      if (!get().game || isFinal(get().game!)) set({ search: { since: res.since, rating: res.rating }, game: null, hidden: false, review: null });
+      return;
+    }
+    if (res.error === 'consent_required') set({ consent: { inviter: null, gameId: null, category: null, quick: true } });
+    else if (res.error === 'busy') set({ linkError: { kind: 'busy', busyGameId: res.busyGameId }, search: null });
+    else showToast('error', 'toast.connection');
+  },
+
+  /** «Отмена» поиска (и «На главную» с «Никого не нашли»). */
+  quickLeave() {
+    const was = get().search;
+    set({ search: null });
+    if (was && was !== 'notFound') void request('queue:leave', {}, 'queue');
+  },
+
   /** Тренировка в категории: сразу первый вопрос (сервер - тот же движок, без соперника и рейтинга). */
   async startSolo(category: GameCategory) {
     const res = await request('solo:start', { category });
@@ -647,7 +684,8 @@ export const gameActions = {
     const ask = get().consent;
     if (!ask || !(await gameActions.acceptDocs())) return;
     set({ consent: null });
-    if (ask.gameId) await gameActions.join(ask.gameId);
+    if (ask.quick) await gameActions.quickJoin(true);
+    else if (ask.gameId) await gameActions.join(ask.gameId);
     else if (ask.category) await (ask.solo ? gameActions.startSolo(ask.category) : gameActions.create(ask.category));
     else set({ categorySheet: true, categoryMode: ask.solo ? 'solo' : 'duel' });
   },

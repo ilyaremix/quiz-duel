@@ -23,6 +23,19 @@ export const TIMINGS = {
   rematchMs: 30_000,
 } as const;
 
+/** Быстрая игра: подбор по рейтингу ±100, окно шире на 50 каждые 5 с, через 60 с - «Никого не нашли». */
+export const QUEUE = {
+  baseRange: 100,
+  stepRange: 50,
+  stepMs: 5_000,
+  timeoutMs: 60_000,
+  /** Как часто сервер пересматривает очередь (окна расширяются со временем). */
+  tickMs: 1_000,
+} as const;
+
+/** Окно рейтинга соперника для игрока, который ищет уже elapsedMs. */
+export const queueRange = (elapsedMs: number) => QUEUE.baseRange + QUEUE.stepRange * Math.floor(Math.max(0, elapsedMs) / QUEUE.stepMs);
+
 export const POINTS = {
   /** За любой верный ответ. */
   base: 500,

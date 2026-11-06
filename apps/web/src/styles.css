@@ -546,6 +546,20 @@ body {
   animation: qd-skel 1200ms linear infinite;
 }
 
+/* Поиск соперника: «?» мерцает, пока ищем. */
+@keyframes qd-dots {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.qd-dots {
+  animation: qd-dots 1200ms ease infinite;
+}
+
 /* Реакция: всплывает у аватарки, поднимается и гаснет (выход быстрее входа). */
 @keyframes qd-bubble {
   0% {
@@ -640,6 +654,7 @@ body {
     animation: qd-fade-out 120ms var(--qd-ease-ui) both;
   }
   .qd-pulse,
+  .qd-dots,
   .qd-tick,
   .qd-flash,
   .qd-shake,

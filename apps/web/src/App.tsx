@@ -28,6 +28,7 @@ import { ProfileScreen } from './screens/ProfileScreen';
 import { OppSheet } from './screens/OppSheet';
 import { AchievementsScreen } from './screens/AchievementsScreen';
 import { SoloResultScreen } from './screens/SoloResultScreen';
+import { SearchScreen } from './screens/SearchScreen';
 
 /** Вне Telegram: заглушка с кнопкой, ведущей в мини-апп (адрес отдаёт сервер). */
 function OutsideTelegram() {
@@ -160,6 +161,7 @@ function InTelegram({ session }: { session: TelegramSession }) {
   const linkEntry = useGame((s) => s.linkEntry);
   const consent = useGame((s) => s.consent);
   const review = useGame((s) => s.review);
+  const search = useGame((s) => s.search);
   useRefreshAfterGame(game);
   useWriteAccessAsk(game, me.data);
 
@@ -206,6 +208,8 @@ function InTelegram({ session }: { session: TelegramSession }) {
     <LinkErrorScreen kind={linkError.kind} docsAccepted={me.data.docsAccepted} />
   ) : game && !hidden ? (
     <GameRoute game={game} me={me.data} review={review} />
+  ) : search ? (
+    <SearchScreen me={me.data} />
   ) : (
     <TabsRoute me={me.data} />
   );

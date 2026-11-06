@@ -31,6 +31,9 @@ import {
   type Reaction,
   type ReactionEvent,
   REACTION_COOLDOWN_MS,
+  QUEUE,
+  queueRange,
+  type QueueJoined,
   REACTION_PHASES,
 } from '@quiz-duel/shared';
 import type { QuestionBank } from '../questions/bank.js';
@@ -49,6 +52,8 @@ export interface GameNotifier {
   state(userId: number, view: GameView, meta?: GameStateMeta): void;
   /** Реакция одного из игроков (уходит обоим). */
   reaction?(userId: number, event: ReactionEvent): void;
+  /** Быстрая игра: соперник найден или время поиска вышло. */
+  queue?(userId: number, event: { type: 'matched'; gameId: string } | { type: 'timeout' }): void;
 }
 
 export interface PreparedInvite {
@@ -218,6 +223,11 @@ export class GameManager {
   private readonly creates = new Map<number, number[]>();
   /** userId → когда игрок последний раз отправил реакцию (кулдаун 2 с). */
   private readonly reacted = new Map<number, number>();
+  /** Быстрая игра: кто ищет соперника, с какого времени и с каким рейтингом (порядок вставки = кто раньше встал). */
+  private readonly queue = new Map<number, { since: number; rating: number }>();
+  private queueTimer: unknown = null;
+  /** Подбор идёт строго по одному: два прохода не создадут две партии на одного игрока. */
+  private matching: Promise<unknown> = Promise.resolve();
   private readonly deps: MachineDeps;
   private readonly now: () => number;
   private readonly clock: ServerClock;
@@ -286,6 +296,8 @@ export class GameManager {
 
   stop() {
     this.stopped = true;
+    if (this.queueTimer) this.clock.clearTimeout(this.queueTimer);
+    this.queueTimer = null;
     for (const entry of this.games.values()) {
       if (entry.timer) this.clock.clearTimeout(entry.timer);
       if (entry.evictTimer) this.clock.clearTimeout(entry.evictTimer);
@@ -330,6 +342,8 @@ export class GameManager {
       return;
     }
     this.online.delete(userId);
+    // Закрыл приложение во время поиска - из очереди вышел.
+    this.queue.delete(userId);
     const gameId = this.current.get(userId);
     if (gameId) await this.presence(userId, gameId, false);
     // На итогах: соперник видит «Соперник вышел», реванш ему не предложить.
@@ -366,6 +380,7 @@ export class GameManager {
   // Лобби
 
   async create(userId: number, category: GameCategory): Promise<Result<{ game: GameView }>> {
+    this.queue.delete(userId);
     if (!this.allowCreate(userId)) return fail('rate_limited');
     const card = await this.card(userId);
     if (!card) return fail('internal');
@@ -456,6 +471,7 @@ export class GameManager {
 
     const busy = await this.releaseOpenGame(userId, gameId);
     if (busy) return busy;
+    this.queue.delete(userId);
 
     return this.run(entry, async () => {
       // Повторная проверка внутри очереди: из двух одновременных входов место получит один.
@@ -552,6 +568,7 @@ export class GameManager {
    * (кто-то может прийти по ссылке) - busy: в двух партиях сразу играть нельзя.
    */
   async soloStart(userId: number, category: GameCategory): Promise<Result<{ game: GameView }>> {
+    this.queue.delete(userId);
     if (!this.allowCreate(userId)) return fail('rate_limited');
     const card = await this.card(userId);
     if (!card) return fail('internal');
@@ -627,6 +644,111 @@ export class GameManager {
   /** «Выйти из партии»: сразу техническая победа сопернику, без 30 с ожидания. */
   async forfeit(userId: number, gameId: string): Promise<Result<{ game: GameView }>> {
     return this.mutate(userId, gameId, async (entry) => machine.forfeit(entry.state, userId, this.now()));
+  }
+
+  // -------------------------------------------------------------------------
+  // Быстрая игра
+
+  /**
+   * Встать в очередь быстрой игры. Подбор - по рейтингу: окно ±100, шире на 50 каждые 5 с
+   * (пара подходит, если разница рейтингов в окне хотя бы одного из двоих). Найденные сразу
+   * попадают в обычное лобби «Микс» с «Готов» - дальше это обычная рейтинговая дуэль.
+   * Через 60 с - queue:timeout. Посреди партии или в открытом лобби - busy.
+   */
+  async queueJoin(userId: number): Promise<Result<QueueJoined>> {
+    const card = await this.card(userId);
+    if (!card) return fail('internal');
+    if (card.docsVersion !== this.d.docsVersion) return fail('consent_required');
+    const currentId = this.current.get(userId);
+    const cur = currentId ? this.games.get(currentId) : undefined;
+    if (currentId && cur && machine.playerOf(cur.state, userId) && !FINAL_PHASES.includes(cur.state.phase)) {
+      return fail('busy', { busyGameId: currentId });
+    }
+    if (!this.isOnline(userId)) return fail('internal');
+    const known = this.queue.get(userId);
+    if (known) return { ok: true, since: known.since, rating: known.rating };
+    // С итогов дуэли - в поиск: реванш этому игроку больше не предложить.
+    await this.releaseOpenGame(userId, null);
+    const entry = { since: this.now(), rating: card.rating };
+    this.queue.set(userId, entry);
+    await this.matchQueue();
+    this.scheduleQueue();
+    return { ok: true, since: entry.since, rating: entry.rating };
+  }
+
+  queueLeave(userId: number): Result<object> {
+    this.queue.delete(userId);
+    return { ok: true };
+  }
+
+  isQueued(userId: number) {
+    return this.queue.has(userId);
+  }
+
+  private scheduleQueue() {
+    if (this.queueTimer || this.stopped || this.queue.size === 0) return;
+    this.queueTimer = this.clock.setTimeout(() => {
+      this.queueTimer = null;
+      void this.matchQueue().finally(() => this.scheduleQueue());
+    }, QUEUE.tickMs);
+    (this.queueTimer as { unref?: () => void } | null)?.unref?.();
+  }
+
+  /** Один проход подбора: таймауты, потом пары - кто раньше встал, тому ближайший по рейтингу. */
+  private matchQueue(): Promise<void> {
+    const pass = this.matching.then(async () => {
+      const now = this.now();
+      for (const [userId, q] of [...this.queue]) {
+        if (now - q.since >= QUEUE.timeoutMs) {
+          this.queue.delete(userId);
+          this.d.notify.queue?.(userId, { type: 'timeout' });
+        }
+      }
+      const waiting = [...this.queue];
+      const taken = new Set<number>();
+      for (const [a, qa] of waiting) {
+        if (taken.has(a)) continue;
+        let best: [number, number] | null = null;
+        for (const [b, qb] of waiting) {
+          if (b === a || taken.has(b)) continue;
+          const diff = Math.abs(qa.rating - qb.rating);
+          if (diff > Math.max(queueRange(now - qa.since), queueRange(now - qb.since))) continue;
+          if (!best || diff < best[1]) best = [b, diff];
+        }
+        if (!best) continue;
+        taken.add(a);
+        taken.add(best[0]);
+        await this.startQuick(a, best[0]);
+      }
+    });
+    this.matching = pass.catch((error: unknown) => this.d.log.error({ err: error }, 'queue match failed'));
+    return pass;
+  }
+
+  /** Пара найдена: обычное лобби «Микс» на двоих, «Готов» ещё не нажат. */
+  private async startQuick(a: number, b: number) {
+    // Пока шёл подбор, кто-то мог уйти из очереди.
+    if (!this.queue.has(a) || !this.queue.has(b)) return;
+    this.queue.delete(a);
+    this.queue.delete(b);
+    let id: string | null = null;
+    for (let attempt = 0; attempt < 3 && !id; attempt++) {
+      const candidate = (this.d.newId ?? newGameId)();
+      if (!this.games.has(candidate) && !(await this.d.repo.load(candidate))) id = candidate;
+    }
+    if (!id) return;
+    // Кто встал раньше - «создатель» (на экране это ни на что не влияет).
+    const state = machine.createGame({ id, mode: 'quick', category: 'mix', creatorId: a, opponentId: b }, this.now(), this.deps);
+    try {
+      await this.d.repo.save(state);
+    } catch (error) {
+      this.d.log.error({ err: error, gameId: id }, 'quick game create failed');
+      return;
+    }
+    const entry = this.adopt(state);
+    this.schedule(entry);
+    this.notifyAll(entry);
+    for (const userId of [a, b]) this.d.notify.queue?.(userId, { type: 'matched', gameId: id });
   }
 
   /**
