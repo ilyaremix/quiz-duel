@@ -1,0 +1,8 @@
+# Блок для Caddy на самом сервере (/etc/caddy/Caddyfile).
+# Замените домен на свой и порт - на WEB_PORT из .env. Caddy сам получит HTTPS-сертификат.
+# Сокет (WebSocket) Caddy проксирует без дополнительных настроек.
+
+quiz.aidcrypto.blog {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3080
+}

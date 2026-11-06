@@ -1,0 +1,61 @@
+// Схема базы Quiz Duel. Этап 1: только игроки.
+// Партии, ответы, ачивки и согласия добавляются миграциями на следующих этапах.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum LangSetting {
+  auto
+  ru
+  en
+}
+
+enum MotionSetting {
+  auto
+  on
+  off
+}
+
+model User {
+  /// Telegram user id (до 52 бит, поэтому BigInt)
+  id            BigInt        @id
+  firstName     String        @map("first_name")
+  lastName      String?       @map("last_name")
+  username      String?
+  photoUrl      String?       @map("photo_url")
+  /// language_code из Telegram, нужен для «Авто»
+  tgLanguage    String?       @map("tg_language")
+  isPremium     Boolean       @default(false) @map("is_premium")
+
+  language      LangSetting   @default(auto)
+  reducedMotion MotionSetting @default(auto) @map("reduced_motion")
+  haptics       Boolean       @default(true)
+  notifications Boolean       @default(true)
+  /// Разрешил ли игрок боту писать ему (requestWriteAccess)
+  writeAccess   Boolean       @default(false) @map("write_access")
+  /// Последняя принятая версия документов (дополнение к ТЗ о согласии)
+  docsVersion   String?       @map("docs_version")
+
+  rating        Int           @default(1000)
+  games         Int           @default(0)
+  wins          Int           @default(0)
+  losses        Int           @default(0)
+  draws         Int           @default(0)
+  currentStreak Int           @default(0) @map("current_streak")
+  bestStreak    Int           @default(0) @map("best_streak")
+  totalCorrect  Int           @default(0) @map("total_correct")
+
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  lastSeenAt    DateTime      @default(now()) @map("last_seen_at")
+
+  @@index([rating(sort: Desc)])
+  @@map("users")
+}

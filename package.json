@@ -1,0 +1,24 @@
+{
+  "name": "quiz-duel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Quiz Duel - Telegram Mini App: real-time 1v1 quiz",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev:server": "npm run dev -w @quiz-duel/server",
+    "dev:web": "npm run dev -w @quiz-duel/web",
+    "db:generate": "npm run prisma:generate -w @quiz-duel/server",
+    "db:migrate": "npm run prisma:migrate -w @quiz-duel/server",
+    "build": "npm run build -w @quiz-duel/web && npm run build -w @quiz-duel/server",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "app": {
+    "name": "Quiz Duel",
+    "tagline": "1v1 quiz"
+  },
+  "s01": {
+    "aria": "Loading",
+    "long": "Connecting…",
+    "longHint": "Checking the connection to the server"
+  },
+  "hello": {
+    "title": "Hi, {{name}}!",
+    "rating": "Rating",
+    "games_one": "{{count}} game",
+    "games_other": "{{count}} games"
+  },
+  "check": {
+    "title": "Stage 1 · skeleton",
+    "note": "The home screen with duels will live here. For now we check that every part of the app is connected.",
+    "auth": "Telegram signature",
+    "authOk": "valid",
+    "db": "Database",
+    "dbOk": "profile saved",
+    "socket": "Real-time",
+    "socketWait": "connecting…",
+    "socketOk": "connected",
+    "socketFail": "no connection",
+    "clock": "Clock",
+    "clockValue": "offset {{ms}} ms",
+    "lang": "Language",
+    "langAuto": "{{lang}} (from Telegram)",
+    "langSet": "{{lang}}"
+  },
+  "langName": {
+    "ru": "Русский",
+    "en": "English"
+  },
+  "s24": {
+    "outside": {
+      "title": "Open in Telegram",
+      "text": "Quiz Duel runs inside Telegram: that's how we know who's playing and keep your rating.",
+      "action": "Open in Telegram"
+    },
+    "error": {
+      "title": "The server isn't responding",
+      "text": "Check your connection and try again. If a game was in progress, it's saved on the server.",
+      "action": "Try again"
+    },
+    "session": {
+      "title": "Open again",
+      "text": "Your sign-in data has expired or failed the check. Close the app and open it again from the bot.",
+      "action": "Close"
+    }
+  }
+}

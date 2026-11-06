@@ -1,0 +1,226 @@
+@import 'tailwindcss';
+
+/*
+ * Цвета. Две группы, как в утверждённом дизайне (Base.dc.html):
+ * --tg-theme-* - тема Telegram. Ниже только запасные значения: в Telegram
+ *   SDK пишет настоящие значения прямо в style у <html>, и они главнее классов.
+ * --qd-*       - игровые цвета, одинаковые везде (я - синий, соперник - оранжевый…).
+ */
+.qd-dark {
+  color-scheme: dark;
+  --tg-theme-bg-color: #1a1626;
+  --tg-theme-secondary-bg-color: #14111d;
+  --tg-theme-section-bg-color: #221d30;
+  --tg-theme-text-color: #f7f4ff;
+  --tg-theme-hint-color: #a59dc0;
+  --tg-theme-link-color: #b9a8ff;
+  --tg-theme-button-color: #2f6feb;
+  --tg-theme-button-text-color: #ffffff;
+  --tg-theme-accent-text-color: #b9a8ff;
+  --tg-theme-destructive-text-color: #ff8a8e;
+  --tg-theme-section-separator-color: #2d2740;
+  --qd-surface-2: #2d2740;
+  --qd-lip: #0d0b14;
+  --qd-button-lip: #1b3f8f;
+  --qd-brand: #8f75ff;
+  --qd-brand-tint: #3a2f66;
+  --qd-brand-text: #d3c8ff;
+  --qd-me: #2f6feb;
+  --qd-me-text: #7db0ff;
+  --qd-opp: #ff8a3d;
+  --qd-opp-text: #ff9f5e;
+  --qd-correct: #2fcb7a;
+  --qd-correct-tint: #143826;
+  --qd-correct-text: #5fe39a;
+  --qd-wrong: #ff6b73;
+  --qd-wrong-tint: #3f1a22;
+  --qd-wrong-text: #ff8a8e;
+  --qd-gold: #ffc94a;
+  --qd-gold-tint: #3a3016;
+  --qd-gold-text: #ffc94a;
+  --qd-on-fill: #14101c;
+}
+
+.qd-light {
+  color-scheme: light;
+  --tg-theme-bg-color: #ffffff;
+  --tg-theme-secondary-bg-color: #f4f1fb;
+  --tg-theme-section-bg-color: #ffffff;
+  --tg-theme-text-color: #1b1530;
+  --tg-theme-hint-color: #6e6787;
+  --tg-theme-link-color: #5b3be0;
+  --tg-theme-button-color: #2f6feb;
+  --tg-theme-button-text-color: #ffffff;
+  --tg-theme-accent-text-color: #5b3be0;
+  --tg-theme-destructive-text-color: #c0262f;
+  --tg-theme-section-separator-color: #e6e1f2;
+  --qd-surface-2: #eeeaf7;
+  --qd-lip: #d6cfe8;
+  --qd-button-lip: #1f4db0;
+  --qd-brand: #6c4cf0;
+  --qd-brand-tint: #e9e3ff;
+  --qd-brand-text: #4b2fc9;
+  --qd-me: #2f6feb;
+  --qd-me-text: #1f5fd6;
+  --qd-opp: #ff8a3d;
+  --qd-opp-text: #c2530f;
+  --qd-correct: #2fcb7a;
+  --qd-correct-tint: #ddf6e8;
+  --qd-correct-text: #127a43;
+  --qd-wrong: #ff6b73;
+  --qd-wrong-tint: #fde2e3;
+  --qd-wrong-text: #c0262f;
+  --qd-gold: #ffc94a;
+  --qd-gold-tint: #fff1cc;
+  --qd-gold-text: #8a5a00;
+  --qd-on-fill: #14101c;
+}
+
+/*
+ * В Telegram фон и карточки берутся из темы пользователя, поэтому «объёмные»
+ * поверхности тоже выводим из неё, а не из фиолетовой палитры прототипа.
+ */
+.qd-tg-theme {
+  --qd-surface-2: color-mix(in srgb, var(--tg-theme-text-color) 9%, var(--tg-theme-section-bg-color));
+}
+.qd-tg-theme.qd-dark {
+  --qd-lip: color-mix(in srgb, #000 45%, var(--tg-theme-secondary-bg-color));
+}
+.qd-tg-theme.qd-light {
+  --qd-lip: color-mix(in srgb, var(--tg-theme-text-color) 14%, var(--tg-theme-secondary-bg-color));
+}
+
+/* Кривые и длительности - токены из дизайна. ease-in не используем. */
+:root {
+  --qd-ease-ui: cubic-bezier(0.23, 1, 0.32, 1);
+  --qd-ease-move: cubic-bezier(0.77, 0, 0.175, 1);
+  --qd-ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --qd-dur-press: 120ms;
+  --qd-dur-screen: 200ms;
+}
+
+@theme inline {
+  --font-sans: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, Roboto, 'Segoe UI', sans-serif;
+
+  --color-page: var(--tg-theme-secondary-bg-color);
+  --color-bg: var(--tg-theme-bg-color);
+  --color-section: var(--tg-theme-section-bg-color);
+  --color-text: var(--tg-theme-text-color);
+  --color-hint: var(--tg-theme-hint-color);
+  --color-link: var(--tg-theme-link-color);
+  --color-button: var(--tg-theme-button-color);
+  --color-button-text: var(--tg-theme-button-text-color);
+  --color-separator: var(--tg-theme-section-separator-color);
+
+  --color-surface-2: var(--qd-surface-2);
+  --color-lip: var(--qd-lip);
+  --color-button-lip: var(--qd-button-lip);
+  --color-brand: var(--qd-brand);
+  --color-brand-tint: var(--qd-brand-tint);
+  --color-brand-text: var(--qd-brand-text);
+  --color-me: var(--qd-me);
+  --color-me-text: var(--qd-me-text);
+  --color-opp: var(--qd-opp);
+  --color-opp-text: var(--qd-opp-text);
+  --color-correct: var(--qd-correct);
+  --color-correct-tint: var(--qd-correct-tint);
+  --color-correct-text: var(--qd-correct-text);
+  --color-wrong: var(--qd-wrong);
+  --color-wrong-tint: var(--qd-wrong-tint);
+  --color-wrong-text: var(--qd-wrong-text);
+  --color-gold: var(--qd-gold);
+  --color-gold-tint: var(--qd-gold-tint);
+  --color-gold-text: var(--qd-gold-text);
+  --color-on-fill: var(--qd-on-fill);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--tg-theme-secondary-bg-color);
+  color: var(--tg-theme-text-color);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  user-select: none;
+}
+
+/* Экран с учётом выреза и панелей Telegram (переменные ставит SDK). */
+.qd-screen {
+  min-height: var(--tg-viewport-stable-height, 100dvh);
+  box-sizing: border-box;
+  padding-top: calc(var(--tg-viewport-safe-area-inset-top, 0px) + var(--tg-viewport-content-safe-area-inset-top, 0px) + 16px);
+  padding-bottom: calc(var(--tg-viewport-safe-area-inset-bottom, 0px) + var(--tg-viewport-content-safe-area-inset-bottom, 0px) + 24px);
+  padding-left: calc(var(--tg-viewport-safe-area-inset-left, 0px) + 16px);
+  padding-right: calc(var(--tg-viewport-safe-area-inset-right, 0px) + 16px);
+}
+
+.qd-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Появление экрана: от scale(0.95) и прозрачности, никогда от нуля. */
+@keyframes qd-screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+.qd-screen-in {
+  animation: qd-screen-in var(--qd-dur-screen) var(--qd-ease-ui) both;
+}
+
+/* Нажатие кнопки: 120 мс, scale(0.97) и «утапливание» на высоту подложки. */
+.qd-press {
+  box-shadow: var(--qd-shadow, none);
+  transition:
+    transform var(--qd-dur-press) var(--qd-ease-ui),
+    box-shadow var(--qd-dur-press) var(--qd-ease-ui);
+}
+.qd-press:active:not(:disabled) {
+  transform: translateY(var(--qd-lip-press, 3px)) scale(0.97);
+  box-shadow: 0 1px 0 var(--qd-lip-color, transparent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .qd-press:hover:not(:disabled) {
+    filter: brightness(1.06);
+    transition: filter 150ms ease;
+  }
+}
+
+@keyframes qd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.qd-spin {
+  animation: qd-spin 0.9s linear infinite;
+}
+
+@keyframes qd-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.qd-fade-in {
+  animation: qd-fade-in 300ms var(--qd-ease-ui) both;
+}
+
+/* Системное «Уменьшить движение»: оставляем только мягкий fade. Полный режим без анимаций - на этапе 9. */
+@media (prefers-reduced-motion: reduce) {
+  .qd-screen-in {
+    animation-name: qd-fade-in;
+  }
+  .qd-press:active:not(:disabled) {
+    transform: none;
+  }
+  .qd-spin {
+    animation-duration: 2.4s;
+  }
+}

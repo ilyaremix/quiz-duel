@@ -1,0 +1,8 @@
+# Для разработки с горячей перезагрузкой: только база, открытая на 127.0.0.1:5432.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres
+#   в .env: DATABASE_URL=postgresql://quizduel:<POSTGRES_PASSWORD>@127.0.0.1:5432/quizduel
+#   npm run db:migrate && npm run dev:server   (и во втором окне npm run dev:web)
+services:
+  postgres:
+    ports:
+      - '127.0.0.1:5432:5432'

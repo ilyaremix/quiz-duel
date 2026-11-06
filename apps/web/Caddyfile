@@ -1,0 +1,42 @@
+# Caddy внутри контейнера web: отдаёт статику мини-аппа и проксирует API и сокет
+# на контейнер server. HTTPS здесь не нужен - его даёт Caddy на самом сервере.
+{
+	admin off
+	servers {
+		# Запросы приходят от Caddy на хосте через шлюз docker-сети:
+		# доверяем его X-Forwarded-For, чтобы сервер видел настоящий IP игрока.
+		trusted_proxies static 172.28.0.0/24
+	}
+}
+
+:80 {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy server:3000
+	}
+
+	handle /socket.io/* {
+		reverse_proxy server:3000
+	}
+
+	handle {
+		root * /srv
+
+		# Файлы сборки с хэшем в имени кэшируем навсегда, index.html - никогда:
+		# иначе Telegram покажет старую версию после деплоя.
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		@html not path /assets/*
+		header @html Cache-Control "no-cache"
+
+		header {
+			X-Content-Type-Options nosniff
+			Referrer-Policy strict-origin-when-cross-origin
+			-Server
+		}
+
+		try_files {path} /index.html
+		file_server
+	}
+}
