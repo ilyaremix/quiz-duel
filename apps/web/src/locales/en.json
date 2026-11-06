@@ -6,7 +6,9 @@
   "common": {
     "close": "Close",
     "questions_one": "{{count}} question",
-    "questions_other": "{{count}} questions"
+    "questions_other": "{{count}} questions",
+    "next": "Next",
+    "skip": "Skip"
   },
   "s01": {
     "aria": "Loading",
@@ -217,5 +219,42 @@
       "text": "The game continues there. You can move it to this device",
       "action": "Play here"
     }
+  },
+  "s02": {
+    "chat": "Quiz battle? Lose and you owe me a coffee",
+    "card": "Duel challenge",
+    "accept": "Accept",
+    "right": "Carbon dioxide",
+    "other": "Oxygen",
+    "fast": "Answered in 1.4 s",
+    "rating": "Rating {{r}} (+16)",
+    "podium": [
+      "Anya",
+      "Dima"
+    ],
+    "slides": [
+      {
+        "title": "Challenge a friend",
+        "text": "Send a link to any chat - whoever opens it first is your opponent"
+      },
+      {
+        "title": "Answer faster",
+        "text": "10 questions, 15 seconds each. The faster the right answer, the more points"
+      },
+      {
+        "title": "Climb the leaderboard",
+        "text": "Win, collect achievements and break into the top 100"
+      }
+    ],
+    "start": "Let’s play"
+  },
+  "timer": {
+    "aria": "Time left"
+  },
+  "answer": {
+    "correct": "Correct answer",
+    "wrong": "Wrong answer",
+    "mine": "Your answer",
+    "opp": "Opponent’s answer"
   }
 }

@@ -42,6 +42,8 @@ interface GameStore {
   linkError: { kind: LinkErrorKind; busyGameId?: string } | null;
   consent: ConsentAsk | null;
   categorySheet: boolean;
+  /** Открыли по ссылке на игру, и вход ещё не решился (лобби, шторка с документами или ошибка). */
+  linkEntry: boolean;
   invite: { gameId: string; link: string; preparedMessageId: string | null } | null;
   /** Действия, ответ на которые ещё не пришёл: их кнопки неактивны. */
   pending: Record<string, boolean>;
@@ -56,6 +58,7 @@ export const useGame = create<GameStore>(() => ({
   linkError: null,
   consent: null,
   categorySheet: false,
+  linkEntry: false,
   invite: null,
   pending: {},
   toast: null,
@@ -137,6 +140,7 @@ export const gameActions = {
     if (socket) return;
     consentSender = sendConsent;
     pendingJoin = startGameId;
+    set({ linkEntry: Boolean(startGameId) });
     socket = createSocket(initDataRaw);
 
     socket.on('session:hello', ({ currentGameId }) => {
@@ -201,6 +205,7 @@ export const gameActions = {
 
   async join(gameId: string) {
     const res = await request('game:join', { gameId });
+    set({ linkEntry: false });
     if (res.ok) {
       set({ game: res.game, hidden: false, linkError: null });
       return;
@@ -315,18 +320,24 @@ export const gameActions = {
     set({ categorySheet: false });
   },
 
-  async acceptConsent() {
-    const ask = get().consent;
-    if (!ask || !consentSender) return;
+  /** Отправляет принятие обоих документов (онбординг и шторка). */
+  async acceptDocs(): Promise<boolean> {
+    if (!consentSender) return false;
     set((st) => ({ pending: { ...st.pending, consent: true } }));
     try {
       await consentSender();
+      return true;
     } catch {
       showToast('error', 'toast.connection');
-      return;
+      return false;
     } finally {
       set((st) => ({ pending: { ...st.pending, consent: false } }));
     }
+  },
+
+  async acceptConsent() {
+    const ask = get().consent;
+    if (!ask || !(await gameActions.acceptDocs())) return;
     set({ consent: null });
     if (ask.gameId) await gameActions.join(ask.gameId);
     else if (ask.category) await gameActions.create(ask.category);
@@ -339,8 +350,9 @@ export const gameActions = {
     showToast('info', 'consent.declined');
   },
 
+  /** Документы в Telegraph: Telegram открывает их через Instant View, не выходя из приложения. */
   openDoc(url: string) {
-    if (openLink.isAvailable()) openLink(url);
+    if (openLink.isAvailable()) openLink(url, { tryInstantView: true });
     else window.open(url, '_blank', 'noopener');
   },
 };

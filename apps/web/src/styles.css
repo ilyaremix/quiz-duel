@@ -39,6 +39,9 @@
   --qd-gold-tint: #3a3016;
   --qd-gold-text: #ffc94a;
   --qd-on-fill: #14101c;
+  --qd-me-lip: #1b3f8f;
+  --qd-correct-lip: #1a8a51;
+  --qd-wrong-lip: #c0414a;
   --qd-inverse-bg: #f7f4ff;
   --qd-inverse-text: #14101c;
   --qd-inverse-hint: #6e6787;
@@ -92,6 +95,9 @@
   --qd-gold-tint: #fff1cc;
   --qd-gold-text: #8a5a00;
   --qd-on-fill: #14101c;
+  --qd-me-lip: #1f4db0;
+  --qd-correct-lip: #1e9a5b;
+  --qd-wrong-lip: #d9434d;
   --qd-inverse-bg: #1b1530;
   --qd-inverse-text: #ffffff;
   --qd-inverse-hint: #a59dc0;
@@ -342,6 +348,14 @@ body {
 .qd-pop {
   animation: qd-pop 300ms var(--qd-ease-ui) both;
 }
+.qd-rise-2 {
+  animation: qd-rise 260ms var(--qd-ease-ui) 120ms both;
+}
+.qd-dot {
+  transition:
+    width 200ms var(--qd-ease-ui),
+    background-color 200ms ease;
+}
 .qd-rise {
   animation: qd-rise 260ms var(--qd-ease-ui) 60ms both;
 }
@@ -365,6 +379,7 @@ body {
   .qd-screen-in,
   .qd-pop,
   .qd-rise,
+  .qd-rise-2,
   .qd-arrive,
   .qd-toast-in,
   .qd-strip-in,

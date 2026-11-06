@@ -3,32 +3,14 @@ import { useTranslation } from 'react-i18next';
 import type { DocsInfo } from '@quiz-duel/shared';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
-import { Checkbox } from '../components/Checkbox';
+import { ConsentChecks } from '../components/ConsentChecks';
 import { Logo } from '../components/Logo';
 import { Sheet } from '../components/Sheet';
 import { gameActions, useGame } from '../lib/game';
 
-function DocLine({ checked, before, link, onToggle, onOpen }: { checked: boolean; before: string; link: string; onToggle: () => void; onOpen: () => void }) {
-  return (
-    <div className="flex min-h-12 items-center gap-1">
-      <Checkbox on={checked} label={before + link} onToggle={onToggle} />
-      <p className="m-0 py-1.5 text-[14px] leading-[1.35] font-semibold">
-        {before}
-        <button
-          type="button"
-          onClick={onOpen}
-          className="inline cursor-pointer border-0 bg-transparent p-0 text-left font-[inherit] whitespace-nowrap text-link underline underline-offset-2"
-        >
-          {link}
-        </button>
-      </p>
-    </div>
-  );
-}
-
 /**
- * Шторка с двумя галочками: Пользовательское соглашение и Политика конфиденциальности.
- * По ссылке - «{кто} зовёт на дуэль» и «Перейти в лобби»; без принятия играть нельзя.
+ * Шторка с двумя галочками для пришедших по ссылке на игру (онбординг у них - после партии).
+ * «{кто} зовёт на дуэль» и «Перейти в лобби»; закрыл без принятия - на онбординг.
  */
 export function ConsentSheet({ docs }: { docs: DocsInfo | undefined }) {
   const { t } = useTranslation();
@@ -53,23 +35,7 @@ export function ConsentSheet({ docs }: { docs: DocsInfo | undefined }) {
           <p className="m-0 text-[14px] leading-[1.4] font-semibold text-hint">{t('consent.text')}</p>
         </div>
       </div>
-      <div role="group" aria-label={t('consent.hint')} className="flex flex-col rounded-[20px] bg-section py-1.5 pr-3.5 pl-1">
-        <DocLine
-          checked={terms}
-          before={t('consent.terms.before')}
-          link={t('consent.terms.link')}
-          onToggle={() => setTerms((v) => !v)}
-          onOpen={() => docs && gameActions.openDoc(docs.termsUrl)}
-        />
-        <div aria-hidden="true" className="ml-12 h-px bg-separator" />
-        <DocLine
-          checked={policy}
-          before={t('consent.policy.before')}
-          link={t('consent.policy.link')}
-          onToggle={() => setPolicy((v) => !v)}
-          onOpen={() => docs && gameActions.openDoc(docs.privacyUrl)}
-        />
-      </div>
+      <ConsentChecks docs={docs} terms={terms} policy={policy} onTerms={() => setTerms((v) => !v)} onPolicy={() => setPolicy((v) => !v)} />
       {!both && <span className="-mt-1.5 text-center text-[13px] font-semibold text-hint">{t('consent.hint')}</span>}
       <Button disabled={!both || sending || !docs} onClick={() => void gameActions.acceptConsent()}>
         {inviter ? t('consent.play') : t('consent.playSelf')}

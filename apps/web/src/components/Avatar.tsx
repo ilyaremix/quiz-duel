@@ -23,7 +23,7 @@ interface AvatarProps {
   size?: number;
   ring?: 'none' | 'me' | 'opp';
   /** На каком фоне стоит аватар: зазор кольца и бейджа красится в этот цвет. */
-  on?: 'page' | 'card';
+  on?: 'page' | 'card' | 'none';
   badge?: AvatarBadge;
 }
 
@@ -40,7 +40,8 @@ export function Avatar({ id, name, photoUrl, size = 44, ring = 'none', on = 'pag
   const gap = size >= 40 ? 3 : 2;
   const gapColor = on === 'card' ? 'var(--tg-theme-section-bg-color)' : 'var(--tg-theme-secondary-bg-color)';
   const ringColor = ring === 'me' ? 'var(--qd-me)' : 'var(--qd-opp)';
-  const shadow = ring === 'none' ? undefined : `0 0 0 ${gap}px ${gapColor}, 0 0 0 ${gap * 2}px ${ringColor}`;
+  const shadow =
+    ring === 'none' ? undefined : on === 'none' ? `0 0 0 2px ${ringColor}` : `0 0 0 ${gap}px ${gapColor}, 0 0 0 ${gap * 2}px ${ringColor}`;
 
   const b = badge === 'none' ? null : BADGES[badge];
   const border = size >= 40 ? 3 : 2;

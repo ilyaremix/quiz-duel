@@ -17,6 +17,7 @@ import { LobbyWaitScreen } from './screens/LobbyWaitScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
 import { LinkErrorScreen } from './screens/LinkErrorScreen';
 import { GameStubScreen } from './screens/GameStubScreen';
+import { OnboardingScreen } from './screens/OnboardingScreen';
 
 /** Вне Telegram: заглушка с кнопкой, ведущей в мини-апп (адрес отдаёт сервер). */
 function OutsideTelegram() {
@@ -67,6 +68,8 @@ function InTelegram({ session }: { session: TelegramSession }) {
   const game = useGame((s) => s.game);
   const hidden = useGame((s) => s.hidden);
   const linkError = useGame((s) => s.linkError);
+  const linkEntry = useGame((s) => s.linkEntry);
+  const consent = useGame((s) => s.consent);
 
   useEffect(() => {
     if (me.data) setLang(me.data.lang);
@@ -92,10 +95,17 @@ function InTelegram({ session }: { session: TelegramSession }) {
     );
   }
   if (conn === 'replaced') return <FallbackScreen kind="otherDevice" onAction={gameActions.takeOver} />;
-  // Пока не пришло первое приветствие сокета, не показываем главную: игрок может быть в партии.
-  if (conn === 'connecting') return <LoadingScreen />;
+  // Пока не пришло первое приветствие сокета или не решился вход по ссылке, главную не показываем:
+  // игрок может быть в партии.
+  if (conn === 'connecting' || (linkEntry && !linkError && !consent)) return <LoadingScreen />;
 
-  const screen = linkError ? (
+  // Первый вход (или новая версия документов): онбординг, на 3-м слайде - галочки.
+  // Пришедшие по ссылке принимают документы в шторке перед лобби; закрыли шторку - сюда же.
+  const onboarding = !me.data.docsAccepted && !game && !linkError && !consent;
+
+  const screen = onboarding ? (
+    <OnboardingScreen me={me.data} docs={config.data?.docs} />
+  ) : linkError ? (
     <LinkErrorScreen kind={linkError.kind} docsAccepted={me.data.docsAccepted} />
   ) : game && !hidden ? (
     <GameRoute game={game} me={me.data} />
