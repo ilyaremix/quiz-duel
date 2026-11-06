@@ -17,6 +17,7 @@
     "dev:web": "npm run dev -w @quiz-duel/web",
     "db:generate": "npm run prisma:generate -w @quiz-duel/server",
     "db:migrate": "npm run prisma:migrate -w @quiz-duel/server",
+    "db:seed": "npm run db:seed -w @quiz-duel/server",
     "build": "npm run build -w @quiz-duel/web && npm run build -w @quiz-duel/server",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"

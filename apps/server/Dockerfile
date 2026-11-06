@@ -21,6 +21,8 @@ FROM deps AS build
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/server apps/server
+# База вопросов встраивается в dist/index.js, в рабочий образ отдельно не копируется
+COPY data data
 RUN npm run prisma:generate -w @quiz-duel/server \
   && npm run build -w @quiz-duel/server
 

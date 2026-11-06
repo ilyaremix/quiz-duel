@@ -4,11 +4,16 @@ import { createPrismaUsersRepo } from './users.js';
 import { buildApp } from './http/app.js';
 import { attachSocket } from './socket.js';
 import { configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
+import { loadQuestionBank } from './questions/bank.js';
+import { syncQuestions } from './questions/sync.js';
 
 async function main() {
   const env = loadEnv();
   const prisma = createPrisma(env.DATABASE_URL);
   const users = createPrismaUsersRepo(prisma);
+
+  // База вопросов проверяется до старта: битый questions.json не даст серверу подняться.
+  const questions = loadQuestionBank();
 
   // Бот нужен ещё до HTTP: из getMe берём его username для ссылок.
   // Неверный токен - сразу понятная ошибка при запуске, а не потом в игре.
@@ -26,6 +31,10 @@ async function main() {
     origin: webOrigin(env),
     log: app.log,
   });
+
+  // Таблица questions всегда совпадает с data/questions.json из этой сборки.
+  const synced = await syncQuestions(prisma, questions.all);
+  app.log.info(synced, 'questions synced');
 
   await app.listen({ host: env.HOST, port: env.PORT });
 

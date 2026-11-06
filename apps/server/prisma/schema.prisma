@@ -1,4 +1,4 @@
-// Схема базы Quiz Duel. Этап 1: только игроки.
+// Схема базы Quiz Duel. Этап 1: игроки. Этап 2: вопросы.
 // Партии, ответы, ачивки и согласия добавляются миграциями на следующих этапах.
 
 generator client {
@@ -58,4 +58,40 @@ model User {
 
   @@index([rating(sort: Desc)])
   @@map("users")
+}
+
+enum Category {
+  science
+  history
+  culture
+  sport
+  tech
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+/// Вопросы. Источник - data/questions.json: сервер при старте синхронизирует таблицу с файлом.
+/// Таблица нужна, чтобы партии и ответы ссылались на вопросы внешними ключами
+/// и чтобы разбор старой партии показывал её вопросы, даже если файл потом изменился.
+model Question {
+  /// sci-01 … tec-20
+  id           String     @id
+  category     Category
+  difficulty   Difficulty
+  textRu       String     @map("text_ru")
+  textEn       String     @map("text_en")
+  optionsRu    String[]   @map("options_ru")
+  optionsEn    String[]   @map("options_en")
+  /// Индекс верного варианта (0-3), общий для обоих языков
+  correctIndex Int        @map("correct_index")
+  /// false - вопрос убрали из файла; строку не удаляем, на неё могут ссылаться старые партии
+  active       Boolean    @default(true)
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@index([category, difficulty])
+  @@map("questions")
 }
