@@ -1,7 +1,7 @@
 /**
  * Типы событий Socket.IO. Общие для клиента и сервера, поэтому
  * имя события или его данные нельзя поменять только с одной стороны.
- * Этап 1: приветствие и часы. Этап 4: лобби. Этап 5: ответы и сдача. Реванш - этап 7.
+ * Этап 1: приветствие и часы. Этап 4: лобби. Этап 5: ответы и сдача. Этап 7: реванш.
  */
 import type { GameView, PlayerProfile } from './game.js';
 import type { GameCategory } from './categories.js';
@@ -45,6 +45,12 @@ export type GameErrorCode =
   | 'bad_option'
   /** Ответ дошёл после конца таймера и допуска на сеть - не засчитан. */
   | 'late'
+  /** Реванш после технического исхода или не доигранной партии недоступен. */
+  | 'rematch_unavailable'
+  /** Соперник ушёл с итогов или не на связи. */
+  | 'opponent_left'
+  /** Реванш уже закрыт: отказ, таймаут, принят. */
+  | 'rematch_closed'
   /** Данные события не прошли проверку схемой. */
   | 'invalid'
   | 'rate_limited'
@@ -86,6 +92,11 @@ export interface AnswerPayload {
   questionIndex: number;
   /** Номер варианта на экране 0-3 (порядок вариантов у обоих игроков одинаковый). */
   optionIndex: number;
+}
+
+export interface RematchRespondPayload {
+  gameId: string;
+  accept: boolean;
 }
 
 export interface AnswerResult {
@@ -143,6 +154,15 @@ export interface ClientToServerEvents {
   'game:answer': (payload: AnswerPayload, ack: AckFn<AnswerResult>) => void;
   /** «Выйти из партии»: сразу техническая победа сопернику. */
   'game:forfeit': (payload: GameIdPayload, ack: AckFn<GameResult>) => void;
+  /**
+   * «Реванш» на итогах. Если соперник уже предложил - это согласие (оба нажали почти
+   * одновременно - создаётся одна партия). Новая партия приходит отдельным game:state.
+   */
+  'rematch:offer': (payload: GameIdPayload, ack: AckFn<GameResult>) => void;
+  /** Ответ на предложение соперника: принять или отказаться. */
+  'rematch:respond': (payload: RematchRespondPayload, ack: AckFn<GameResult>) => void;
+  /** Предложивший отменяет своё предложение. */
+  'rematch:cancel': (payload: GameIdPayload, ack: AckFn<GameResult>) => void;
 }
 
 /** Данные, которые сервер кладёт в socket.data после проверки initData. */

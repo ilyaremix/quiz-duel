@@ -1,5 +1,5 @@
 // Схема базы Quiz Duel. Этап 1: игроки. Этап 2: вопросы. Этап 4: партии, ответы, согласия.
-// Ачивки, тренировки и статистика по категориям добавляются миграциями на следующих этапах.
+// Этап 7: итоги партии (рейтинг, статистика по категориям, ачивки). Тренировки - этап 8.
 
 generator client {
   provider     = "prisma-client"
@@ -50,7 +50,14 @@ model User {
   draws         Int           @default(0)
   currentStreak Int           @default(0) @map("current_streak")
   bestStreak    Int           @default(0) @map("best_streak")
+  /// Верных ответов всего: дуэли + тренировки (для ачивки «Эрудит»)
   totalCorrect  Int           @default(0) @map("total_correct")
+  /// Сыгранных (закрытых) вопросов в рейтинговых дуэлях - знаменатель точности
+  questionsPlayed Int         @default(0) @map("questions_played")
+  /// Верных ответов в рейтинговых дуэлях - числитель точности
+  duelCorrect   Int           @default(0) @map("duel_correct")
+  /// Сумма времени верных ответов дуэлей (мс) - для «среднего времени верного ответа»
+  correctTimeMs BigInt        @default(0) @map("correct_time_ms")
 
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
@@ -60,6 +67,8 @@ model User {
   gamesJoined   Game[]        @relation("GameOpponent")
   answers       Answer[]
   consents      Consent[]
+  categoryStats CategoryStat[]
+  achievements  UserAchievement[]
 
   @@index([rating(sort: Desc)])
   @@map("users")
@@ -179,6 +188,9 @@ model Game {
   createdAt            DateTime      @default(now()) @map("created_at")
   startedAt            DateTime?     @map("started_at")
   finishedAt           DateTime?     @map("finished_at")
+  /// Когда посчитаны итоги (рейтинг, статистика, ачивки). Завершённая рейтинговая партия
+  /// с пустым полем досчитывается при старте сервера; повторный подсчёт ничего не меняет.
+  settledAt            DateTime?     @map("settled_at")
   updatedAt            DateTime      @updatedAt @map("updated_at")
 
   creator  User     @relation("GameCreator", fields: [creatorId], references: [id])
@@ -188,6 +200,8 @@ model Game {
   @@index([phase])
   @@index([creatorId, createdAt(sort: Desc)])
   @@index([opponentId, createdAt(sort: Desc)])
+  @@index([creatorId, finishedAt(sort: Desc)])
+  @@index([opponentId, finishedAt(sort: Desc)])
   @@map("games")
 }
 
@@ -240,4 +254,35 @@ model Consent {
 
   @@index([userId, doc, docVersion])
   @@map("consents")
+}
+
+/// Статистика игрока по категориям рейтинговых дуэлей.
+/// answered / correct - по теме самого вопроса (в «Миксе» у каждого вопроса своя),
+/// wins - по категории партии («Микс» не категория и сюда не входит).
+model CategoryStat {
+  userId   BigInt   @map("user_id")
+  category Category
+  answered Int      @default(0)
+  correct  Int      @default(0)
+  wins     Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([userId, category])
+  @@map("category_stats")
+}
+
+/// Полученные ачивки. Выдаются сервером в той же транзакции, что и рейтинг.
+model UserAchievement {
+  userId     BigInt   @map("user_id")
+  /// Код из packages/shared/src/achievements.ts
+  code       String   @db.VarChar(32)
+  /// Партия, в которой получена
+  gameId     String?  @map("game_id") @db.VarChar(10)
+  unlockedAt DateTime @default(now()) @map("unlocked_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([userId, code])
+  @@map("user_achievements")
 }

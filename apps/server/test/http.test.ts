@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/http/app.js';
+import type { StatsRepo } from '../src/stats.js';
 import { DOCS_VERSION, ilya, makeInitData, memoryUsers, testEnv } from './helpers.js';
 
 const apps: Array<Awaited<ReturnType<typeof buildApp>>> = [];
@@ -184,5 +185,53 @@ describe('POST /api/consents', () => {
     const again = await post(app, { docs: ['terms', 'privacy'], version: DOCS_VERSION });
     expect(again.statusCode).toBe(200);
     expect(users.consents).toHaveLength(2);
+  });
+});
+
+describe('этап 7: профиль, лидерборд, соперник, разбор', () => {
+  async function withStats() {
+    const calls: string[] = [];
+    const stats: StatsRepo = {
+      async profile(userId) {
+        calls.push(`profile:${userId}`);
+        return null;
+      },
+      async leaderboard(userId) {
+        calls.push(`leaderboard:${userId}`);
+        return { top: [], me: { place: null, rating: 1000, games: 0, gamesToQualify: 5 } };
+      },
+      async player(viewer, target) {
+        calls.push(`player:${viewer}:${target}`);
+        return null;
+      },
+      async review(viewer, gameId) {
+        calls.push(`review:${viewer}:${gameId}`);
+        return null;
+      },
+    };
+    const app = await buildApp({ env: testEnv(), users: memoryUsers(), stats, botUsername: 'quizduel_test_bot', logger: false });
+    apps.push(app);
+    return { app, calls };
+  }
+  const auth = () => ({ authorization: `tma ${makeInitData()}` });
+
+  it('без initData - 401 на всех маршрутах', async () => {
+    const { app, calls } = await withStats();
+    for (const url of ['/api/profile', '/api/leaderboard', '/api/players/5', '/api/games/Abcde12345/review']) {
+      expect((await app.inject({ method: 'GET', url })).statusCode).toBe(401);
+    }
+    expect(calls).toEqual([]);
+  });
+
+  it('id игрока берётся только из initData, чужой профиль и разбор - 404, кривые id - 400', async () => {
+    const { app, calls } = await withStats();
+    expect((await app.inject({ method: 'GET', url: '/api/leaderboard', headers: auth() })).json()).toMatchObject({ me: { gamesToQualify: 5 } });
+    expect((await app.inject({ method: 'GET', url: '/api/profile?userId=1', headers: auth() })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'GET', url: '/api/players/42', headers: auth() })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'GET', url: '/api/players/0x10', headers: auth() })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'GET', url: '/api/players/99999999999999999999', headers: auth() })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'GET', url: '/api/games/Abcde12345/review', headers: auth() })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'GET', url: '/api/games/bad/review', headers: auth() })).statusCode).toBe(400);
+    expect(calls).toEqual([`leaderboard:${ilya.id}`, `profile:${ilya.id}`, `player:${ilya.id}:42`, `review:${ilya.id}:Abcde12345`]);
   });
 });

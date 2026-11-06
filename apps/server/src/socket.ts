@@ -6,6 +6,7 @@ import {
   CreateGamePayloadSchema,
   GameIdPayloadSchema,
   ReadyPayloadSchema,
+  RematchRespondPayloadSchema,
   SOCKET_PATH,
   SyncPayloadSchema,
   type Ack,
@@ -138,6 +139,9 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
       on('game:leave', GameIdPayloadSchema, (p) => games.leave(userId, p.gameId));
       on('game:answer', AnswerPayloadSchema, (p) => games.answer(userId, p.gameId, p.questionIndex, p.optionIndex));
       on('game:forfeit', GameIdPayloadSchema, (p) => games.forfeit(userId, p.gameId));
+      on('rematch:offer', GameIdPayloadSchema, (p) => games.rematchOffer(userId, p.gameId));
+      on('rematch:respond', RematchRespondPayloadSchema, (p) => games.rematchRespond(userId, p.gameId, p.accept));
+      on('rematch:cancel', GameIdPayloadSchema, (p) => games.rematchCancel(userId, p.gameId));
     }
 
     socket.on('disconnect', () => {

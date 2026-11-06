@@ -1,6 +1,8 @@
-import { FINAL_PHASES, type GamePhase } from '@quiz-duel/shared';
-import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
-import type { GameState, PlayerAnswer } from './machine.js';
+import { CATEGORIES, ELO, type AchievementCode, type Category, type GamePhase } from '@quiz-duel/shared';
+import { FINAL_PHASES } from '@quiz-duel/shared';
+import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
+import { withSettlement, type GameState, type PlayerAnswer, type Settlement } from './machine.js';
+import { computeSettlement, toSettlement, type CategoryCounters, type PlayerUpdate, type SettleInput, type StoredPlayer } from './settle.js';
 
 /**
  * Хранилище партий. Менеджер держит активные партии в памяти и после каждого
@@ -16,6 +18,14 @@ export interface GamesRepo {
   loadUnfinished(): Promise<GameState[]>;
   /** Какие вопросы и когда видел кто-то из игроков (id вопроса → мс), по последним партиям. */
   seenQuestions(userIds: readonly number[]): Promise<Map<string, number>>;
+  /**
+   * Итоги рейтинговой дуэли одной транзакцией: финальный снимок партии, рейтинг Эло,
+   * статистика игроков, category_stats и ачивки. Повторный вызов для той же партии
+   * ничего не меняет и возвращает уже посчитанное (после перезапуска, при гонке).
+   */
+  settle(state: GameState, input: SettleInput, now: number): Promise<Settlement>;
+  /** Завершённые рейтинговые партии, итоги которых ещё не посчитаны (сервер упал между ними). */
+  loadUnsettled(): Promise<GameState[]>;
 }
 
 /** Сколько последних партий игроков учитывать, чтобы не повторять вопросы. */
@@ -46,6 +56,19 @@ function columns(state: GameState) {
     rev: state.rev,
     snapshot: state as unknown as Prisma.InputJsonValue,
     finishedAt: asDate(finishedAt),
+  };
+}
+
+/** Колонки рейтинга в games: рейтинг до партии и изменение у создателя и соперника. */
+function ratingColumns(state: GameState, settlement: Settlement) {
+  const of = (id: number | undefined) => settlement.players.find((p) => p.userId === id);
+  const c = of(state.creator.userId);
+  const o = of(state.opponent?.userId);
+  return {
+    creatorRatingBefore: c?.before ?? null,
+    creatorRatingDelta: c?.delta ?? null,
+    opponentRatingBefore: o?.before ?? null,
+    opponentRatingDelta: o?.delta ?? null,
   };
 }
 
@@ -95,6 +118,91 @@ export function createPrismaGamesRepo(prisma: PrismaClient): GamesRepo {
       return rows.map((r) => fromSnapshot(r.snapshot, r.id)).filter((s): s is GameState => s !== null);
     },
 
+    async settle(state, input, now) {
+      const ids = input.players.map((p) => p.userId).sort((a, b) => a - b);
+      return prisma.$transaction(async (tx) => {
+        // 1. Строка партии под блокировкой: два одновременных подсчёта одной партии идут по очереди,
+        //    второй видит settled_at и возвращает готовое.
+        const locked = await tx.$queryRaw<{ settled_at: Date | null; snapshot: unknown }[]>`
+          SELECT settled_at, snapshot FROM games WHERE id = ${state.id} FOR UPDATE`;
+        const done = locked[0];
+        if (done?.settled_at) {
+          const saved = fromSnapshot(done.snapshot, state.id)?.settlement;
+          if (saved) return saved;
+        }
+
+        // 2. Оба игрока под блокировкой, всегда в порядке id: если у игрока одновременно
+        //    заканчиваются две партии, транзакции не заблокируют друг друга навсегда.
+        const rows = await tx.$queryRaw<
+          {
+            id: bigint;
+            rating: number;
+            games: number;
+            wins: number;
+            losses: number;
+            draws: number;
+            current_streak: number;
+            best_streak: number;
+            total_correct: number;
+            questions_played: number;
+            duel_correct: number;
+            correct_time_ms: bigint;
+          }[]
+        >`SELECT id, rating, games, wins, losses, draws, current_streak, best_streak, total_correct,
+                 questions_played, duel_correct, correct_time_ms
+          FROM users WHERE id IN (${Prisma.join(ids.map((id) => BigInt(id)))})
+          ORDER BY id FOR UPDATE`;
+        const big = ids.map((id) => BigInt(id));
+        const cats = await tx.categoryStat.findMany({ where: { userId: { in: big } } });
+        const unlocked = await tx.userAchievement.findMany({ where: { userId: { in: big } }, select: { userId: true, code: true } });
+
+        const stored = ids.map((id): StoredPlayer => {
+          const r = rows.find((row) => Number(row.id) === id);
+          if (!r) throw new Error(`игрок ${id} не найден`);
+          const categories: Partial<Record<Category, CategoryCounters>> = {};
+          for (const c of cats) if (Number(c.userId) === id) categories[c.category] = { answered: c.answered, correct: c.correct, wins: c.wins };
+          return {
+            userId: id,
+            rating: r.rating,
+            games: r.games,
+            wins: r.wins,
+            losses: r.losses,
+            draws: r.draws,
+            currentStreak: r.current_streak,
+            bestStreak: r.best_streak,
+            totalCorrect: r.total_correct,
+            questionsPlayed: r.questions_played,
+            duelCorrect: r.duel_correct,
+            correctTimeMs: Number(r.correct_time_ms),
+            categories,
+            unlocked: new Set(unlocked.filter((u) => Number(u.userId) === id).map((u) => u.code as AchievementCode)),
+          };
+        }) as [StoredPlayer, StoredPlayer];
+
+        // 3. Подсчёт и запись - всё в этой же транзакции.
+        const updates = computeSettlement(stored, input);
+        for (const u of updates) await writePlayer(tx, u, state.id);
+
+        const settlement = toSettlement(updates, now);
+        const final = withSettlement(state, settlement);
+        const data = { ...columns(final), ...ratingColumns(final, settlement), settledAt: new Date(now) };
+        await tx.game.upsert({
+          where: { id: state.id },
+          create: { id: state.id, ...data, createdAt: new Date(state.createdAt) },
+          update: data,
+        });
+        return settlement;
+      });
+    },
+
+    async loadUnsettled() {
+      const rows = await prisma.game.findMany({
+        where: { phase: 'finished', settledAt: null, mode: { not: 'solo' }, opponentId: { not: null } },
+        select: { id: true, snapshot: true },
+      });
+      return rows.map((r) => fromSnapshot(r.snapshot, r.id)).filter((s): s is GameState => s !== null);
+    },
+
     async seenQuestions(userIds) {
       const ids = userIds.map((id) => BigInt(id));
       const rows = await prisma.game.findMany({
@@ -116,31 +224,142 @@ export function createPrismaGamesRepo(prisma: PrismaClient): GamesRepo {
   };
 }
 
+type Tx = Prisma.TransactionClient;
+
+async function writePlayer(tx: Tx, u: PlayerUpdate, gameId: string) {
+  const id = BigInt(u.userId);
+  const t = u.totals;
+  await tx.user.update({
+    where: { id },
+    data: {
+      rating: t.rating,
+      games: t.games,
+      wins: t.wins,
+      losses: t.losses,
+      draws: t.draws,
+      currentStreak: t.currentStreak,
+      bestStreak: t.bestStreak,
+      totalCorrect: t.totalCorrect,
+      questionsPlayed: u.questionsPlayed,
+      duelCorrect: u.duelCorrect,
+      correctTimeMs: BigInt(u.correctTimeMs),
+    },
+  });
+  for (const category of CATEGORIES) {
+    const add = u.categoryAdd[category];
+    if (!add) continue;
+    await tx.categoryStat.upsert({
+      where: { userId_category: { userId: id, category } },
+      create: { userId: id, category, ...add },
+      update: { answered: { increment: add.answered }, correct: { increment: add.correct }, wins: { increment: add.wins } },
+    });
+  }
+  if (u.achievements.length > 0) {
+    await tx.userAchievement.createMany({
+      data: u.achievements.map((code) => ({ userId: id, code, gameId })),
+      skipDuplicates: true,
+    });
+  }
+}
+
+/** Игрок в памяти для тестов: то же, что в users + category_stats + user_achievements. */
+export type MemoryPlayer = StoredPlayer & { unlocked: Set<AchievementCode> };
+
+export const memoryPlayer = (userId: number, patch: Partial<StoredPlayer> = {}): MemoryPlayer => ({
+  userId,
+  rating: ELO.start,
+  games: 0,
+  wins: 0,
+  losses: 0,
+  draws: 0,
+  currentStreak: 0,
+  bestStreak: 0,
+  totalCorrect: 0,
+  questionsPlayed: 0,
+  duelCorrect: 0,
+  correctTimeMs: 0,
+  categories: {},
+  ...patch,
+  unlocked: new Set(patch.unlocked ?? []),
+});
+
 /** Хранилище в памяти - для тестов и локальной вёрстки. */
-export function memoryGamesRepo(): GamesRepo & { rows: Map<string, { state: GameState; startedAt: number | null }>; answers: string[] } {
-  const rows = new Map<string, { state: GameState; startedAt: number | null }>();
+export function memoryGamesRepo(): GamesRepo & {
+  rows: Map<string, { state: GameState; startedAt: number | null; settledAt?: number | null }>;
+  answers: string[];
+  players: Map<number, MemoryPlayer>;
+  /** Сколько раз подсчёт итогов действительно что-то записал. */
+  settledCount: number;
+  /** Сломать следующий подсчёт итогов (проверка повтора после сбоя). */
+  failNextSettle: boolean;
+} {
+  const rows = new Map<string, { state: GameState; startedAt: number | null; settledAt?: number | null }>();
   const answers: string[] = [];
+  const players = new Map<number, MemoryPlayer>();
   const copy = (s: GameState) => structuredClone(s);
-  return {
+  const repo = {
     rows,
     answers,
-    async save(state, meta) {
+    players,
+    settledCount: 0,
+    failNextSettle: false,
+    async save(state: GameState, meta?: { startedAt?: number }) {
       const prev = rows.get(state.id);
-      rows.set(state.id, { state: copy(state), startedAt: meta?.startedAt ?? prev?.startedAt ?? null });
+      rows.set(state.id, { state: copy(state), startedAt: meta?.startedAt ?? prev?.startedAt ?? null, settledAt: prev?.settledAt ?? null });
     },
-    async saveAnswer(gameId, userId, questionIndex) {
+    async settle(state: GameState, input: SettleInput, now: number): Promise<Settlement> {
+      // В памяти всё синхронно - это и есть «транзакция»: либо записано всё, либо ничего.
+      if (repo.failNextSettle) {
+        repo.failNextSettle = false;
+        throw new Error('settle failed (test)');
+      }
+      const prev = rows.get(state.id);
+      if (prev?.settledAt && prev.state.settlement) return structuredClone(prev.state.settlement);
+      const ids = input.players.map((p) => p.userId).sort((a, b) => a - b);
+      const stored = ids.map((id) => {
+        if (!players.has(id)) players.set(id, memoryPlayer(id));
+        return players.get(id)!;
+      }) as [MemoryPlayer, MemoryPlayer];
+      const updates = computeSettlement(stored, input);
+      for (const u of updates) {
+        const p = players.get(u.userId)!;
+        const t = u.totals;
+        Object.assign(p, {
+          rating: t.rating, games: t.games, wins: t.wins, losses: t.losses, draws: t.draws,
+          currentStreak: t.currentStreak, bestStreak: t.bestStreak, totalCorrect: t.totalCorrect,
+          questionsPlayed: u.questionsPlayed, duelCorrect: u.duelCorrect, correctTimeMs: u.correctTimeMs,
+        });
+        for (const [c, add] of Object.entries(u.categoryAdd) as [Category, CategoryCounters][]) {
+          const cur = (p.categories[c] ??= { answered: 0, correct: 0, wins: 0 });
+          cur.answered += add.answered;
+          cur.correct += add.correct;
+          cur.wins += add.wins;
+        }
+        for (const code of u.achievements) p.unlocked.add(code);
+      }
+      const settlement = toSettlement(updates, now);
+      rows.set(state.id, { state: copy(withSettlement(state, settlement)), startedAt: prev?.startedAt ?? null, settledAt: now });
+      repo.settledCount += 1;
+      return settlement;
+    },
+    async loadUnsettled() {
+      return [...rows.values()]
+        .filter((r) => r.state.phase === 'finished' && !r.settledAt && r.state.mode !== 'solo' && r.state.opponent)
+        .map((r) => copy(r.state));
+    },
+    async saveAnswer(gameId: string, userId: number, questionIndex: number) {
       const key = `${gameId}/${userId}/${questionIndex}`;
       if (answers.includes(key)) throw new Error('duplicate answer');
       answers.push(key);
     },
-    async load(id) {
+    async load(id: string) {
       const row = rows.get(id);
       return row ? copy(row.state) : null;
     },
     async loadUnfinished() {
       return [...rows.values()].filter((r) => !FINAL_PHASES.includes(r.state.phase)).map((r) => copy(r.state));
     },
-    async seenQuestions(userIds) {
+    async seenQuestions(userIds: readonly number[]) {
       const seen = new Map<string, number>();
       for (const { state, startedAt } of rows.values()) {
         if (startedAt === null) continue;
@@ -151,4 +370,5 @@ export function memoryGamesRepo(): GamesRepo & { rows: Map<string, { state: Game
       return seen;
     },
   };
+  return repo satisfies GamesRepo;
 }

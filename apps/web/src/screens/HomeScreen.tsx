@@ -1,12 +1,15 @@
 import type { CSSProperties } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { MeResponse } from '@quiz-duel/shared';
 import { Avatar, initialsOf } from '../components/Avatar';
 import { ResumeBanner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { Icon, type IconGlyph } from '../components/Icon';
-import { TabBar } from '../components/TabBar';
+import { MatchRow } from '../components/MatchRow';
+import { TabDock } from '../components/TabDock';
 import { formatNumber } from '../i18n';
+import { api, queryKeys } from '../lib/api';
 import { gameActions, showToast, useGame } from '../lib/game';
 
 function ModeCard({ glyph, tone, title, hint, onPress }: { glyph: IconGlyph; tone: 'brand' | 'gold'; title: string; hint: string; onPress: () => void }) {
@@ -38,7 +41,11 @@ export function HomeScreen({ me }: { me: MeResponse }) {
   const game = useGame((s) => s.game);
   const hidden = useGame((s) => s.hidden);
   const soon = () => showToast('info', 'toast.soon');
-  const newbie = me.games === 0;
+  const profile = useQuery({ queryKey: queryKeys.profile, queryFn: api.profile });
+  const stats = profile.data?.stats;
+  const recent = profile.data?.matches.slice(0, 3) ?? [];
+  const newbie = (stats?.games ?? me.games) === 0;
+  const rating = stats?.rating ?? me.rating;
 
   const resume = game && hidden;
   const qn = game?.question ? game.question.index + 1 : 1;
@@ -53,9 +60,15 @@ export function HomeScreen({ me }: { me: MeResponse }) {
             <div className="qd-num flex items-center gap-1.5">
               <span className="flex h-6 items-center gap-1 rounded-xl px-2.5 text-[13px] font-extrabold" style={{ background: 'var(--qd-gold-tint)', color: 'var(--qd-gold-text)' }}>
                 <Icon glyph="rating" size={13} stroke={2.5} />
-                {formatNumber(me.rating, i18n.language)}
+                {formatNumber(rating, i18n.language)}
               </span>
-              {newbie && <span className="flex h-6 items-center rounded-xl bg-section px-2.5 text-[13px] font-bold text-hint">{t('s03.newbie')}</span>}
+              {stats?.place ? (
+                <span className="flex h-6 items-center rounded-xl bg-section px-2.5 text-[13px] font-bold text-hint">
+                  {t('s03.place', { n: formatNumber(stats.place, i18n.language) })}
+                </span>
+              ) : (
+                (newbie || stats) && <span className="flex h-6 items-center rounded-xl bg-section px-2.5 text-[13px] font-bold text-hint">{t('s03.newbie')}</span>
+              )}
             </div>
           </div>
           <button
@@ -112,7 +125,18 @@ export function HomeScreen({ me }: { me: MeResponse }) {
         </section>
 
         <section className="flex flex-col gap-2">
-          <h2 className="m-0 ml-1 text-[17px] font-extrabold">{t('s03.recent')}</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="m-0 ml-1 text-[17px] font-extrabold">{t('s03.recent')}</h2>
+            {recent.length > 0 && (
+              <Button variant="ghost" size="s" full={false} onClick={() => gameActions.setTab('profile')}>
+                {t('s03.recentAll')}
+              </Button>
+            )}
+          </div>
+          {recent.map((m) => (
+            <MatchRow key={m.gameId} match={m} onPress={() => gameActions.openReview(m.gameId)} />
+          ))}
+          {profile.data && recent.length === 0 && (
           <div className="flex flex-col items-center gap-2 rounded-[20px] bg-section p-5 text-center">
             <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-tint text-brand-text">
               <Icon glyph="medal" size={24} stroke={2.2} />
@@ -120,14 +144,12 @@ export function HomeScreen({ me }: { me: MeResponse }) {
             <span className="text-[16px] font-extrabold">{t('s03.emptyTitle')}</span>
             <span className="max-w-[280px] text-[13px] leading-[1.4] font-semibold text-hint">{t('s03.emptyText')}</span>
           </div>
+          )}
+          {profile.isPending && [0, 1, 2].map((i) => <div key={i} aria-hidden="true" className="qd-skel h-[58px] rounded-[18px] bg-section" />)}
         </section>
       </main>
 
-      <div className="fixed right-4 left-4 z-10" style={{ bottom: 'calc(var(--tg-viewport-safe-area-inset-bottom, 0px) + 22px)' }}>
-        <div className="mx-auto max-w-[560px]">
-          <TabBar active="home" onTab={(tab) => tab !== 'home' && soon()} />
-        </div>
-      </div>
+      <TabDock active="home" />
     </div>
   );
 }

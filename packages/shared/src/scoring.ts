@@ -19,6 +19,8 @@ export const TIMINGS = {
   lobbyOfflineMs: 60_000,
   /** Лобби без начала партии живёт столько с последнего действия. */
   lobbyTtlMs: 15 * 60_000,
+  /** Сколько ждём ответа на предложение реванша. */
+  rematchMs: 30_000,
 } as const;
 
 export const POINTS = {

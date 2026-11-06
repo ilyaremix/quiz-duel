@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ACTIVE_PHASES, gameIdFromStartParam, TIMINGS, type GameView, type MeResponse } from '@quiz-duel/shared';
-import { api, ApiRequestError } from './lib/api';
+import { api, ApiRequestError, queryKeys, setSessionAuth } from './lib/api';
 import { closeMiniApp, onBack, setGameGuards, type TelegramSession } from './lib/telegram';
 import { gameActions, useGame } from './lib/game';
 import { setLang } from './i18n';
@@ -22,6 +22,10 @@ import { ResultScreen } from './screens/ResultScreen';
 import { ExitDialog } from './components/ExitDialog';
 import { useServerNow } from './hooks/useServerNow';
 import { OnboardingScreen } from './screens/OnboardingScreen';
+import { ReviewScreen } from './screens/ReviewScreen';
+import { LeaderboardScreen } from './screens/LeaderboardScreen';
+import { ProfileScreen } from './screens/ProfileScreen';
+import { OppSheet } from './screens/OppSheet';
 
 /** Вне Telegram: заглушка с кнопкой, ведущей в мини-апп (адрес отдаёт сервер). */
 function OutsideTelegram() {
@@ -47,7 +51,7 @@ function CountdownRoute({ game }: { game: GameView }) {
 }
 
 /** Какой экран показать - решает только снимок партии с сервера. */
-function GameRoute({ game, me }: { game: GameView; me: MeResponse }) {
+function GameRoute({ game, me, review }: { game: GameView; me: MeResponse; review: string | null }) {
   const iAmCreator = game.creatorId === game.me.userId;
   switch (game.phase) {
     case 'waiting':
@@ -60,7 +64,7 @@ function GameRoute({ game, me }: { game: GameView; me: MeResponse }) {
     case 'reveal':
       return game.question ? <QuestionScreen game={game} /> : <LoadingScreen />;
     case 'finished':
-      return <ResultScreen game={game} />;
+      return review ? <ReviewScreen gameId={review} /> : <ResultScreen game={game} />;
     case 'expired':
       return <LinkErrorScreen kind="expired" docsAccepted={me.docsAccepted} />;
     case 'cancelled':
@@ -89,9 +93,33 @@ function useGameChrome(game: GameView | null, onScreen: boolean) {
   useEffect(() => (back ? onBack(gameActions.openExit) : undefined), [back]);
 }
 
+/** Вкладки нижнего меню, когда партии на экране нет. */
+function TabsRoute({ me }: { me: MeResponse }) {
+  const tab = useGame((s) => s.tab);
+  const review = useGame((s) => s.review);
+  if (review) return <ReviewScreen gameId={review} />;
+  if (tab === 'rating') return <LeaderboardScreen me={me} />;
+  if (tab === 'profile') return <ProfileScreen me={me} />;
+  return <HomeScreen me={me} />;
+}
+
+/** Итоги посчитаны (пришёл рейтинг) - профиль, история и лидерборд перезапрашиваются. */
+function useRefreshAfterGame(game: GameView | null) {
+  const queryClient = useQueryClient();
+  const settled = game?.result?.rating ? `${game.id}:${game.result.rating.after}` : null;
+  const oppId = game?.opponent?.userId;
+  useEffect(() => {
+    if (!settled) return;
+    void queryClient.invalidateQueries({ queryKey: queryKeys.profile });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.leaderboard });
+    if (oppId) void queryClient.invalidateQueries({ queryKey: queryKeys.player(oppId) });
+  }, [settled, oppId, queryClient]);
+}
+
 function InTelegram({ session }: { session: TelegramSession }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  setSessionAuth(session.initDataRaw);
   const me = useQuery({
     queryKey: ['me'],
     queryFn: () => api.me(session.initDataRaw),
@@ -105,6 +133,8 @@ function InTelegram({ session }: { session: TelegramSession }) {
   const linkError = useGame((s) => s.linkError);
   const linkEntry = useGame((s) => s.linkEntry);
   const consent = useGame((s) => s.consent);
+  const review = useGame((s) => s.review);
+  useRefreshAfterGame(game);
 
   useEffect(() => {
     if (me.data) setLang(me.data.lang);
@@ -148,9 +178,9 @@ function InTelegram({ session }: { session: TelegramSession }) {
   ) : linkError ? (
     <LinkErrorScreen kind={linkError.kind} docsAccepted={me.data.docsAccepted} />
   ) : game && !hidden ? (
-    <GameRoute game={game} me={me.data} />
+    <GameRoute game={game} me={me.data} review={review} />
   ) : (
-    <HomeScreen me={me.data} />
+    <TabsRoute me={me.data} />
   );
 
   return (
@@ -165,6 +195,7 @@ function InTelegram({ session }: { session: TelegramSession }) {
       <CategorySheet />
       <ConsentSheet docs={config.data?.docs} />
       <ExitDialog />
+      <OppSheet me={me.data} />
       <ToastHost />
     </>
   );

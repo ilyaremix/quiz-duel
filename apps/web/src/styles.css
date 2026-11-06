@@ -36,6 +36,8 @@
   --qd-wrong-tint: #3f1a22;
   --qd-wrong-text: #ff8a8e;
   --qd-gold: #ffc94a;
+  --qd-silver: #c9c3dd;
+  --qd-bronze: #d89a5f;
   --qd-gold-tint: #3a3016;
   --qd-gold-text: #ffc94a;
   --qd-on-fill: #14101c;
@@ -92,6 +94,8 @@
   --qd-wrong-tint: #fde2e3;
   --qd-wrong-text: #c0262f;
   --qd-gold: #ffc94a;
+  --qd-silver: #8c86a3;
+  --qd-bronze: #b26b2e;
   --qd-gold-tint: #fff1cc;
   --qd-gold-text: #8a5a00;
   --qd-on-fill: #14101c;
@@ -525,6 +529,23 @@ body {
   animation: qd-confetti var(--qd-cd, 2000ms) var(--qd-ease-ui) var(--qd-cdl, 0ms) both;
 }
 
+/* Скелетоны загрузки (рейтинг, разбор) с бегущим бликом - непрерывное движение, linear. */
+@keyframes qd-skel {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.qd-skel {
+  display: block;
+  animation: qd-skel 1200ms linear infinite;
+}
+
 /* Шторка: перетаскивание без анимации, возврат на место - по кривой шторки. */
 .qd-sheet-drag {
   touch-action: none;
@@ -561,7 +582,8 @@ body {
   .qd-pulse,
   .qd-tick,
   .qd-flash,
-  .qd-shake {
+  .qd-shake,
+  .qd-skel {
     animation: none;
   }
   .qd-confetti {

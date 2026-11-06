@@ -1,4 +1,5 @@
 import type { Outcome } from './elo.js';
+import type { AchievementCode } from './achievements.js';
 import type { Category, GameCategory } from './categories.js';
 
 /**
@@ -41,6 +42,8 @@ export interface PlayerView extends PlayerProfile {
   seatFreesAt: number | null;
   /** Счёт без очков текущего вопроса - они появляются на раскрытии. */
   score: number;
+  /** Ушёл с экрана итогов («На главную», другая игра): реванш ему уже не предложить. */
+  left: boolean;
 }
 
 export interface QuestionView {
@@ -80,6 +83,13 @@ export interface ResultStats {
   avgMs: number | null;
 }
 
+/** Рейтинг игрока после партии: «Рейтинг 1 016 (+16)». */
+export interface RatingChange {
+  before: number;
+  after: number;
+  delta: number;
+}
+
 export interface GameResultView {
   reason: FinishReason;
   outcome: Outcome;
@@ -87,6 +97,34 @@ export interface GameResultView {
   /** Кто сдался или не вернулся (для технического исхода). */
   leaverId: number | null;
   stats: ResultStats;
+  /** Мой рейтинг до и после; null - сервер ещё считает итоги (придёт следующим снимком). */
+  rating: RatingChange | null;
+  /** Ачивки, полученные в этой партии (показ - этап 8). */
+  newAchievements: AchievementCode[];
+}
+
+/**
+ * offered - ждём ответа (30 с), accepted - создана новая партия (nextGameId),
+ * declined - отказ, expired - не ответил за 30 с, cancelled - предложивший передумал,
+ * left - кто-то ушёл с итогов или пропал со связи, пока ждали ответа.
+ */
+export type RematchStatus = 'offered' | 'accepted' | 'declined' | 'expired' | 'cancelled' | 'left';
+
+/** Почему кнопка «Реванш» неактивна. */
+export type RematchBlock = 'technical' | 'opponentLeft' | 'closed';
+
+export interface RematchView {
+  /** null - реванш ещё никто не предлагал (или предложивший отменил). */
+  status: RematchStatus | null;
+  /** Предложил я (иначе - соперник). */
+  byMe: boolean;
+  /** До какого времени ждём ответа (мс, время сервера). */
+  expiresAt: number | null;
+  /** Новая партия после принятия. */
+  nextGameId: string | null;
+  /** Можно ли сейчас нажать «Реванш» (предложить или принять встречное предложение). */
+  canOffer: boolean;
+  blocked: RematchBlock | null;
 }
 
 /**
@@ -115,4 +153,8 @@ export interface GameView {
   reveal: RevealView | null;
   result: GameResultView | null;
   cancelReason: CancelReason | null;
+  /** Реванш: id прошлой партии этой пары. */
+  rematchOf: string | null;
+  /** Состояние реванша - только у завершённой партии. */
+  rematch: RematchView | null;
 }

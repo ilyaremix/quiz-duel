@@ -9,7 +9,11 @@
     "questions_other": "{{count}} questions",
     "next": "Next",
     "skip": "Skip",
-    "you": "You"
+    "you": "You",
+    "back": "Back",
+    "retry": "Retry",
+    "games_one": "{{count}} game",
+    "games_other": "{{count}} games"
   },
   "s01": {
     "aria": "Loading",
@@ -70,7 +74,10 @@
     "slotFreed": "Your opponent didn’t come back - the seat is free again",
     "oppLeft": "{{opp}} left the lobby - the seat is free again",
     "soon": "Coming in one of the next updates",
-    "connection": "No connection to the server - try again"
+    "connection": "No connection to the server - try again",
+    "rmAccepted": "Rematch accepted - let’s go!",
+    "rmGone": "Your opponent has already left",
+    "loadFailed": "Couldn’t load - check your connection"
   },
   "banner": {
     "resume": {
@@ -85,6 +92,18 @@
     "disconnect": {
       "title": "Opponent disconnected",
       "text": "Technical win in"
+    },
+    "rematch": {
+      "title": "{{opp}} wants a rematch",
+      "action": "Accept",
+      "action2": "Decline",
+      "progress": "Time to respond"
+    },
+    "rematchWait": {
+      "title": "You offered a rematch",
+      "text": "Waiting for your opponent",
+      "action": "Cancel",
+      "progress": "Opponent’s time to respond"
     }
   },
   "s03": {
@@ -101,7 +120,8 @@
     "trainingHint": "No rating",
     "recent": "Recent matches",
     "emptyTitle": "Your matches will show up here",
-    "emptyText": "Play your first duel - a win earns the “First Blood” achievement"
+    "emptyText": "Play your first duel - a win earns the “First Blood” achievement",
+    "recentAll": "All matches"
   },
   "s04": {
     "aria": "Choose a category",
@@ -324,6 +344,74 @@
         "title": "Game cancelled",
         "text": "This game ended without a result"
       }
-    }
+    },
+    "rating": "Rating {{r}} ({{d}})",
+    "ratingPending": "Updating rating…",
+    "oppAria": "{{opp}}’s profile",
+    "rmDeclined": "Your opponent declined the rematch",
+    "rmDeclinedMe": "You declined the rematch",
+    "rmExpired": "Your opponent didn’t answer the rematch",
+    "rmExpiredMe": "Time to respond is up",
+    "rmTech": "No rematch after leaving the game",
+    "rmStarting": "Starting the rematch…"
+  },
+  "when": {
+    "today": "today",
+    "yesterday": "yesterday"
+  },
+  "result": {
+    "win": "Win",
+    "loss": "Loss",
+    "draw": "Draw"
+  },
+  "s14": {
+    "title": "Game review",
+    "sub": "{{cat}} · {{result}} {{score}}",
+    "late": "Too late",
+    "ok": "Correct · {{t}}",
+    "aOk": "{{who}}: correct in {{t}}, +{{n}}",
+    "aBad": "{{who}}: {{a}}, wrong",
+    "aLate": "{{who}}: too late",
+    "error": "Couldn’t load the review",
+    "loading": "Loading the review"
+  },
+  "s15": {
+    "title": "Leaderboard",
+    "sub": "Top 100 · players with 5+ games",
+    "podium": "Top 3",
+    "loading": "Loading",
+    "list": "List",
+    "empty": "Nobody on the leaderboard yet - play 5 games and be the first",
+    "qualify_one": "{{count}} more game to get ranked",
+    "qualify_other": "{{count}} more games to get ranked",
+    "outside": "Unranked",
+    "error": "Couldn’t load the leaderboard"
+  },
+  "s16": {
+    "statsAria": "Stats",
+    "stats": {
+      "games": "Games",
+      "wins": "Wins",
+      "losses": "Losses",
+      "draws": "Draws",
+      "winrate": "Win rate",
+      "accuracy": "Accuracy",
+      "avgTime": "Avg time",
+      "bestStreak": "Best streak"
+    },
+    "newbieTitle": "No stats yet",
+    "newbieText": "Play your first duel - accuracy, streaks and match history will show up here",
+    "create": "Create duel",
+    "cats": "Accuracy by category",
+    "history": "Match history",
+    "error": "Couldn’t load the profile"
+  },
+  "s17": {
+    "aria": "Opponent profile",
+    "h2h": "Head to head",
+    "meta_one": "{{count}} game · last one {{when}}",
+    "meta_other": "{{count}} games · last one {{when}}",
+    "first": "This is your first meeting",
+    "error": "Couldn’t load the profile"
   }
 }

@@ -63,7 +63,15 @@ interface GameStore {
   picked: { gameId: string; index: number; position: number } | null;
   /** Открыт диалог «Выйти из партии?». */
   exitAsk: boolean;
+  /** Вкладка нижнего меню, когда партии на экране нет. */
+  tab: Tab;
+  /** Открыт разбор партии (с итогов или из истории в профиле). */
+  review: string | null;
+  /** Открыта шторка профиля соперника (userId). */
+  oppSheet: number | null;
 }
+
+export type Tab = 'home' | 'rating' | 'profile';
 
 export const useGame = create<GameStore>(() => ({
   conn: 'connecting',
@@ -79,6 +87,9 @@ export const useGame = create<GameStore>(() => ({
   toast: null,
   picked: null,
   exitAsk: false,
+  tab: 'home',
+  review: null,
+  oppSheet: null,
 }));
 
 const set = useGame.setState;
@@ -142,8 +153,19 @@ async function request<E extends EventName>(
 function applyView(view: GameView, meta?: GameStateMeta) {
   const cur = get().game;
   if (cur && cur.id === view.id && view.rev < cur.rev) return;
-  if (cur && cur.id !== view.id) return;
+  if (cur && cur.id !== view.id) {
+    // Реванш принят: с итогов сразу в отсчёт новой партии той же пары.
+    if (isFinal(cur) && view.rematchOf === cur.id && !isFinal(view)) {
+      if (cur.rematch?.byMe) showToast('success', 'toast.rmAccepted');
+      set({ game: view, hidden: false, review: null, oppSheet: null, picked: null, exitAsk: false });
+    }
+    return;
+  }
   if (!cur && isFinal(view)) return;
+  // Пометка «реванш принят» пришла раньше самой партии (обрыв) - забираем её сами.
+  if (view.rematch?.status === 'accepted' && view.rematch.nextGameId && cur?.rematch?.status !== 'accepted') {
+    void fetchRematch(view.rematch.nextGameId, view.id);
+  }
 
   if (cur && meta?.seatFreed && !view.opponent && cur.opponent) {
     if (meta.seatFreed === 'timeout') showToast('info', 'toast.slotFreed');
@@ -152,6 +174,13 @@ function applyView(view: GameView, meta?: GameStateMeta) {
   // Партия закончилась (или ещё не началась) - диалог выхода больше не нужен.
   const exitAsk = get().exitAsk && ACTIVE_PHASES.includes(view.phase);
   set({ game: view, exitAsk });
+}
+
+/** Новая партия реванша по её id (если её снимок не дошёл сам). */
+async function fetchRematch(nextId: string, fromId: string) {
+  const res = await request('game:sync', { gameId: nextId });
+  const cur = get().game;
+  if (res.ok && res.game && cur?.id === fromId) applyView(res.game);
 }
 
 /** Часы сервера: 3 замера time:sync, берётся самый быстрый. Сбитые часы телефона не мешают таймеру. */
@@ -218,7 +247,14 @@ async function wake() {
     return;
   }
   const cur = get().game;
-  if (cur && !isFinal(cur)) await gameActions.resync(cur.id);
+  if (cur && (!isFinal(cur) || cur.phase === 'finished')) await gameActions.resync(cur.id);
+}
+
+/** Реванш не вышел: соперник ушёл, предложение уже закрыто, нет связи - экран обновит свежий снимок. */
+function rematchFailed(error: GameErrorCode, gameId: string) {
+  if (error === 'opponent_left') showToast('info', 'toast.rmGone');
+  else if (error === 'internal' || error === 'rate_limited') showToast('error', 'toast.connection');
+  void gameActions.resync(gameId);
 }
 
 function failure(result: { ok: false; error: GameErrorCode; busyGameId?: string }) {
@@ -249,7 +285,8 @@ export const gameActions = {
         const id = pendingJoin;
         pendingJoin = null;
         void gameActions.join(id);
-      } else if (cur && !isFinal(cur)) {
+      } else if (cur && (!isFinal(cur) || cur.phase === 'finished')) {
+        // Итоги тоже: за время обрыва соперник мог предложить реванш или уйти.
         void gameActions.resync(cur.id);
       } else if (currentGameId) {
         void gameActions.resync(currentGameId);
@@ -285,8 +322,13 @@ export const gameActions = {
     const res = await request('game:sync', { gameId });
     if (res.ok) {
       if (res.game) {
+        const cur = get().game;
+        // Пока ждали ответа, могли перейти в реванш - старый снимок его не перебивает.
+        if (cur && cur.id !== res.game.id && !(isFinal(cur) && res.game.rematchOf === cur.id)) return;
+        if (cur && cur.id === res.game.id && res.game.rev < cur.rev) return;
         set({ game: res.game });
         reconcilePick(res.game);
+        if (res.game.rematch?.status === 'accepted' && res.game.rematch.nextGameId) void fetchRematch(res.game.rematch.nextGameId, res.game.id);
       }
       return;
     }
@@ -394,8 +436,61 @@ export const gameActions = {
   /** Ушёл на главную: из идущей дуэли - с плашкой «Вернуться», из завершённой - насовсем. */
   goHome() {
     const g = get().game;
-    if (g && !isFinal(g)) set({ hidden: true, linkError: null });
-    else set({ game: null, hidden: false, linkError: null });
+    if (g && !isFinal(g)) set({ hidden: true, linkError: null, tab: 'home' });
+    else {
+      // С итогов: сервер отмечает, что игрок ушёл, - реванш ему больше не предложат.
+      if (g?.phase === 'finished') void request('game:leave', { gameId: g.id });
+      set({ game: null, hidden: false, linkError: null, review: null, oppSheet: null, tab: 'home' });
+    }
+  },
+
+  setTab(tab: Tab) {
+    set({ tab, review: null });
+    window.scrollTo(0, 0);
+  },
+
+  openReview(gameId: string) {
+    set({ review: gameId, oppSheet: null });
+  },
+
+  closeReview() {
+    set({ review: null });
+  },
+
+  openOpp(userId: number) {
+    set({ oppSheet: userId });
+  },
+
+  closeOpp() {
+    set({ oppSheet: null });
+  },
+
+  // -------------------------------------------------------------------------
+  // Реванш
+
+  /** «Реванш». Если соперник уже предложил - это согласие, новая партия придёт отдельным снимком. */
+  async rematchOffer() {
+    const g = get().game;
+    if (!g || g.phase !== 'finished') return;
+    const res = await request('rematch:offer', { gameId: g.id }, 'rematch');
+    if (res.ok) applyView(res.game);
+    else rematchFailed(res.error, g.id);
+  },
+
+  async rematchRespond(accept: boolean) {
+    const g = get().game;
+    if (!g || g.phase !== 'finished') return;
+    const res = await request('rematch:respond', { gameId: g.id, accept }, 'rematch');
+    if (res.ok) applyView(res.game);
+    else rematchFailed(res.error, g.id);
+  },
+
+  async rematchCancel() {
+    const g = get().game;
+    if (!g || g.phase !== 'finished') return;
+    const res = await request('rematch:cancel', { gameId: g.id }, 'rematch');
+    if (res.ok) applyView(res.game);
+    else rematchFailed(res.error, g.id);
   },
 
   returnToGame() {

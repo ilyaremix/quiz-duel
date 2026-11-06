@@ -21,7 +21,9 @@ import {
   type GameCategory,
   type GameMode,
   type GamePhase,
+  type AchievementCode,
   type Outcome,
+  type RematchStatus,
 } from '@quiz-duel/shared';
 import type { GameQuestion } from './picker.js';
 
@@ -46,6 +48,32 @@ export interface PlayerState {
   score: number;
   /** По индексу вопроса; null - вопрос закрыт без ответа. */
   answers: (PlayerAnswer | null)[];
+  /** Ушёл с экрана итогов (нажал «На главную», зашёл в другую игру). В старых снимках поля нет. */
+  left?: boolean;
+}
+
+/** Предложение реванша в завершённой партии. Живёт в снимке, поэтому переживает перезапуск. */
+export interface RematchState {
+  by: number;
+  at: number;
+  expiresAt: number;
+  status: RematchStatus;
+  /** Новая партия после принятия. */
+  nextId: string | null;
+}
+
+/** Итоги партии, посчитанные в одной транзакции с рейтингом (settle в repo). */
+export interface SettlementPlayer {
+  userId: number;
+  before: number;
+  delta: number;
+  after: number;
+  achievements: AchievementCode[];
+}
+
+export interface Settlement {
+  at: number;
+  players: SettlementPlayer[];
 }
 
 export interface GameState {
@@ -68,6 +96,10 @@ export interface GameState {
   finish: { reason: FinishReason; winnerId: number | null; at: number } | null;
   cancelReason: CancelReason | null;
   rematchOf: string | null;
+  /** Реванш (только в фазе finished). В старых снимках поля нет. */
+  rematch?: RematchState | null;
+  /** Рейтинг и ачивки по итогам; нет - ещё не посчитаны. */
+  settlement?: Settlement | null;
   rev: number;
 }
 
@@ -90,7 +122,9 @@ export type GameEvent =
   | { type: 'presence'; userId: number; online: boolean }
   | { type: 'finished'; reason: FinishReason; winnerId: number | null }
   | { type: 'expired' }
-  | { type: 'cancelled'; reason: CancelReason };
+  | { type: 'cancelled'; reason: CancelReason }
+  | { type: 'resultsLeft'; userId: number }
+  | { type: 'rematch'; status: RematchStatus; by: number };
 
 export type GameError =
   | 'not_participant'
@@ -103,7 +137,10 @@ export type GameError =
   | 'wrong_question'
   | 'bad_option'
   | 'already_answered'
-  | 'late';
+  | 'late'
+  | 'rematch_unavailable'
+  | 'opponent_left'
+  | 'rematch_closed';
 
 export type Step = { ok: true; state: GameState; events: GameEvent[] } | { ok: false; error: GameError };
 
@@ -165,6 +202,8 @@ export function createGame(params: CreateParams, now: number, deps: MachineDeps)
     finish: null,
     cancelReason: null,
     rematchOf: params.rematchOf ?? null,
+    rematch: null,
+    settlement: null,
     rev: 1,
   };
   // Тренировка: без лобби, VS и отсчёта - сразу первый вопрос.
@@ -252,7 +291,9 @@ export function cancel(prev: GameState, userId: number): Step {
 export function setPresence(prev: GameState, userId: number, online: boolean, now: number): Step {
   const me = playerOf(prev, userId);
   if (!me) return fail('not_participant');
-  if (me.online === online || FINAL_PHASES.includes(prev.phase)) return { ok: true, state: prev, events: [] };
+  // После итогов присутствие нужно только реваншу: ушёл ли соперник.
+  const tracked = !FINAL_PHASES.includes(prev.phase) || prev.phase === 'finished';
+  if (me.online === online || !tracked) return { ok: true, state: prev, events: [] };
 
   const state = clone(prev);
   const p = playerOf(state, userId)!;
@@ -304,6 +345,91 @@ export function forfeit(prev: GameState, userId: number, now: number): Step {
   if (state.mode === 'solo') cancelled(state, 'left', events);
   else finish(state, 'forfeit', otherOf(state, userId)!.userId, now, events);
   return done(state, events);
+}
+
+// ---------------------------------------------------------------------------
+// Итоги и реванш
+
+/** Реванш возможен только после доигранной до конца дуэли: после технического исхода его нет. */
+export function rematchAvailable(state: GameState): boolean {
+  return state.phase === 'finished' && state.mode !== 'solo' && state.opponent !== null && state.finish?.reason === 'completed';
+}
+
+/** Соперник ушёл с итогов или пропал со связи - предложить ему реванш нельзя. */
+export function isGone(p: PlayerState | null): boolean {
+  return !p || !p.online || Boolean(p.left);
+}
+
+/**
+ * Предложение реванша. Повторное нажатие предложившего ничего не меняет.
+ * Встречное предложение (соперник уже предложил) машина не принимает за согласие сама:
+ * для согласия нужна новая партия, её создаёт менеджер и вызывает respondRematch.
+ */
+export function offerRematch(prev: GameState, userId: number, now: number): Step {
+  const me = playerOf(prev, userId);
+  if (!me) return fail('not_participant');
+  if (!rematchAvailable(prev)) return fail('rematch_unavailable');
+  const cur = prev.rematch ?? null;
+  if (cur?.status === 'offered' && cur.by === userId) return { ok: true, state: prev, events: [] };
+  if (cur && cur.status !== 'cancelled') return fail('rematch_closed');
+  if (me.left || isGone(otherOf(prev, userId))) return fail('opponent_left');
+
+  const state = clone(prev);
+  state.rematch = { by: userId, at: now, expiresAt: now + TIMINGS.rematchMs, status: 'offered', nextId: null };
+  return done(state, [{ type: 'rematch', status: 'offered', by: userId }]);
+}
+
+/** Ответ на предложение соперника. Согласие сразу несёт id новой партии. */
+export function respondRematch(prev: GameState, userId: number, accept: boolean, now: number, nextId: string | null): Step {
+  if (!playerOf(prev, userId)) return fail('not_participant');
+  const cur = prev.rematch ?? null;
+  if (!rematchAvailable(prev) || !cur) return fail('rematch_unavailable');
+  if (cur.status !== 'offered' || cur.by === userId || now > cur.expiresAt) return fail('rematch_closed');
+  if (accept && !nextId) throw new Error('согласие на реванш без новой партии');
+
+  const state = clone(prev);
+  state.rematch = { ...cur, status: accept ? 'accepted' : 'declined', nextId: accept ? nextId : null };
+  return done(state, [{ type: 'rematch', status: state.rematch.status, by: cur.by }]);
+}
+
+/** Предложивший отменяет своё предложение: кнопка «Реванш» снова активна у обоих. */
+export function cancelRematch(prev: GameState, userId: number): Step {
+  if (!playerOf(prev, userId)) return fail('not_participant');
+  const cur = prev.rematch ?? null;
+  if (!cur || cur.status !== 'offered' || cur.by !== userId) return fail('rematch_closed');
+  const state = clone(prev);
+  state.rematch = { ...cur, status: 'cancelled' };
+  return done(state, [{ type: 'rematch', status: 'cancelled', by: cur.by }]);
+}
+
+/** Ждали ответа, а соперник пропал со связи - согласие невозможно. */
+export function rematchGone(prev: GameState): Step {
+  const cur = prev.rematch ?? null;
+  if (!cur || cur.status !== 'offered') return { ok: true, state: prev, events: [] };
+  const state = clone(prev);
+  state.rematch = { ...cur, status: 'left' };
+  return done(state, [{ type: 'rematch', status: 'left', by: cur.by }]);
+}
+
+/** Игрок ушёл с экрана итогов. Ждущее предложение реванша закрывается. */
+export function leaveResults(prev: GameState, userId: number): Step {
+  const me = playerOf(prev, userId);
+  if (!me) return fail('not_participant');
+  if (prev.phase !== 'finished') return fail('wrong_phase');
+  if (me.left) return { ok: true, state: prev, events: [] };
+  const state = clone(prev);
+  playerOf(state, userId)!.left = true;
+  const events: GameEvent[] = [{ type: 'resultsLeft', userId }];
+  if (state.rematch?.status === 'offered') {
+    state.rematch = { ...state.rematch, status: 'left' };
+    events.push({ type: 'rematch', status: 'left', by: state.rematch.by });
+  }
+  return done(state, events);
+}
+
+/** Итоги посчитаны (рейтинг, статистика, ачивки) - кладём их в снимок. */
+export function withSettlement(prev: GameState, settlement: Settlement): GameState {
+  return { ...prev, settlement, rev: prev.rev + 1 };
 }
 
 // ---------------------------------------------------------------------------
@@ -377,6 +503,17 @@ function deadlines(state: GameState): Deadline[] {
       apply: (s, ev) => {
         if (s.questionIndex + 1 < s.questions.length) startQuestion(s, s.questionIndex + 1, at, ev);
         else completeGame(s, at, ev);
+      },
+    });
+  }
+
+  if (phase === 'finished' && state.rematch?.status === 'offered') {
+    const at = state.rematch.expiresAt;
+    list.push({
+      at,
+      apply: (s, ev) => {
+        s.rematch = { ...s.rematch!, status: 'expired' };
+        ev.push({ type: 'rematch', status: 'expired', by: s.rematch.by });
       },
     });
   }

@@ -8,9 +8,10 @@ import {
   type PlayerView,
   type ResultStats,
   type RevealSide,
+  type RematchView,
 } from '@quiz-duel/shared';
 import type { QuestionBank } from '../questions/bank.js';
-import { otherOf, outcomeFor, playerOf, type GameState, type PlayerState } from './machine.js';
+import { isGone, otherOf, outcomeFor, playerOf, rematchAvailable, type GameState, type PlayerState } from './machine.js';
 
 /** Карточка игрока по id; нет данных - нейтральная заглушка (имя покажется инициалом «?»). */
 export type ProfileLookup = (userId: number) => PlayerProfile | undefined;
@@ -19,6 +20,10 @@ const UNKNOWN: PlayerProfile = { name: '', username: null, photoUrl: null, ratin
 
 const playerView = (state: GameState, p: PlayerState, profileOf: ProfileLookup): PlayerView => ({
   ...(profileOf(p.userId) ?? UNKNOWN),
+  // После подсчёта итогов - рейтинг именно после этой партии (а не из кэша карточек).
+  ...(state.settlement?.players.some((s) => s.userId === p.userId)
+    ? { rating: state.settlement.players.find((s) => s.userId === p.userId)!.after }
+    : {}),
   userId: p.userId,
   ready: p.ready,
   online: p.online,
@@ -29,6 +34,7 @@ const playerView = (state: GameState, p: PlayerState, profileOf: ProfileLookup):
       ? p.offlineSince + TIMINGS.lobbyOfflineMs
       : null,
   score: p.score,
+  left: Boolean(p.left),
 });
 
 /** Цифры игрока за сыгранные (закрытые) вопросы. */
@@ -46,12 +52,37 @@ function resultFor(state: GameState, me: PlayerState): GameResultView | null {
   if (!state.finish || !outcome) return null;
   const technical = state.finish.reason !== 'completed';
   const winner = state.finish.winnerId;
+  const mine = state.settlement?.players.find((p) => p.userId === me.userId) ?? null;
   return {
     reason: state.finish.reason,
     outcome,
     technical,
     leaverId: technical && winner !== null ? (otherOf(state, winner)?.userId ?? null) : null,
     stats: statsOf(state, me),
+    rating: mine ? { before: mine.before, after: mine.after, delta: mine.delta } : null,
+    newAchievements: mine?.achievements ?? [],
+  };
+}
+
+/** Что видит игрок о реванше на итогах. */
+export function rematchFor(state: GameState, me: PlayerState): RematchView | null {
+  if (state.phase !== 'finished' || state.mode === 'solo') return null;
+  const opp = otherOf(state, me.userId);
+  const r = state.rematch ?? null;
+  const live = r?.status === 'offered';
+  const open = !r || r.status === 'cancelled';
+  let blocked: RematchView['blocked'] = null;
+  if (!rematchAvailable(state)) blocked = 'technical';
+  else if (!open && !(live && r.by !== me.userId)) blocked = live ? null : 'closed';
+  else if (me.left || isGone(opp)) blocked = 'opponentLeft';
+  return {
+    status: r && r.status !== 'cancelled' ? r.status : null,
+    byMe: r?.by === me.userId,
+    expiresAt: live ? r.expiresAt : null,
+    nextGameId: r?.nextId ?? null,
+    // Своё предложение уже висит - нажимать нечего; встречное - нажатие означает согласие.
+    canOffer: blocked === null && !(live && r.by === me.userId),
+    blocked,
   };
 }
 
@@ -121,5 +152,7 @@ export function viewFor(
     reveal,
     result: resultFor(state, me),
     cancelReason: state.cancelReason,
+    rematchOf: state.rematchOf,
+    rematch: rematchFor(state, me),
   };
 }

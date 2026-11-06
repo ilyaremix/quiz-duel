@@ -4,6 +4,7 @@ import rateLimit from '@fastify/rate-limit';
 import {
   CONSENT_DOCS,
   ConsentRequestSchema,
+  isGameId,
   type ApiError,
   type ConfigResponse,
   type ConsentDoc,
@@ -14,6 +15,7 @@ import { docsInfo, webOrigin, type Env } from '../env.js';
 import { InitDataError } from '../auth/initData.js';
 import { authErrorBody, requireTelegramAuth } from '../auth/fastify.js';
 import { toMeResponse, type UsersRepo } from '../users.js';
+import type { StatsRepo } from '../stats.js';
 
 export interface AppDeps {
   env: Pick<
@@ -29,6 +31,8 @@ export interface AppDeps {
     | 'PRIVACY_URL'
   >;
   users: UsersRepo;
+  /** Профиль, лидерборд, разбор (без него маршруты этапа 7 не регистрируются - тесты авторизации). */
+  stats?: StatsRepo;
   botUsername: string;
   /** false - без логов (тесты). */
   logger?: FastifyServerOptions['logger'];
@@ -41,7 +45,7 @@ export function parseTrustProxy(value: string): string[] {
     .filter(Boolean);
 }
 
-export async function buildApp({ env, users, botUsername, logger }: AppDeps) {
+export async function buildApp({ env, users, stats, botUsername, logger }: AppDeps) {
   const app = Fastify({
     logger: logger ?? {
       level: env.LOG_LEVEL,
@@ -138,6 +142,34 @@ export async function buildApp({ env, users, botUsername, logger }: AppDeps) {
     });
     return { ok: true, docsVersion: env.DOCS_VERSION } satisfies ConsentResponse;
   });
+
+  if (stats) {
+    const notFound = { error: 'not_found' } satisfies ApiError;
+    // Telegram id - целое до 52 бит; всё остальное отклоняем до запроса в базу.
+    const userIdOf = (value: unknown) => (typeof value === 'string' && /^[1-9]\d{0,15}$/.test(value) ? Number(value) : null);
+
+    app.get('/api/profile', { onRequest: auth }, async (request, reply) => {
+      const profile = await stats.profile(request.tg!.user.id);
+      return profile ?? reply.code(404).send(notFound);
+    });
+
+    app.get('/api/leaderboard', { onRequest: auth }, async (request) => stats.leaderboard(request.tg!.user.id));
+
+    // Профиль соперника: только того, с кем вы уже встречались. Иначе - 404, как будто игрока нет.
+    app.get<{ Params: { id: string } }>('/api/players/:id', { onRequest: auth }, async (request, reply) => {
+      const id = userIdOf(request.params.id);
+      if (id === null) return reply.code(400).send({ error: 'bad_request' } satisfies ApiError);
+      const player = await stats.player(request.tg!.user.id, id);
+      return player ?? reply.code(404).send(notFound);
+    });
+
+    // Разбор: только участникам и только завершённой партии.
+    app.get<{ Params: { id: string } }>('/api/games/:id/review', { onRequest: auth }, async (request, reply) => {
+      if (!isGameId(request.params.id)) return reply.code(400).send({ error: 'bad_request' } satisfies ApiError);
+      const review = await stats.review(request.tg!.user.id, request.params.id);
+      return review ?? reply.code(404).send(notFound);
+    });
+  }
 
   return app;
 }

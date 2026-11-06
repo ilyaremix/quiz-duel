@@ -66,7 +66,16 @@ export function LobbyScreen({ game }: { game: GameView }) {
       <div className="relative grid grid-cols-2 gap-3">
         <PlayerCard id={me.userId} name={me.name} photoUrl={me.photoUrl} rating={me.rating} side="me" status={meStatus} />
         <div key={opp.userId} className="qd-arrive">
-          <PlayerCard id={opp.userId} name={opp.name} photoUrl={opp.photoUrl} rating={opp.rating} side="opp" status={oppStatus} />
+          <PlayerCard
+            id={opp.userId}
+            name={opp.name}
+            photoUrl={opp.photoUrl}
+            rating={opp.rating}
+            side="opp"
+            status={oppStatus}
+            avatarLabel={t('s12.oppAria', { opp: opp.name })}
+            onAvatar={() => gameActions.openOpp(opp.userId)}
+          />
         </div>
         <VsBadge />
       </div>

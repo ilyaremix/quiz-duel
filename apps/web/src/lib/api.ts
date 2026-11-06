@@ -4,7 +4,11 @@ import {
   type ConfigResponse,
   type ConsentRequest,
   type ConsentResponse,
+  type LeaderboardResponse,
   type MeResponse,
+  type PlayerResponse,
+  type ProfileResponse,
+  type ReviewResponse,
 } from '@quiz-duel/shared';
 
 export class ApiRequestError extends Error {
@@ -45,8 +49,26 @@ async function request<T>(path: string, initDataRaw?: string, body?: unknown): P
   return (await response.json()) as T;
 }
 
+/** initData текущей сессии: экраны после партии запрашивают данные без пробрасывания его через пропсы. */
+let sessionAuth = '';
+export function setSessionAuth(initDataRaw: string) {
+  sessionAuth = initDataRaw;
+}
+
 export const api = {
   config: () => request<ConfigResponse>('/api/config'),
   me: (initDataRaw: string) => request<MeResponse>('/api/me', initDataRaw),
   consents: (initDataRaw: string, body: ConsentRequest) => request<ConsentResponse>('/api/consents', initDataRaw, body),
+  profile: () => request<ProfileResponse>('/api/profile', sessionAuth),
+  leaderboard: () => request<LeaderboardResponse>('/api/leaderboard', sessionAuth),
+  player: (id: number) => request<PlayerResponse>(`/api/players/${id}`, sessionAuth),
+  review: (gameId: string) => request<ReviewResponse>(`/api/games/${encodeURIComponent(gameId)}/review`, sessionAuth),
+};
+
+/** Ключи кэша TanStack Query: после партии профиль и рейтинг сбрасываются. */
+export const queryKeys = {
+  profile: ['profile'] as const,
+  leaderboard: ['leaderboard'] as const,
+  player: (id: number) => ['player', id] as const,
+  review: (gameId: string) => ['review', gameId] as const,
 };

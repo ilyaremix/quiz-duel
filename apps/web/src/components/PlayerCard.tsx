@@ -19,15 +19,25 @@ interface PlayerCardProps {
   rating: number;
   side: 'me' | 'opp';
   status: PlayerStatus;
+  /** Тап по аватарке - профиль игрока (шторка, экран 17). */
+  onAvatar?: () => void;
+  avatarLabel?: string;
 }
 
 /** Карточка игрока в лобби: аватар с кольцом своей стороны, имя, рейтинг и статус. */
-export function PlayerCard({ id, name, photoUrl, rating, side, status }: PlayerCardProps) {
+export function PlayerCard({ id, name, photoUrl, rating, side, status, onAvatar, avatarLabel }: PlayerCardProps) {
   const { t, i18n } = useTranslation();
   const c = CHIPS[status];
+  const avatar = <Avatar id={id} name={name} photoUrl={photoUrl} size={64} ring={side} on="card" badge={c.badge} />;
   return (
     <div className="box-border flex min-h-[220px] w-full flex-col items-center gap-2.5 rounded-[24px] bg-section px-3.5 pt-[22px] pb-[18px] text-center shadow-[0_4px_0_var(--qd-lip)]">
-      <Avatar id={id} name={name} photoUrl={photoUrl} size={64} ring={side} on="card" badge={c.badge} />
+      {onAvatar ? (
+        <button type="button" aria-label={avatarLabel} onClick={onAvatar} className="qd-press cursor-pointer rounded-full border-0 bg-transparent p-0">
+          {avatar}
+        </button>
+      ) : (
+        avatar
+      )}
       <div className="mt-1 max-w-[calc(100%-12px)] truncate text-[17px] font-extrabold">{name}</div>
       <div className="qd-num flex items-center gap-1 text-[14px] font-extrabold text-gold-text">
         <Icon glyph="rating" size={14} stroke={2.5} />

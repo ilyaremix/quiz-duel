@@ -28,6 +28,8 @@ export const AnswerPayloadSchema = z.strictObject({
 
 export const ReadyPayloadSchema = z.strictObject({ gameId, ready: z.boolean() });
 
+export const RematchRespondPayloadSchema = z.strictObject({ gameId, accept: z.boolean() });
+
 export const ConsentRequestSchema = z.strictObject({
   docs: z
     .array(z.enum(CONSENT_DOCS as unknown as Tuple<ConsentDoc>))

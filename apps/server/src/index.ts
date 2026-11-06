@@ -1,6 +1,7 @@
 import { loadEnv, webOrigin } from './env.js';
 import { createPrisma } from './db.js';
 import { createPrismaUsersRepo } from './users.js';
+import { createPrismaStatsRepo } from './stats.js';
 import { buildApp } from './http/app.js';
 import { attachSocket, socketNotifier, type IoServer } from './socket.js';
 import { botInvites, configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
@@ -26,7 +27,7 @@ async function main() {
     botUsername = bot.botInfo.username;
   }
 
-  const app = await buildApp({ env, users, botUsername });
+  const app = await buildApp({ env, users, stats: createPrismaStatsRepo(prisma), botUsername });
 
   // Таблица questions всегда совпадает с data/questions.json из этой сборки
   // (до восстановления партий: их ответы ссылаются на вопросы).

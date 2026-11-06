@@ -9,6 +9,10 @@
  * - Каждое изменение сразу пишется в БД полным снимком; при старте сервера
  *   незавершённые партии поднимаются из базы и их таймеры идут от сохранённых дедлайнов.
  * - Клиенту уходит только снимок для него (viewFor): без верного ответа до раскрытия.
+ * - Конец рейтинговой дуэли: рейтинг, статистика и ачивки считаются одной транзакцией
+ *   (repo.settle) вместе с записью финального снимка. Не вышло - повтор через несколько секунд,
+ *   а после перезапуска сервера недосчитанные партии досчитываются при старте.
+ * - Реванш живёт в снимке завершённой партии; согласие создаёт новую партию той же пары.
  */
 import {
   ACTIVE_PHASES,
@@ -32,6 +36,7 @@ import type { GamesRepo } from './repo.js';
 import { newGameId } from './ids.js';
 import { secureRng, type Rng } from './rng.js';
 import { viewFor } from './view.js';
+import { losersOf, settleInput } from './settle.js';
 
 /** Куда менеджер отправляет снимки (сокет-слой). */
 export interface GameNotifier {
@@ -96,6 +101,9 @@ interface Entry {
   /** Что видели игроки - подгружается перед выбором вопросов. */
   seen: Map<string, number> | null;
   invite: Promise<PreparedInvite | null> | null;
+  /** Повтор подсчёта итогов после сбоя базы. */
+  settleTimer: unknown;
+  settleAttempts: number;
 }
 
 /** Лимит создания игр на игрока. */
@@ -104,6 +112,8 @@ export const CREATE_LIMIT = { max: 10, windowMs: 60_000 } as const;
 const KEEP_FINISHED_MS = 10 * 60_000;
 /** Запас, с которым переиспользуем подготовленное приглашение. */
 const INVITE_MARGIN_MS = 5 * 60_000;
+/** Повтор подсчёта итогов, если база не ответила: через 2, 4, 8… с, не больше 10 попыток. */
+const SETTLE_RETRY = { firstMs: 2_000, maxMs: 60_000, attempts: 10 } as const;
 
 const fail = (error: GameErrorCode, extra: Partial<GameFailure> = {}): GameFailure => ({ ok: false, error, ...extra });
 
@@ -120,6 +130,9 @@ function mapError(error: GameError): GameErrorCode {
     case 'wrong_question':
     case 'bad_option':
     case 'late':
+    case 'rematch_unavailable':
+    case 'opponent_left':
+    case 'rematch_closed':
       return error;
     default:
       return 'wrong_phase';
@@ -132,6 +145,13 @@ export class GameManager {
   private readonly current = new Map<number, string>();
   /** userId → число открытых подключений. */
   private readonly online = new Map<number, number>();
+  /**
+   * userId → завершённая партия, итоги которой игрок может сейчас смотреть.
+   * По ней реванш узнаёт, на связи ли соперник; уход на главную или в другую игру её снимает.
+   */
+  private readonly lastResults = new Map<number, string>();
+  /** Что видели игроки - для партии, которая создаётся прямо сейчас (реванш). */
+  private readonly pendingSeen = new Map<string, Map<string, number>>();
   private readonly cardCache = new Map<number, UserCard>();
   private readonly creates = new Map<number, number[]>();
   private readonly deps: MachineDeps;
@@ -155,7 +175,12 @@ export class GameManager {
         return q.correct;
       },
       pickQuestions: (state) =>
-        pickQuestions({ bank: d.bank, category: state.category, seen: this.games.get(state.id)?.seen ?? new Map(), rng }),
+        pickQuestions({
+          bank: d.bank,
+          category: state.category,
+          seen: this.games.get(state.id)?.seen ?? this.pendingSeen.get(state.id) ?? new Map(),
+          rng,
+        }),
     };
   }
 
@@ -177,6 +202,21 @@ export class GameManager {
         await this.apply(entry, machine.tick(entry.state, now, this.deps));
       });
     }
+    // Партии, закончившиеся прямо перед падением: итоги ещё не посчитаны - считаем сейчас.
+    const unsettled = await this.d.repo.loadUnsettled().catch((error: unknown) => {
+      this.d.log.error({ err: error }, 'unsettled games load failed');
+      return [] as GameState[];
+    });
+    for (const saved of unsettled) {
+      if (this.games.has(saved.id)) continue;
+      await this.refreshCards(machine.participants(saved).map((p) => p.userId));
+      const entry = this.adopt(saved);
+      this.scheduleEvict(entry);
+      await this.run(entry, async () => {
+        if (!(await this.settleNow(entry))) this.scheduleSettleRetry(entry);
+        else this.notifyAll(entry);
+      });
+    }
     return states.length;
   }
 
@@ -185,8 +225,10 @@ export class GameManager {
     for (const entry of this.games.values()) {
       if (entry.timer) this.clock.clearTimeout(entry.timer);
       if (entry.evictTimer) this.clock.clearTimeout(entry.evictTimer);
+      if (entry.settleTimer) this.clock.clearTimeout(entry.settleTimer);
       entry.timer = null;
       entry.evictTimer = null;
+      entry.settleTimer = null;
     }
   }
 
@@ -211,6 +253,8 @@ export class GameManager {
     await this.refreshCards([userId]);
     const gameId = this.current.get(userId) ?? null;
     if (count === 1 && gameId) await this.presence(userId, gameId, true);
+    const results = this.lastResults.get(userId);
+    if (count === 1 && results && results !== gameId) await this.presence(userId, results, true);
     return gameId;
   }
 
@@ -224,6 +268,9 @@ export class GameManager {
     this.online.delete(userId);
     const gameId = this.current.get(userId);
     if (gameId) await this.presence(userId, gameId, false);
+    // На итогах: соперник видит «Соперник вышел», реванш ему не предложить.
+    const results = this.lastResults.get(userId);
+    if (results && results !== gameId) await this.presence(userId, results, false);
   }
 
   isOnline(userId: number) {
@@ -342,13 +389,21 @@ export class GameManager {
     return this.mutate(userId, gameId, async (entry) => machine.cancel(entry.state, userId));
   }
 
-  /** «Выйти из лобби»: соперник освобождает место, создатель отменяет игру. */
+  /**
+   * «Выйти из лобби»: соперник освобождает место, создатель отменяет игру.
+   * С экрана итогов: игрок ушёл, реванш ему больше не предложить (ждущее предложение закрывается).
+   */
   async leave(userId: number, gameId: string): Promise<Result<object>> {
     const entry = await this.entry(gameId);
     if (!entry) return fail('not_found');
     return this.run(entry, async () => {
       const s = entry.state;
       if (!machine.playerOf(s, userId)) return fail('not_participant');
+      if (FINAL_PHASES.includes(s.phase)) {
+        if (this.lastResults.get(userId) === gameId) this.lastResults.delete(userId);
+        if (s.phase === 'finished') await this.apply(entry, machine.leaveResults(s, userId));
+        return { ok: true as const };
+      }
       const step = s.creator.userId === userId ? machine.cancel(s, userId) : machine.leaveLobby(s, userId, this.now());
       if (!step.ok) return fail(mapError(step.error));
       await this.apply(entry, step, { seatFreed: 'left' });
@@ -415,6 +470,116 @@ export class GameManager {
   }
 
   // -------------------------------------------------------------------------
+  // Реванш
+
+  /**
+   * «Реванш» на итогах. Соперник уже предложил - это согласие: оба нажали почти
+   * одновременно, а партия создаётся одна (операции партии идут строго по очереди).
+   */
+  async rematchOffer(userId: number, gameId: string): Promise<Result<{ game: GameView }>> {
+    const entry = await this.entry(gameId);
+    if (!entry) return fail('not_found');
+    return this.run(entry, async () => {
+      const s = entry.state;
+      if (!machine.playerOf(s, userId)) return fail('not_participant');
+      const r = s.rematch ?? null;
+      if (r?.status === 'offered' && r.by !== userId) return this.acceptRematch(entry, userId);
+      // Предлагать можно, только если соперник на итогах и на связи - сверяем с реальными подключениями.
+      const other = machine.otherOf(s, userId);
+      if (other && !this.isOnline(other.userId)) return fail('opponent_left');
+      const step = machine.offerRematch(s, userId, this.now());
+      if (!step.ok) return fail(mapError(step.error));
+      await this.apply(entry, step);
+      return { ok: true as const, game: this.viewOf(entry.state, userId)! };
+    });
+  }
+
+  async rematchRespond(userId: number, gameId: string, accept: boolean): Promise<Result<{ game: GameView }>> {
+    const entry = await this.entry(gameId);
+    if (!entry) return fail('not_found');
+    return this.run(entry, async () => {
+      if (!machine.playerOf(entry.state, userId)) return fail('not_participant');
+      if (accept) return this.acceptRematch(entry, userId);
+      const step = machine.respondRematch(entry.state, userId, false, this.now(), null);
+      if (!step.ok) return fail(mapError(step.error));
+      await this.apply(entry, step);
+      return { ok: true as const, game: this.viewOf(entry.state, userId)! };
+    });
+  }
+
+  async rematchCancel(userId: number, gameId: string): Promise<Result<{ game: GameView }>> {
+    return this.mutate(userId, gameId, async (entry) => machine.cancelRematch(entry.state, userId));
+  }
+
+  /**
+   * Согласие на реванш (уже внутри очереди старой партии): новая партия той же пары,
+   * в той же категории, с новыми вопросами и сразу с отсчётом - согласие обоих уже есть.
+   */
+  private async acceptRematch(entry: Entry, userId: number): Promise<Result<{ game: GameView }>> {
+    const s = entry.state;
+    const now = this.now();
+    const check = machine.respondRematch(s, userId, false, now, null);
+    if (!check.ok) return fail(mapError(check.error));
+    const players = machine.participants(s);
+
+    // Предложивший мог за эти секунды уйти или пропасть со связи.
+    if (players.some((p) => !this.isOnline(p.userId) || p.left)) {
+      await this.apply(entry, machine.rematchGone(s));
+      return fail('opponent_left');
+    }
+    // Кто-то уже в другой партии - в двух сразу играть нельзя.
+    for (const p of players) {
+      const busyId = this.current.get(p.userId);
+      if (busyId && busyId !== s.id && !FINAL_PHASES.includes(this.games.get(busyId)?.state.phase ?? 'finished')) {
+        return fail('busy', { busyGameId: busyId });
+      }
+    }
+    for (const p of players) {
+      const card = await this.card(p.userId);
+      if (!card) return fail('internal');
+      if (card.docsVersion !== this.d.docsVersion) return fail('consent_required');
+    }
+
+    let id: string | null = null;
+    for (let attempt = 0; attempt < 3 && !id; attempt++) {
+      const candidate = (this.d.newId ?? newGameId)();
+      if (!this.games.has(candidate) && !(await this.d.repo.load(candidate))) id = candidate;
+    }
+    if (!id) return fail('internal');
+
+    const ids = players.map((p) => p.userId);
+    const seen = await this.d.repo.seenQuestions(ids).catch((error: unknown) => {
+      this.d.log.warn({ err: error, gameId: s.id }, 'seen questions failed');
+      return new Map<string, number>();
+    });
+    this.pendingSeen.set(id, seen);
+    let next: GameState;
+    try {
+      next = machine.createGame(
+        { id, mode: 'rematch', category: s.category, creatorId: s.creator.userId, opponentId: s.opponent!.userId, startNow: true, rematchOf: s.id },
+        now,
+        this.deps,
+      );
+    } finally {
+      this.pendingSeen.delete(id);
+    }
+    try {
+      await this.d.repo.save(next, { startedAt: now });
+    } catch (error) {
+      this.d.log.error({ err: error, gameId: id }, 'rematch create failed');
+      return fail('internal');
+    }
+    const nextEntry = this.adopt(next);
+    nextEntry.seen = seen;
+    for (const p of ids) if (this.lastResults.get(p) === s.id) this.lastResults.delete(p);
+    this.schedule(nextEntry);
+    // Сначала новая партия (клиент сразу переключится на отсчёт), потом пометка в старой.
+    this.notifyAll(nextEntry);
+    await this.apply(entry, machine.respondRematch(s, userId, true, now, id));
+    return { ok: true as const, game: this.viewOf(entry.state, userId)! };
+  }
+
+  // -------------------------------------------------------------------------
   // Внутреннее
 
   /**
@@ -422,6 +587,13 @@ export class GameManager {
    * (своё - отменяется, чужое - место освобождается), а идущая дуэль даёт busy.
    */
   private async releaseOpenGame(userId: number, targetId: string | null): Promise<GameFailure | null> {
+    // Ушёл с итогов в другую игру - реванш ему больше не предложить.
+    const results = this.lastResults.get(userId);
+    if (results && results !== targetId) {
+      this.lastResults.delete(userId);
+      const done = this.games.get(results);
+      if (done) await this.run(done, () => this.apply(done, machine.leaveResults(done.state, userId)));
+    }
     const currentId = this.current.get(userId);
     if (!currentId || currentId === targetId) return null;
     const entry = this.games.get(currentId);
@@ -472,13 +644,31 @@ export class GameManager {
     if (raced) return raced;
     await this.refreshCards(machine.participants(saved).map((p) => p.userId));
     const entry = this.adopt(saved);
-    if (FINAL_PHASES.includes(saved.phase)) this.scheduleEvict(entry);
-    else this.schedule(entry);
+    if (FINAL_PHASES.includes(saved.phase)) {
+      this.scheduleEvict(entry);
+      // Снимок из базы помнит, кто был на связи в момент записи; реваншу нужно «сейчас».
+      if (saved.phase === 'finished') {
+        for (const p of machine.participants(saved)) {
+          const step = machine.setPresence(entry.state, p.userId, this.isOnline(p.userId), this.now());
+          if (step.ok) entry.state = step.state;
+        }
+        this.schedule(entry);
+      }
+    } else this.schedule(entry);
     return entry;
   }
 
   private adopt(state: GameState): Entry {
-    const entry: Entry = { state, queue: Promise.resolve(), timer: null, evictTimer: null, seen: null, invite: null };
+    const entry: Entry = {
+      state,
+      queue: Promise.resolve(),
+      timer: null,
+      evictTimer: null,
+      seen: null,
+      invite: null,
+      settleTimer: null,
+      settleAttempts: 0,
+    };
     this.games.set(state.id, entry);
     if (!FINAL_PHASES.includes(state.phase)) {
       for (const p of machine.participants(state)) this.current.set(p.userId, state.id);
@@ -505,10 +695,12 @@ export class GameManager {
     entry.state = step.state;
     const now = this.now();
     let startedAt: number | undefined;
+    let finished = false;
     const freed: number[] = [];
 
     for (const event of step.events) {
       if (event.type === 'countdown') startedAt = now;
+      if (event.type === 'finished') finished = true;
       if (event.type === 'seatFreed') {
         freed.push(event.userId);
         meta.seatFreed ??= 'timeout';
@@ -520,22 +712,73 @@ export class GameManager {
     if (FINAL_PHASES.includes(entry.state.phase)) {
       for (const p of machine.participants(entry.state)) {
         if (this.current.get(p.userId) === entry.state.id) this.current.delete(p.userId);
+        if (finished) this.lastResults.set(p.userId, entry.state.id);
       }
       this.scheduleEvict(entry);
     }
 
-    try {
-      await this.d.repo.save(entry.state, startedAt === undefined ? undefined : { startedAt });
-    } catch (error) {
-      // Память - источник правды; следующий снимок запишет полное состояние.
-      this.d.log.error({ err: error, gameId: entry.state.id }, 'game save failed');
+    // Конец рейтинговой дуэли: финальный снимок пишется в одной транзакции с итогами.
+    const settled = finished && machine.isRated(entry.state) && !entry.state.settlement ? await this.settleNow(entry) : null;
+    if (settled === false) this.scheduleSettleRetry(entry);
+    if (!settled) {
+      try {
+        await this.d.repo.save(entry.state, startedAt === undefined ? undefined : { startedAt });
+      } catch (error) {
+        // Память - источник правды; следующий снимок запишет полное состояние.
+        this.d.log.error({ err: error, gameId: entry.state.id }, 'game save failed');
+      }
     }
 
+    this.notifyAll(entry, meta);
+    this.schedule(entry);
+  }
+
+  private notifyAll(entry: Entry, meta: GameStateMeta = {}) {
     for (const p of machine.participants(entry.state)) {
       const view = this.viewOf(entry.state, p.userId);
       if (view) this.d.notify.state(p.userId, view, meta);
     }
-    this.schedule(entry);
+  }
+
+  /**
+   * Итоги рейтинговой дуэли (вызывать внутри очереди партии). true - посчитаны и записаны
+   * вместе со снимком, false - база не ответила (снимок тогда пишет обычный save,
+   * а settled_at остаётся пустым - повтор или перезапуск досчитают).
+   */
+  private async settleNow(entry: Entry): Promise<boolean> {
+    const state = entry.state;
+    if (state.settlement) return true;
+    try {
+      const previous = state.rematchOf
+        ? (this.games.get(state.rematchOf)?.state ?? (await this.d.repo.load(state.rematchOf)))
+        : null;
+      const input = settleInput(state, this.d.bank, losersOf(previous));
+      const settlement = await this.d.repo.settle(state, input, this.now());
+      // Пока ждали базу, состояние партии не менялось: все изменения идут через эту же очередь.
+      entry.state = machine.withSettlement(entry.state, settlement);
+      if (entry.settleTimer) this.clock.clearTimeout(entry.settleTimer);
+      entry.settleTimer = null;
+      // Рейтинг изменился - карточки игроков (лобби, профиль соперника) должны это показать.
+      await this.refreshCards(machine.participants(state).map((p) => p.userId));
+      return true;
+    } catch (error) {
+      this.d.log.error({ err: error, gameId: state.id }, 'game settle failed');
+      return false;
+    }
+  }
+
+  private scheduleSettleRetry(entry: Entry) {
+    if (this.stopped || entry.settleTimer || entry.settleAttempts >= SETTLE_RETRY.attempts) return;
+    const delay = Math.min(SETTLE_RETRY.maxMs, SETTLE_RETRY.firstMs * 2 ** entry.settleAttempts);
+    entry.settleAttempts += 1;
+    entry.settleTimer = this.clock.setTimeout(() => {
+      entry.settleTimer = null;
+      void this.run(entry, async () => {
+        if (entry.state.settlement) return;
+        if (await this.settleNow(entry)) this.notifyAll(entry);
+        else this.scheduleSettleRetry(entry);
+      });
+    }, delay);
   }
 
   private persistAnswer(state: GameState, event: Extract<GameEvent, { type: 'opponentAnswered' }>) {
@@ -562,7 +805,10 @@ export class GameManager {
   private scheduleEvict(entry: Entry) {
     if (entry.evictTimer || this.stopped) return;
     entry.evictTimer = this.clock.setTimeout(() => {
-      if (FINAL_PHASES.includes(entry.state.phase) && this.games.get(entry.state.id) === entry) this.games.delete(entry.state.id);
+      if (FINAL_PHASES.includes(entry.state.phase) && this.games.get(entry.state.id) === entry) {
+        this.games.delete(entry.state.id);
+        for (const [userId, id] of this.lastResults) if (id === entry.state.id) this.lastResults.delete(userId);
+      }
     }, KEEP_FINISHED_MS);
     // Таймер выгрузки не должен держать процесс (тесты, остановка сервера).
     (entry.evictTimer as { unref?: () => void } | null)?.unref?.();

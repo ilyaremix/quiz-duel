@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { GameView } from '@quiz-duel/shared';
+import { TIMINGS, type GameView, type RatingChange } from '@quiz-duel/shared';
 import { Avatar } from '../components/Avatar';
+import { RematchBanner, RematchWaitBanner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { Icon, type IconGlyph } from '../components/Icon';
 import { Notice } from '../components/Notice';
-import { useReducedMotion } from '../hooks/useMotion';
+import { useCountUp, useReducedMotion } from '../hooks/useMotion';
+import { formatClock, useServerNow } from '../hooks/useServerNow';
 import { formatNumber } from '../i18n';
-import { gameActions, showToast } from '../lib/game';
+import { formatSec, signed } from '../lib/format';
+import { gameActions, showToast, useGame } from '../lib/game';
 import { haptic } from '../lib/telegram';
 
 type Look = 'win' | 'loss' | 'draw' | 'techWin' | 'techLoss';
@@ -73,14 +76,50 @@ function Confetti() {
   );
 }
 
+const DELTA = {
+  up: { bg: 'var(--qd-correct-tint)', fg: 'var(--qd-correct-text)' },
+  down: { bg: 'var(--qd-wrong-tint)', fg: 'var(--qd-wrong-text)' },
+  flat: { bg: 'var(--tg-theme-section-bg-color)', fg: 'var(--tg-theme-text-color)' },
+} as const;
+
+const PILL = 'qd-num flex h-[34px] items-center rounded-[17px] px-3.5 text-[14px] font-extrabold';
+
+/** «Рейтинг 1 016 (+16)»: число досчитывает от прежнего значения за 900 мс. */
+function RatingPill({ rating }: { rating: RatingChange }) {
+  const { t, i18n } = useTranslation();
+  const reduced = useReducedMotion();
+  const [target, setTarget] = useState(rating.before);
+  useEffect(() => setTarget(rating.after), [rating.after]);
+  const shown = useCountUp(target, 900, reduced, 200);
+  const d = rating.delta > 0 ? DELTA.up : rating.delta < 0 ? DELTA.down : DELTA.flat;
+  return (
+    <span className={`qd-pop ${PILL}`} style={{ background: d.bg, color: d.fg }}>
+      {t('s12.rating', { r: formatNumber(shown, i18n.language), d: signed(rating.delta, i18n.language) })}
+    </span>
+  );
+}
+
+/** Что написать под неактивной кнопкой «Реванш». */
+function rematchNote(game: GameView, look: Look): { glyph: IconGlyph; key: string } | null {
+  const r = game.rematch;
+  if (!r) return null;
+  if (r.blocked === 'technical') return { glyph: 'offline', key: look === 'techWin' ? 's12.rmLeft' : 's12.rmTech' };
+  if (r.status === 'accepted') return { glyph: 'rematch', key: 's12.rmStarting' };
+  if (r.status === 'declined') return { glyph: 'close', key: r.byMe ? 's12.rmDeclined' : 's12.rmDeclinedMe' };
+  if (r.status === 'expired') return { glyph: 'clock', key: r.byMe ? 's12.rmExpired' : 's12.rmExpiredMe' };
+  if (r.status === 'left' || r.blocked === 'opponentLeft') return { glyph: 'offline', key: 's12.rmLeft' };
+  return null;
+}
+
 /**
- * Экран 12: итог партии из снимка сервера. Рейтинг «+16» и новые ачивки появятся
- * на этапах 7-8 вместе с их подсчётом на сервере; реванш, «Поделиться» и разбор - там же.
+ * Экран 12: итог партии из снимка сервера - рейтинг «+16», цифры партии и реванш (экран 13).
+ * Ачивки сервер уже считает, их показ и «Поделиться» - этап 8.
  */
 export function ResultScreen({ game }: { game: GameView }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const reduced = useReducedMotion();
+  const busy = useGame((st) => Boolean(st.pending.rematch));
   const result = game.result;
   const opp = game.opponent;
 
@@ -115,8 +154,10 @@ export function ResultScreen({ game }: { game: GameView }) {
         : t(`s12.sub.${look}`, { opp: opp?.name });
   const stats = result.stats;
   const soon = () => showToast('info', 'toast.soon');
-  // После технической победы соперник ушёл - реванш предложить некому.
-  const rematchOff = look === 'techWin';
+  const rm = game.rematch;
+  const offeredToMe = rm?.status === 'offered' && !rm.byMe;
+  const iOffered = rm?.status === 'offered' && rm.byMe;
+  const note = rematchNote(game, look);
 
   return (
     <main className="qd-screen qd-fade-in relative flex flex-col gap-3.5 overflow-hidden">
@@ -165,45 +206,83 @@ export function ResultScreen({ game }: { game: GameView }) {
               <span className="max-w-full truncate text-[13px] font-bold text-hint">{opp.name || t('score.opp')}</span>
               <span className="qd-num text-[22px] font-black text-opp-text">{formatNumber(opp.score, lang)}</span>
             </div>
-            <Avatar
-              id={opp.userId}
-              name={opp.name}
-              photoUrl={opp.photoUrl}
-              size={42}
-              ring="opp"
-              on="card"
-              badge={look === 'techWin' ? 'offline' : 'none'}
-            />
+            <button
+              type="button"
+              aria-label={t('s12.oppAria', { opp: opp.name })}
+              onClick={() => gameActions.openOpp(opp.userId)}
+              className="qd-press flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-px"
+            >
+              <Avatar
+                id={opp.userId}
+                name={opp.name}
+                photoUrl={opp.photoUrl}
+                size={42}
+                ring="opp"
+                on="card"
+                badge={look === 'techWin' || opp.left || !opp.online ? 'offline' : 'none'}
+              />
+            </button>
           </div>
         )}
       </section>
 
       <section className="qd-rise-2 flex flex-wrap justify-center gap-2">
-        <span className="qd-num flex h-[34px] items-center rounded-[17px] bg-section px-3.5 text-[14px] font-extrabold">
-          {t('s12.correct', { n: `${stats.correct}/${stats.played}` })}
-        </span>
-        <span className="qd-num flex h-[34px] items-center rounded-[17px] bg-section px-3.5 text-[14px] font-extrabold">
-          {t('s12.avg', { t: stats.avgMs === null ? '-' : t('units.sec', { t: formatNumber(Math.round(stats.avgMs / 100) / 10, lang) }) })}
-        </span>
+        {result.rating ? (
+          <RatingPill rating={result.rating} />
+        ) : (
+          <span className={`${PILL} bg-section text-hint`} aria-busy="true">
+            {t('s12.ratingPending')}
+          </span>
+        )}
+        <span className={`${PILL} bg-section`}>{t('s12.correct', { n: `${stats.correct}/${stats.played}` })}</span>
+        <span className={`${PILL} bg-section`}>{t('s12.avg', { t: stats.avgMs === null ? '-' : formatSec(stats.avgMs, t, lang) })}</span>
       </section>
 
       <div className="grow" />
 
       <div className="flex flex-col gap-3">
-        {rematchOff && (
-          <div role="status" className="qd-pop flex h-5 items-center justify-center gap-1.5 text-[14px] font-bold text-hint">
-            <Icon glyph="offline" size={16} stroke={2.5} />
-            {t('s12.rmLeft')}
+        {note && !iOffered && (
+          <div role="status" className="qd-pop flex min-h-5 items-center justify-center gap-1.5 text-center text-[14px] font-bold text-hint">
+            <Icon glyph={note.glyph} size={16} stroke={2.5} />
+            {t(note.key)}
           </div>
         )}
-        <Button disabled={rematchOff} icon={<Icon glyph="rematch" size={22} stroke={2.5} />} onClick={soon}>
-          {t('s12.rematch')}
-        </Button>
+        {iOffered && opp && rm.expiresAt ? (
+          <div className="qd-toast-in">
+            <RematchCountdown expiresAt={rm.expiresAt}>
+              {(left) => (
+                <RematchWaitBanner
+                  opp={{ id: opp.userId, name: opp.name, photoUrl: opp.photoUrl }}
+                  title={t('banner.rematchWait.title')}
+                  text={
+                    <>
+                      {t('banner.rematchWait.text')} · <span className="qd-num">{formatClock(left)}</span>
+                    </>
+                  }
+                  progressLabel={t('banner.rematchWait.progress')}
+                  left={left}
+                  total={TIMINGS.rematchMs}
+                  cancel={t('banner.rematchWait.action')}
+                  busy={busy}
+                  onCancel={() => void gameActions.rematchCancel()}
+                />
+              )}
+            </RematchCountdown>
+          </div>
+        ) : offeredToMe ? null : (
+          <Button
+            disabled={!rm?.canOffer || busy}
+            icon={<Icon glyph="rematch" size={22} stroke={2.5} />}
+            onClick={() => void gameActions.rematchOffer()}
+          >
+            {t('s12.rematch')}
+          </Button>
+        )}
         <Button variant="secondary" size="m" icon={<Icon glyph="share" size={20} stroke={2.5} />} onClick={soon}>
           {t('s12.share')}
         </Button>
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="ghost" size="s" onClick={soon}>
+          <Button variant="ghost" size="s" onClick={() => gameActions.openReview(game.id)}>
             {t('s12.review')}
           </Button>
           <Button variant="ghost" size="s" onClick={gameActions.goHome}>
@@ -211,8 +290,43 @@ export function ResultScreen({ game }: { game: GameView }) {
           </Button>
         </div>
       </div>
+
+      {offeredToMe && opp && rm.expiresAt && (
+        <div
+          className="qd-toast-in fixed inset-x-4 z-20 mx-auto max-w-[560px] rounded-[24px]"
+          style={{ bottom: 'calc(var(--tg-viewport-safe-area-inset-bottom, 0px) + 32px)', boxShadow: '0 -12px 32px rgba(10, 8, 16, 0.35)' }}
+        >
+          <RematchCountdown expiresAt={rm.expiresAt}>
+            {(left) => (
+              <RematchBanner
+                opp={{ id: opp.userId, name: opp.name, photoUrl: opp.photoUrl }}
+                title={t('banner.rematch.title', { opp: opp.name })}
+                text={
+                  <>
+                    {t(`cat.${game.category}.title`)} · <span className="qd-num">{formatClock(left)}</span>
+                  </>
+                }
+                progressLabel={t('banner.rematch.progress')}
+                left={left}
+                total={TIMINGS.rematchMs}
+                accept={t('banner.rematch.action')}
+                decline={t('banner.rematch.action2')}
+                busy={busy}
+                onAccept={() => void gameActions.rematchRespond(true)}
+                onDecline={() => void gameActions.rematchRespond(false)}
+              />
+            )}
+          </RematchCountdown>
+        </div>
+      )}
     </main>
   );
+}
+
+/** Остаток 30 с на ответ по часам сервера (обновляется 10 раз в секунду). */
+function RematchCountdown({ expiresAt, children }: { expiresAt: number; children: (leftMs: number) => ReactNode }) {
+  const now = useServerNow(100);
+  return <>{children(Math.max(0, expiresAt - now))}</>;
 }
 
 /** Никто не дал ни одного ответа - партия отменена без рейтинга. */
