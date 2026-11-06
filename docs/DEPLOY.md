@@ -72,6 +72,7 @@ cd /root/quiz-duel && git pull && bash deploy/install-autodeploy.sh
 ```
 
 Установщик сам записывает в `.env` Telegram id первого игрока из базы как получателя уведомлений.
+От пуша до работающей версии обычно проходит 1 минута на CI, до минуты ожидания таймера и время сборки.
 
 ```bash
 journalctl -u quiz-duel-deploy -f            # что делает автодеплой
