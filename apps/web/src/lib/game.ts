@@ -171,6 +171,11 @@ function applyView(view: GameView, meta?: GameStateMeta) {
     if (meta.seatFreed === 'timeout') showToast('info', 'toast.slotFreed');
     else showToast('info', 'toast.oppLeft', { opp: cur.opponent.name });
   }
+  // Игрок на главной, а партия отменилась (никто не ответил): плашке «Вернуться» вести некуда.
+  if (cur && get().hidden && (view.phase === 'cancelled' || view.phase === 'expired')) {
+    set({ game: null, hidden: false });
+    return;
+  }
   // Партия закончилась (или ещё не началась) - диалог выхода больше не нужен.
   const exitAsk = get().exitAsk && ACTIVE_PHASES.includes(view.phase);
   set({ game: view, exitAsk });
@@ -272,7 +277,7 @@ export const gameActions = {
     set({ linkEntry: Boolean(startGameId) });
     socket = createSocket(initDataRaw);
 
-    socket.on('session:hello', ({ currentGameId, serverNow: helloNow }) => {
+    socket.on('session:hello', ({ currentGameId, resultsGameId, serverNow: helloNow }) => {
       // Грубая поправка сразу (точность - задержка сети), точная - тремя замерами ниже.
       if (!clockMeasured) set({ clockOffset: helloNow - Date.now() });
       set({ conn: 'online' });
@@ -290,6 +295,9 @@ export const gameActions = {
         void gameActions.resync(cur.id);
       } else if (currentGameId) {
         void gameActions.resync(currentGameId);
+      } else if (first && resultsGameId) {
+        // Закрыли приложение посреди дуэли, а она закончилась без нас: сразу итоги, а не главная.
+        void gameActions.resync(resultsGameId);
       }
     });
     socket.on('game:state', (view, meta) => applyView(view, meta));

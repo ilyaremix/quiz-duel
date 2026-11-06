@@ -149,7 +149,9 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
     });
 
     const hello = (currentGameId: string | null) => {
-      if (socket.connected) socket.emit('session:hello', { userId, serverNow: now(), currentGameId });
+      if (!socket.connected) return;
+      const resultsGameId = currentGameId ? null : (games?.resultsOf(userId) ?? null);
+      socket.emit('session:hello', { userId, serverNow: now(), currentGameId, resultsGameId });
     };
     // connect() сразу считает новое подключение, поэтому закрытие старых ниже
     // не делает игрока «офлайн» даже на мгновение.

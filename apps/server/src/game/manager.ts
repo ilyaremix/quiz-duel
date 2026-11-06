@@ -150,6 +150,8 @@ export class GameManager {
    * По ней реванш узнаёт, на связи ли соперник; уход на главную или в другую игру её снимает.
    */
   private readonly lastResults = new Map<number, string>();
+  /** userId → партия, которая закончилась, пока игрок был не в сети: при входе он увидит её итоги. */
+  private readonly missedResults = new Map<number, string>();
   /** Что видели игроки - для партии, которая создаётся прямо сейчас (реванш). */
   private readonly pendingSeen = new Map<string, Map<string, number>>();
   private readonly cardCache = new Map<number, UserCard>();
@@ -281,6 +283,17 @@ export class GameManager {
     return this.current.get(userId) ?? null;
   }
 
+  /**
+   * Завершённая партия, итоги которой игрок ещё не закрыл («На главную», другая игра).
+   * Закрыл приложение посреди дуэли, а она закончилась без него - при входе он увидит итоги.
+   */
+  resultsOf(userId: number): string | null {
+    const id = this.missedResults.get(userId);
+    const entry = id ? this.games.get(id) : undefined;
+    if (!id || !entry || entry.state.phase !== 'finished' || this.lastResults.get(userId) !== id) return null;
+    return machine.playerOf(entry.state, userId)?.left ? null : id;
+  }
+
   private async presence(userId: number, gameId: string, online: boolean) {
     const entry = this.games.get(gameId);
     if (!entry) return;
@@ -367,6 +380,8 @@ export class GameManager {
     const entry = await this.entry(id);
     const view = entry ? this.viewOf(entry.state, userId) : null;
     if (!view) return gameId ? fail(entry ? 'not_participant' : 'not_found') : { ok: true, game: null };
+    // Итоги, пропущенные без связи, игрок увидел.
+    if (this.missedResults.get(userId) === id) this.missedResults.delete(userId);
     return { ok: true, game: view };
   }
 
@@ -713,6 +728,7 @@ export class GameManager {
       for (const p of machine.participants(entry.state)) {
         if (this.current.get(p.userId) === entry.state.id) this.current.delete(p.userId);
         if (finished) this.lastResults.set(p.userId, entry.state.id);
+        if (finished && !this.isOnline(p.userId)) this.missedResults.set(p.userId, entry.state.id);
       }
       this.scheduleEvict(entry);
     }
@@ -808,6 +824,7 @@ export class GameManager {
       if (FINAL_PHASES.includes(entry.state.phase) && this.games.get(entry.state.id) === entry) {
         this.games.delete(entry.state.id);
         for (const [userId, id] of this.lastResults) if (id === entry.state.id) this.lastResults.delete(userId);
+        for (const [userId, id] of this.missedResults) if (id === entry.state.id) this.missedResults.delete(userId);
       }
     }, KEEP_FINISHED_MS);
     // Таймер выгрузки не должен держать процесс (тесты, остановка сервера).

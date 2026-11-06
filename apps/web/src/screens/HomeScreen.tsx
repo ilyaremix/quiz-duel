@@ -48,6 +48,8 @@ export function HomeScreen({ me }: { me: MeResponse }) {
   const rating = stats?.rating ?? me.rating;
 
   const resume = game && hidden;
+  // Пока игрок был на главной, партия закончилась: плашка ведёт на итоги.
+  const ended = game?.phase === 'finished';
   const qn = game?.question ? game.question.index + 1 : 1;
 
   return (
@@ -83,15 +85,19 @@ export function HomeScreen({ me }: { me: MeResponse }) {
 
         {resume && (
           <ResumeBanner
-            title={t('banner.resume.title')}
+            title={ended ? t('banner.resume.endedTitle') : t('banner.resume.title')}
             text={
-              game.opponent
-                ? ['waiting', 'lobby'].includes(game.phase)
-                  ? t('banner.resume.textLobby', { opp: game.opponent.name })
-                  : t('banner.resume.text', { opp: game.opponent.name, n: qn })
-                : ''
+              ended
+                ? game.result
+                  ? t(`banner.resume.ended.${game.result.outcome}`, { me: formatNumber(game.me.score, i18n.language), opp: formatNumber(game.opponent?.score ?? 0, i18n.language) })
+                  : ''
+                : game.opponent
+                  ? ['waiting', 'lobby'].includes(game.phase)
+                    ? t('banner.resume.textLobby', { opp: game.opponent.name })
+                    : t('banner.resume.text', { opp: game.opponent.name, n: qn })
+                  : ''
             }
-            action={t('banner.resume.action')}
+            action={ended ? t('banner.resume.endedAction') : t('banner.resume.action')}
             onAction={gameActions.returnToGame}
           />
         )}

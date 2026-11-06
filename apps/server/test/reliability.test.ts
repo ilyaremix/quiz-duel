@@ -234,11 +234,17 @@ describe('Этап 6: надёжность с двумя настоящими к
     const won = await stateWhere(a, 'итоги', (v) => v.phase === 'finished');
     expect(won.result).toMatchObject({ outcome: 'win', technical: true, reason: 'abandoned', leaverId: mark.id });
 
-    // Вернулся поздно: партии уже нет в «текущих», по ссылке - его техническое поражение.
+    // Вернулся поздно: партии уже нет в «текущих», но приветствие ведёт на её итоги (даже без ссылки).
     const b2 = await player(w, mark);
-    expect(b2.hellos[0]!.currentGameId).toBeNull();
+    expect(b2.hellos[0]).toMatchObject({ currentGameId: null, resultsGameId: gameId });
     const lost = await sync(b2, gameId);
     expect(lost.result).toMatchObject({ outcome: 'loss', technical: true, reason: 'abandoned' });
+
+    // Ушёл с итогов («На главную») - при следующем входе уже главная.
+    await b2.socket.emitWithAck('game:leave', { gameId });
+    b2.socket.disconnect();
+    const b3 = await player(w, mark);
+    expect(b3.hellos[0]).toMatchObject({ currentGameId: null, resultsGameId: null });
   }, 15_000);
 
   it('«Игра открыта на другом устройстве» посреди партии: соперник не видит ухода, ответ сохранён', async () => {

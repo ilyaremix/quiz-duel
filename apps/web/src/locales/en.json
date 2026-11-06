@@ -84,7 +84,14 @@
       "title": "You have a game in progress",
       "text": "{{opp}} is waiting · question {{n}}/10",
       "textLobby": "{{opp}} is waiting in the lobby",
-      "action": "Return"
+      "action": "Return",
+      "endedTitle": "Your game is over",
+      "endedAction": "Results",
+      "ended": {
+        "win": "Win · {{me}} : {{opp}}",
+        "loss": "Loss · {{me}} : {{opp}}",
+        "draw": "Draw · {{me}} : {{opp}}"
+      }
     },
     "offline": {
       "title": "Reconnecting…"
