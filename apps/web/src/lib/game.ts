@@ -133,6 +133,24 @@ const LINK_ERRORS: Partial<Record<GameErrorCode, LinkErrorKind>> = {
 
 const isFinal = (view: GameView) => FINAL_PHASES.includes(view.phase);
 
+/** Функция SDK доступна в этом клиенте Telegram (вне Telegram проверка сама бросает ошибку). */
+const can = (fn: { isAvailable: () => boolean }) => {
+  try {
+    return fn.isAvailable();
+  } catch {
+    return false;
+  }
+};
+
+/** Копирование: через Telegram, а вне его (или в старом клиенте) - через браузер. */
+async function copyText(text: string) {
+  try {
+    await copyTextToClipboard(text);
+  } catch {
+    await navigator.clipboard.writeText(text);
+  }
+}
+
 // ---------------------------------------------------------------------------
 
 let socket: GameSocket | null = null;
@@ -433,13 +451,41 @@ export const gameActions = {
     return invite;
   },
 
+  /** «Поделиться результатом»: карточка бота через shareMessage, иначе - «Поделиться ссылкой» с текстом. */
+  async shareResult(fallbackText: string) {
+    const g = get().game;
+    if (!g || g.phase !== 'finished') return;
+    const res = await request('game:share', { gameId: g.id }, 'share');
+    if (!res.ok) return showToast('error', 'toast.connection');
+    if (res.preparedMessageId && can(shareMessage)) {
+      try {
+        await shareMessage(res.preparedMessageId);
+        showToast('success', 'toast.shared');
+      } catch {
+        // Закрыл окно выбора чата - не ошибка.
+      }
+      return;
+    }
+    try {
+      if (!can(shareURL)) throw new Error('shareURL unavailable');
+      shareURL(res.link, fallbackText);
+    } catch {
+      try {
+        await copyText(`${fallbackText}\n${res.link}`);
+        showToast('success', 'toast.copiedResult');
+      } catch {
+        showToast('error', 'toast.error');
+      }
+    }
+  },
+
   /** «Пригласить»: карточка бота через shareMessage, иначе - стандартное «Поделиться ссылкой». */
   async shareInvite(shareText: string) {
     const g = get().game;
     if (!g) return;
     const invite = get().invite?.gameId === g.id ? get().invite : await gameActions.prefetchInvite(g.id);
     if (!invite) return showToast('error', 'toast.error');
-    if (invite.preparedMessageId && shareMessage.isAvailable()) {
+    if (invite.preparedMessageId && can(shareMessage)) {
       try {
         await shareMessage(invite.preparedMessageId);
         showToast('success', 'toast.invited');
@@ -448,8 +494,12 @@ export const gameActions = {
       }
       return;
     }
-    if (shareURL.isAvailable()) shareURL(invite.link, shareText);
-    else await gameActions.copyLink();
+    try {
+      if (!can(shareURL)) throw new Error('shareURL unavailable');
+      shareURL(invite.link, shareText);
+    } catch {
+      await gameActions.copyLink();
+    }
   },
 
   async copyLink() {
@@ -457,7 +507,7 @@ export const gameActions = {
     const invite = g && (get().invite?.gameId === g.id ? get().invite : await gameActions.prefetchInvite(g.id));
     if (!invite) return showToast('error', 'toast.error');
     try {
-      await copyTextToClipboard(invite.link);
+      await copyText(invite.link);
       showToast('success', 'toast.copied');
     } catch {
       showToast('error', 'toast.error');
@@ -662,7 +712,7 @@ export const gameActions = {
 
   /** Документы в Telegraph: Telegram открывает их через Instant View, не выходя из приложения. */
   openDoc(url: string) {
-    if (openLink.isAvailable()) openLink(url, { tryInstantView: true });
+    if (can(openLink)) openLink(url, { tryInstantView: true });
     else window.open(url, '_blank', 'noopener');
   },
 };

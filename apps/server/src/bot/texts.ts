@@ -126,3 +126,19 @@ export const alertTexts: Record<Lang, { render: (a: GameAlert) => { text: string
     },
   },
 };
+
+/** Карточка «Поделиться результатом». Язык - того, кто делится. Нейтрально, без склонения имён. */
+export const shareTexts: Record<Lang, { title: string; play: string; body: (outcome: 'win' | 'loss' | 'draw', me: number, opp: number, opponent: string) => string }> = {
+  ru: {
+    title: 'Мой результат в Quiz Duel',
+    play: 'Сыграть со мной',
+    body: (o, me, opp, name) =>
+      `${o === 'win' ? '🏆 Победа' : o === 'loss' ? '😤 Поражение' : '🤝 Ничья'} <b>${ru(me)} : ${ru(opp)}</b> в Quiz Duel${name ? `\nСоперник: ${esc(name)}` : ''}\n\nВикторина 1 на 1: 10 вопросов, 15 секунд на каждый. Сыграем?`,
+  },
+  en: {
+    title: 'My Quiz Duel result',
+    play: 'Play with me',
+    body: (o, me, opp, name) =>
+      `${o === 'win' ? '🏆 Victory' : o === 'loss' ? '😤 Defeat' : '🤝 Draw'} <b>${en(me)} : ${en(opp)}</b> in Quiz Duel${name ? `\nOpponent: ${esc(name)}` : ''}\n\nA 1v1 quiz: 10 questions, 15 seconds each. Up for a game?`,
+  },
+};

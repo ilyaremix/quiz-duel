@@ -26,6 +26,7 @@ import {
   type GameView,
   type AnswerResult,
   type InviteResult,
+  type ShareResult,
   type Outcome,
   type Reaction,
   type ReactionEvent,
@@ -54,6 +55,20 @@ export interface PreparedInvite {
   id: string;
   /** До какого времени Telegram хранит подготовленное сообщение (мс). */
   expiresAt: number;
+}
+
+/** Бот: готовит карточку с результатом дуэли для shareMessage. */
+export interface ResultSharer {
+  prepare(input: {
+    userId: number;
+    gameId: string;
+    lang: UserCard['lang'];
+    outcome: Outcome;
+    me: number;
+    opp: number;
+    opponent: string;
+    link: string;
+  }): Promise<PreparedInvite | null>;
 }
 
 /**
@@ -122,6 +137,8 @@ export interface ManagerDeps {
   invites?: InviteMaker;
   /** Уведомления от бота тем, кого нет в приложении (этап 8). */
   alerts?: GameAlerts;
+  /** Карточка «Поделиться результатом» (этап 8). */
+  sharer?: ResultSharer;
   /** Часы и таймеры (по умолчанию настоящие). */
   clock?: ServerClock;
   /** Только часы (тесты менеджера с фейковыми таймерами vitest). */
@@ -145,6 +162,8 @@ interface Entry {
   settleAttempts: number;
   /** Какие уведомления по этой партии уже отправлены (kind:userId) - каждое не больше одного раза. */
   alerted: Set<string>;
+  /** Подготовленные карточки результата по игрокам (Telegram хранит их сутки). */
+  shared: Map<number, Promise<PreparedInvite | null>>;
 }
 
 /** Лимит создания игр на игрока. */
@@ -611,6 +630,47 @@ export class GameManager {
   }
 
   /**
+   * «Поделиться результатом»: карточка в чат с итогом дуэли глазами этого игрока и кнопкой
+   * «Сыграть со мной» (открывает мини-апп). Состояние партии не меняет - реванш остаётся доступен.
+   */
+  async share(userId: number, gameId: string): Promise<Result<ShareResult>> {
+    const entry = await this.entry(gameId);
+    if (!entry) return fail('not_found');
+    const s = entry.state;
+    const me = machine.playerOf(s, userId);
+    if (!me) return fail('not_participant');
+    const opp = machine.otherOf(s, userId);
+    const outcome = machine.outcomeFor(s, userId);
+    if (s.phase !== 'finished' || s.mode === 'solo' || !opp || !outcome) return fail('wrong_phase');
+    const link = this.d.appUrl;
+    const sharer = this.d.sharer;
+    if (!sharer) return { ok: true, preparedMessageId: null, link };
+
+    const cached = entry.shared.get(userId);
+    const known = cached ? await cached : null;
+    if (known && known.expiresAt - this.now() > INVITE_MARGIN_MS) return { ok: true, preparedMessageId: known.id, link };
+    const job = (async () => {
+      const card = await this.card(userId);
+      return sharer.prepare({
+        userId,
+        gameId,
+        lang: card?.lang ?? 'en',
+        outcome,
+        me: me.score,
+        opp: opp.score,
+        opponent: this.cardCache.get(opp.userId)?.name ?? '',
+        link,
+      });
+    })().catch((error: unknown) => {
+      this.d.log.warn({ err: error, gameId }, 'prepared result failed');
+      return null;
+    });
+    entry.shared.set(userId, job);
+    const prepared = await job;
+    return { ok: true, preparedMessageId: prepared?.id ?? null, link };
+  }
+
+  /**
    * Реакция сопернику. Состояние партии не меняет и в базу не пишется: это мгновенное
    * сообщение обоим участникам. Только в лобби, на раскрытии и на итогах; не чаще раза в 2 с.
    */
@@ -829,6 +889,7 @@ export class GameManager {
       settleTimer: null,
       settleAttempts: 0,
       alerted: new Set(),
+      shared: new Map(),
     };
     this.games.set(state.id, entry);
     if (!FINAL_PHASES.includes(state.phase)) {

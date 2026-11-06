@@ -167,7 +167,7 @@ export function ResultScreen({ game }: { game: GameView }) {
         ? t(iLeft && result.reason === 'abandoned' ? 's12.sub.techLossAbandoned' : 's12.sub.techLoss')
         : t(`s12.sub.${look}`, { opp: opp?.name });
   const stats = result.stats;
-  const soon = () => showToast('info', 'toast.soon');
+  const sharing = useGame((st) => Boolean(st.pending.share));
   const rm = game.rematch;
   const offeredToMe = rm?.status === 'offered' && !rm.byMe;
   const iOffered = rm?.status === 'offered' && rm.byMe;
@@ -303,7 +303,17 @@ export function ResultScreen({ game }: { game: GameView }) {
             {t('s12.rematch')}
           </Button>
         )}
-        <Button variant="secondary" size="m" icon={<Icon glyph="share" size={20} stroke={2.5} />} onClick={soon}>
+        <Button
+          variant="secondary"
+          size="m"
+          disabled={sharing}
+          icon={<Icon glyph="share" size={20} stroke={2.5} />}
+          onClick={() =>
+            void gameActions.shareResult(
+              t(`s12.shareText.${result.outcome}`, { me: formatNumber(game.me.score, lang), opp: formatNumber(opp?.score ?? 0, lang) }),
+            )
+          }
+        >
           {t('s12.share')}
         </Button>
         <div className="grid grid-cols-2 gap-2">

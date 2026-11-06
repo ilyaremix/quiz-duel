@@ -79,7 +79,9 @@
     "rmGone": "Your opponent has already left",
     "loadFailed": "Couldn’t load - check your connection",
     "ach": "New achievement: {{name}}",
-    "achMany": "New achievements: {{name}} and {{n}} more"
+    "achMany": "New achievements: {{name}} and {{n}} more",
+    "shared": "Result card sent to the chat",
+    "copiedResult": "Result copied"
   },
   "banner": {
     "resume": {
@@ -366,7 +368,12 @@
     "rmExpired": "Your opponent didn’t answer the rematch",
     "rmExpiredMe": "Time to respond is up",
     "rmTech": "No rematch after leaving the game",
-    "rmStarting": "Starting the rematch…"
+    "rmStarting": "Starting the rematch…",
+    "shareText": {
+      "win": "Victory {{me}} : {{opp}} in Quiz Duel! Up for a game?",
+      "loss": "Defeat {{me}} : {{opp}} in Quiz Duel. Up for a game?",
+      "draw": "Draw {{me}} : {{opp}} in Quiz Duel. Up for a game?"
+    }
   },
   "when": {
     "today": "today",

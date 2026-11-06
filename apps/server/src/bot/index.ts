@@ -1,8 +1,8 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import type { FastifyBaseLogger } from 'fastify';
 import { langFromTelegram, type GameCategory, type Lang } from '@quiz-duel/shared';
-import { botTexts, inviteTexts } from './texts.js';
-import type { GameManager, InviteMaker } from '../game/manager.js';
+import { botTexts, inviteTexts, shareTexts } from './texts.js';
+import type { GameManager, InviteMaker, ResultSharer } from '../game/manager.js';
 import type { UsersRepo } from '../users.js';
 import type { TelegramUser } from '../auth/initData.js';
 
@@ -141,6 +141,35 @@ export function botInvites(bot: QuizBot): InviteMaker {
         inviteArticle({ gameId, link, category, lang, creatorName }),
         { allow_user_chats: true, allow_group_chats: true, allow_channel_chats: true },
       );
+      return { id: prepared.id, expiresAt: prepared.expiration_date * 1000 };
+    },
+  };
+}
+
+/** Карточка результата для shareMessage: «Победа 8 420 : 6 100» и кнопка «Сыграть со мной». */
+export function resultArticle(input: { gameId: string; lang: Lang; outcome: 'win' | 'loss' | 'draw'; me: number; opp: number; opponent: string; link: string }) {
+  const t = shareTexts[input.lang];
+  return {
+    type: 'article' as const,
+    id: `r_${input.gameId}`,
+    title: t.title,
+    input_message_content: {
+      message_text: t.body(input.outcome, input.me, input.opp, input.opponent),
+      parse_mode: 'HTML' as const,
+      link_preview_options: { is_disabled: true },
+    },
+    reply_markup: new InlineKeyboard().url(t.play, input.link),
+  };
+}
+
+export function botResults(bot: QuizBot): ResultSharer {
+  return {
+    async prepare({ userId, ...rest }) {
+      const prepared = await bot.api.savePreparedInlineMessage(userId, resultArticle(rest), {
+        allow_user_chats: true,
+        allow_group_chats: true,
+        allow_channel_chats: true,
+      });
       return { id: prepared.id, expiresAt: prepared.expiration_date * 1000 };
     },
   };

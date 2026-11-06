@@ -4,7 +4,7 @@ import { createPrismaUsersRepo } from './users.js';
 import { createPrismaStatsRepo } from './stats.js';
 import { buildApp } from './http/app.js';
 import { attachSocket, socketNotifier, type IoServer } from './socket.js';
-import { attachInline, botInvites, configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
+import { attachInline, botInvites, botResults, configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
 import { botAlerts } from './bot/alerts.js';
 import { createPrismaGamesRepo } from './game/repo.js';
 import { GameManager, realClock } from './game/manager.js';
@@ -47,6 +47,7 @@ async function main() {
     log: app.log,
     invites: bot ? botInvites(bot) : undefined,
     alerts: bot ? botAlerts(bot.api, users, appUrl, app.log) : undefined,
+    sharer: bot ? botResults(bot) : undefined,
     clock: realClock,
   });
   // Партии, шедшие до перезапуска, поднимаются из базы; просроченные фазы закрываются сразу.
