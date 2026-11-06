@@ -7,6 +7,7 @@ import { RematchBanner, RematchWaitBanner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { Icon, type IconGlyph } from '../components/Icon';
 import { Notice } from '../components/Notice';
+import { ReactionBubble, Reactions } from '../components/Reactions';
 import { useCountUp, useReducedMotion } from '../hooks/useMotion';
 import { formatClock, useServerNow } from '../hooks/useServerNow';
 import { formatNumber } from '../i18n';
@@ -203,8 +204,10 @@ export function ResultScreen({ game }: { game: GameView }) {
 
       <section
         aria-label={t('s12.scoreAria')}
-        className="qd-rise-2 flex items-center gap-2 rounded-[24px] bg-section px-4 py-3.5 shadow-[0_4px_0_var(--qd-lip)]"
+        className="qd-rise-2 relative flex items-center gap-2 rounded-[24px] bg-section px-4 py-3.5 shadow-[0_4px_0_var(--qd-lip)]"
       >
+        <ReactionBubble userId={game.me.userId} side="me" className="top-[-22px] left-3" />
+        {opp && <ReactionBubble userId={opp.userId} side="opp" className="top-[-22px] right-3" />}
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <Avatar id={game.me.userId} name={game.me.name} photoUrl={game.me.photoUrl} size={42} ring="me" on="card" />
           <div className="flex flex-col">
@@ -256,6 +259,9 @@ export function ResultScreen({ game }: { game: GameView }) {
           <Achievement code={fresh[0]} state="new" />
         </div>
       )}
+
+      {/* Реакции сопернику, пока он на итогах. */}
+      {opp && !opp.left && opp.online && <Reactions size="s" />}
 
       <div className="grow" />
 

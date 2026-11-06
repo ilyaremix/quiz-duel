@@ -16,6 +16,8 @@ import {
   type GameStateMeta,
   type GameView,
   type PlayerProfile,
+  type Reaction,
+  REACTION_COOLDOWN_MS,
 } from '@quiz-duel/shared';
 import { createSocket, type GameSocket } from './socket';
 import { haptic, onResume } from './telegram';
@@ -73,6 +75,10 @@ interface GameStore {
   oppSheet: number | null;
   /** Открыт экран ачивок (из профиля). */
   achievements: boolean;
+  /** Последняя реакция каждого игрока текущей партии (пузырь у аватарки). */
+  bubbles: Record<number, { id: number; emoji: Reaction; at: number }>;
+  /** До какого времени строка реакций неактивна (кулдаун 2 с). */
+  reactUntil: number;
 }
 
 export type Tab = 'home' | 'rating' | 'profile';
@@ -95,6 +101,8 @@ export const useGame = create<GameStore>(() => ({
   review: null,
   oppSheet: null,
   achievements: false,
+  bubbles: {},
+  reactUntil: 0,
 }));
 
 const set = useGame.setState;
@@ -104,6 +112,7 @@ const get = useGame.getState;
 export const serverNow = () => Date.now() + get().clockOffset;
 
 let toastSeq = 0;
+let bubbleSeq = 0;
 export function showToast(kind: ToastKind, key: string, vars?: Record<string, string>, glyph?: IconGlyph) {
   set({ toast: { id: ++toastSeq, kind, key, vars, glyph } });
 }
@@ -306,6 +315,10 @@ export const gameActions = {
       }
     });
     socket.on('game:state', (view, meta) => applyView(view, meta));
+    socket.on('game:reaction', ({ gameId, userId, emoji }) => {
+      if (get().game?.id !== gameId) return;
+      set((st) => ({ bubbles: { ...st.bubbles, [userId]: { id: ++bubbleSeq, emoji, at: Date.now() } } }));
+    });
     socket.on('session:replaced', () => set({ conn: 'replaced' }));
     socket.on('disconnect', () => {
       if (get().conn !== 'replaced') set({ conn: 'reconnecting' });
@@ -590,6 +603,16 @@ export const gameActions = {
     set({ picked: { gameId: g.id, index: q.index, position } });
     haptic.select();
     await sendAnswer(g.id, q.index, position);
+  },
+
+  /** Реакция сопернику. Кнопки сразу гаснут на 2 с; если сервер отказал - снова активны. */
+  async react(emoji: Reaction) {
+    const g = get().game;
+    if (!g || get().reactUntil > Date.now()) return;
+    set({ reactUntil: Date.now() + REACTION_COOLDOWN_MS });
+    haptic.select();
+    const res = await request('game:react', { gameId: g.id, emoji }, 'react');
+    if (!res.ok && res.error !== 'rate_limited') set({ reactUntil: 0 });
   },
 
   openExit() {

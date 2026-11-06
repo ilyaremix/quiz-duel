@@ -6,6 +6,7 @@ import {
   CreateGamePayloadSchema,
   GameIdPayloadSchema,
   ReadyPayloadSchema,
+  ReactPayloadSchema,
   RematchRespondPayloadSchema,
   SOCKET_PATH,
   SyncPayloadSchema,
@@ -54,6 +55,9 @@ export function socketNotifier(getIo: () => IoServer | null): GameNotifier {
   return {
     state(userId, view, meta) {
       getIo()?.to(userRoom(userId)).emit('game:state', view, meta);
+    },
+    reaction(userId, event) {
+      getIo()?.to(userRoom(userId)).emit('game:reaction', event);
     },
   };
 }
@@ -138,6 +142,7 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
       on('game:cancel', GameIdPayloadSchema, (p) => games.cancel(userId, p.gameId));
       on('game:leave', GameIdPayloadSchema, (p) => games.leave(userId, p.gameId));
       on('game:answer', AnswerPayloadSchema, (p) => games.answer(userId, p.gameId, p.questionIndex, p.optionIndex));
+      on('game:react', ReactPayloadSchema, (p) => games.react(userId, p.gameId, p.emoji));
       on('game:forfeit', GameIdPayloadSchema, (p) => games.forfeit(userId, p.gameId));
       on('rematch:offer', GameIdPayloadSchema, (p) => games.rematchOffer(userId, p.gameId));
       on('rematch:respond', RematchRespondPayloadSchema, (p) => games.rematchRespond(userId, p.gameId, p.accept));

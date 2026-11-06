@@ -5,6 +5,7 @@ import { Button } from '../components/Button';
 import { CategoryChip } from '../components/CategoryTile';
 import { Icon } from '../components/Icon';
 import { PlayerCard, type PlayerStatus } from '../components/PlayerCard';
+import { ReactionBubble, Reactions } from '../components/Reactions';
 import { formatClock, useServerNow } from '../hooks/useServerNow';
 import { gameActions, useGame } from '../lib/game';
 import { VsBadge } from './LobbyWaitScreen';
@@ -78,7 +79,14 @@ export function LobbyScreen({ game }: { game: GameView }) {
           />
         </div>
         <VsBadge />
+        <ReactionBubble userId={me.userId} side="me" className="top-[-14px] left-[18px]" />
+        <ReactionBubble userId={opp.userId} side="opp" className="top-[-14px] right-[18px]" />
       </div>
+
+      <section className="flex flex-col gap-2.5">
+        <span className="text-center text-[13px] font-extrabold text-hint">{t('s06.tease')}</span>
+        <Reactions />
+      </section>
 
       <div className="grow" />
 

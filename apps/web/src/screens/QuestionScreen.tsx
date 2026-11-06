@@ -6,6 +6,7 @@ import { Avatar } from '../components/Avatar';
 import { DisconnectBanner, OfflineStrip } from '../components/Banner';
 import { CATEGORY_LOOK } from '../components/Category';
 import { Icon, type IconGlyph } from '../components/Icon';
+import { ReactionBubble, Reactions } from '../components/Reactions';
 import { ScoreBar } from '../components/ScoreBar';
 import { Timer } from '../components/Timer';
 import { formatClock, useServerNow } from '../hooks/useServerNow';
@@ -107,6 +108,7 @@ export function QuestionScreen({ game }: { game: GameView }) {
         </div>
       )}
 
+      <div className="relative">
       <ScoreBar
         me={{ id: game.me.userId, name: game.me.name, photoUrl: game.me.photoUrl, score: formatNumber(meScore, lang) }}
         opp={opp ? { id: opp.userId, name: opp.name, photoUrl: opp.photoUrl, score: formatNumber(oppScore, lang) } : null}
@@ -115,6 +117,9 @@ export function QuestionScreen({ game }: { game: GameView }) {
         oppState={oppState}
         meState={!reveal && answered ? 'answered' : 'none'}
       />
+        <ReactionBubble userId={game.me.userId} side="me" className="top-[46px] left-0" />
+        {opp && <ReactionBubble userId={opp.userId} side="opp" className="top-[46px] right-0" />}
+      </div>
 
       {!reveal && <Timer seconds={sec} pct={pct} live={!reduced} />}
 
@@ -159,6 +164,12 @@ export function QuestionScreen({ game }: { game: GameView }) {
         ))}
       </div>
 
+      {/* На раскрытии - строка реакций вместо статуса (во время вопроса реакций нет). */}
+      {reveal && opp && game.mode !== 'solo' && !offline ? (
+        <div className="qd-rise-2">
+          <Reactions size="s" />
+        </div>
+      ) : (
       <div role="status" className="flex h-7 items-center justify-center gap-2 text-[15px] font-bold text-hint">
         {status && (
           <span key={status.text} className="qd-rise flex items-center gap-2">
@@ -167,6 +178,7 @@ export function QuestionScreen({ game }: { game: GameView }) {
           </span>
         )}
       </div>
+      )}
     </main>
   );
 }

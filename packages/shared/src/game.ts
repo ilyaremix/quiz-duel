@@ -158,3 +158,11 @@ export interface GameView {
   /** Состояние реванша - только у завершённой партии. */
   rematch: RematchView | null;
 }
+
+/** Реакции сопернику: фиксированный набор, свободного чата нет - модерировать нечего. */
+export const REACTIONS = ['👍', '😂', '😮', '😤', '🔥', '👏'] as const;
+export type Reaction = (typeof REACTIONS)[number];
+/** Не чаще одной реакции в 2 с от игрока (сервер проверяет сам). */
+export const REACTION_COOLDOWN_MS = 2_000;
+/** Где можно слать реакции: лобби (и его часть отсчёта), раскрытие вопроса и итоги. Во время вопроса - нет. */
+export const REACTION_PHASES: readonly GamePhase[] = ['lobby', 'countdown', 'reveal', 'finished'];

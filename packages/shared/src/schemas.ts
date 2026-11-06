@@ -7,6 +7,7 @@ import { CONSENT_DOCS, type ConsentDoc } from './api.js';
 import { GAME_ID_RE } from './links.js';
 import { QUESTIONS_PER_GAME } from './questions.js';
 import { GAME_CATEGORIES, type GameCategory } from './categories.js';
+import { REACTIONS, type Reaction } from './game.js';
 
 type Tuple<T> = readonly [T, ...T[]];
 
@@ -27,6 +28,8 @@ export const AnswerPayloadSchema = z.strictObject({
 });
 
 export const ReadyPayloadSchema = z.strictObject({ gameId, ready: z.boolean() });
+
+export const ReactPayloadSchema = z.strictObject({ gameId, emoji: z.enum(REACTIONS as unknown as Tuple<Reaction>) });
 
 export const RematchRespondPayloadSchema = z.strictObject({ gameId, accept: z.boolean() });
 

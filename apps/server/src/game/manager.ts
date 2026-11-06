@@ -26,6 +26,10 @@ import {
   type GameView,
   type AnswerResult,
   type InviteResult,
+  type Reaction,
+  type ReactionEvent,
+  REACTION_COOLDOWN_MS,
+  REACTION_PHASES,
 } from '@quiz-duel/shared';
 import type { QuestionBank } from '../questions/bank.js';
 import type { UserCard, UsersRepo } from '../users.js';
@@ -41,6 +45,8 @@ import { losersOf, settleInput } from './settle.js';
 /** Куда менеджер отправляет снимки (сокет-слой). */
 export interface GameNotifier {
   state(userId: number, view: GameView, meta?: GameStateMeta): void;
+  /** Реакция одного из игроков (уходит обоим). */
+  reaction?(userId: number, event: ReactionEvent): void;
 }
 
 export interface PreparedInvite {
@@ -156,6 +162,8 @@ export class GameManager {
   private readonly pendingSeen = new Map<string, Map<string, number>>();
   private readonly cardCache = new Map<number, UserCard>();
   private readonly creates = new Map<number, number[]>();
+  /** userId → когда игрок последний раз отправил реакцию (кулдаун 2 с). */
+  private readonly reacted = new Map<number, number>();
   private readonly deps: MachineDeps;
   private readonly now: () => number;
   private readonly clock: ServerClock;
@@ -482,6 +490,25 @@ export class GameManager {
   /** «Выйти из партии»: сразу техническая победа сопернику, без 30 с ожидания. */
   async forfeit(userId: number, gameId: string): Promise<Result<{ game: GameView }>> {
     return this.mutate(userId, gameId, async (entry) => machine.forfeit(entry.state, userId, this.now()));
+  }
+
+  /**
+   * Реакция сопернику. Состояние партии не меняет и в базу не пишется: это мгновенное
+   * сообщение обоим участникам. Только в лобби, на раскрытии и на итогах; не чаще раза в 2 с.
+   */
+  async react(userId: number, gameId: string, emoji: Reaction): Promise<Result<object>> {
+    const entry = await this.entry(gameId);
+    if (!entry) return fail('not_found');
+    const s = entry.state;
+    if (!machine.playerOf(s, userId)) return fail('not_participant');
+    if (s.mode === 'solo' || !s.opponent || !REACTION_PHASES.includes(s.phase)) return fail('wrong_phase');
+    const now = this.now();
+    const last = this.reacted.get(userId);
+    if (last !== undefined && now - last < REACTION_COOLDOWN_MS) return fail('rate_limited');
+    this.reacted.set(userId, now);
+    const event: ReactionEvent = { gameId, userId, emoji };
+    for (const p of machine.participants(s)) this.d.notify.reaction?.(p.userId, event);
+    return { ok: true };
   }
 
   // -------------------------------------------------------------------------

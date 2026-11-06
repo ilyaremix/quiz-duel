@@ -3,7 +3,7 @@
  * имя события или его данные нельзя поменять только с одной стороны.
  * Этап 1: приветствие и часы. Этап 4: лобби. Этап 5: ответы и сдача. Этап 7: реванш.
  */
-import type { GameView, PlayerProfile } from './game.js';
+import type { GameView, PlayerProfile, Reaction } from './game.js';
 import type { GameCategory } from './categories.js';
 
 export interface SessionHello {
@@ -99,6 +99,18 @@ export interface AnswerPayload {
   optionIndex: number;
 }
 
+export interface ReactPayload {
+  gameId: string;
+  emoji: Reaction;
+}
+
+/** Реакция одного из игроков: приходит обоим (отправителю - для своего «пузыря»). */
+export interface ReactionEvent {
+  gameId: string;
+  userId: number;
+  emoji: Reaction;
+}
+
 export interface RematchRespondPayload {
   gameId: string;
   accept: boolean;
@@ -142,6 +154,8 @@ export interface ServerToClientEvents {
   'session:replaced': () => void;
   /** Полный снимок партии. Клиент рисует экран только из него. */
   'game:state': (view: GameView, meta?: GameStateMeta) => void;
+  /** Реакция в лобби, на раскрытии или на итогах. В снимок партии не попадает. */
+  'game:reaction': (event: ReactionEvent) => void;
 }
 
 export interface ClientToServerEvents {
@@ -157,6 +171,8 @@ export interface ClientToServerEvents {
   'game:leave': (payload: GameIdPayload, ack: AckFn) => void;
   /** Ответ на текущий вопрос. Время и очки считает сервер. */
   'game:answer': (payload: AnswerPayload, ack: AckFn<AnswerResult>) => void;
+  /** Реакция сопернику: один из 6 эмодзи, не чаще раза в 2 с (иначе rate_limited). */
+  'game:react': (payload: ReactPayload, ack: AckFn) => void;
   /** «Выйти из партии»: сразу техническая победа сопернику. */
   'game:forfeit': (payload: GameIdPayload, ack: AckFn<GameResult>) => void;
   /**

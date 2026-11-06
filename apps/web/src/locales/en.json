@@ -176,7 +176,8 @@
     "ready": "Ready",
     "unready": "Cancel “Ready”",
     "starting": "Starting…",
-    "leave": "Leave lobby"
+    "leave": "Leave lobby",
+    "tease": "Tease your opponent"
   },
   "consent": {
     "title": "{{opp}} challenges you",
@@ -484,5 +485,18 @@
     "aria": "Achievements unlocked",
     "count": "{{n}} of {{m}}",
     "error": "Couldn’t load achievements"
+  },
+  "reactions": {
+    "aria": "Reactions to opponent",
+    "prefix": "Reaction: ",
+    "list": [
+      "Nice",
+      "Funny",
+      "Wow",
+      "Just you wait",
+      "Fire",
+      "Bravo"
+    ],
+    "from": "Reaction: {{r}}"
   }
 }
