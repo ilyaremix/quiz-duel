@@ -109,7 +109,7 @@ npm test
 npm run build
 ```
 
-Деплой на сервер - [docs/DEPLOY.md](docs/DEPLOY.md).
+Деплой на сервер - [docs/DEPLOY.md](docs/DEPLOY.md). Сервер сам выкатывает каждый коммит в `main` с зелёным CI (`deploy/autodeploy.sh`).
 
 ## Лицензия
 

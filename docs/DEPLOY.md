@@ -58,7 +58,32 @@ caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy
 curl -s https://$DOMAIN/api/health
 ```
 
-## Обновление после нового коммита
+## Автодеплой
+
+Сервер сам забирает новые коммиты из `main`: systemd-таймер раз в минуту запускает
+`deploy/autodeploy.sh`. Скрипт делает `git fetch`, ждёт зелёный CI на GitHub для нового коммита
+(красный не выкатывается), делает `docker compose up -d --build`, проверяет `/api/health`
+и присылает итог от бота в Telegram (кому - `DEPLOY_NOTIFY_CHAT_ID` в `.env`).
+
+Включить один раз:
+
+```bash
+cd /root/quiz-duel && git pull && bash deploy/install-autodeploy.sh
+```
+
+Установщик сам записывает в `.env` Telegram id первого игрока из базы как получателя уведомлений.
+
+```bash
+journalctl -u quiz-duel-deploy -f            # что делает автодеплой
+cat /var/log/quiz-duel-build.log             # вывод последней сборки
+systemctl start quiz-duel-deploy             # проверить прямо сейчас, не ждать минуту
+systemctl disable --now quiz-duel-deploy.timer   # выключить
+```
+
+Если сборка упала, старые контейнеры продолжают работать, а скрипт не повторяет её по кругу:
+следующий коммит с исправлением выкатится сам. Повторить вручную - командой ниже.
+
+## Обновление вручную
 
 ```bash
 cd /root/quiz-duel && git pull && docker compose up -d --build
