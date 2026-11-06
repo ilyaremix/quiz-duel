@@ -4,12 +4,14 @@ import rateLimit from '@fastify/rate-limit';
 import {
   CONSENT_DOCS,
   ConsentRequestSchema,
+  SettingsRequestSchema,
   isGameId,
   type ApiError,
   type ConfigResponse,
   type ConsentDoc,
   type ConsentResponse,
   type HealthResponse,
+  type SettingsResponse,
 } from '@quiz-duel/shared';
 import { docsInfo, webOrigin, type Env } from '../env.js';
 import { InitDataError } from '../auth/initData.js';
@@ -141,6 +143,17 @@ export async function buildApp({ env, users, stats, botUsername, logger }: AppDe
       userAgent: typeof ua === 'string' ? ua.slice(0, 512) : null,
     });
     return { ok: true, docsVersion: env.DOCS_VERSION } satisfies ConsentResponse;
+  });
+
+  // Настройки игрока. Этап 8: уведомления от бота и разрешение писать (requestWriteAccess).
+  app.post('/api/settings', { onRequest: auth }, async (request, reply) => {
+    const parsed = SettingsRequestSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_request' } satisfies ApiError);
+    const tgUser = request.tg!.user;
+    await users.upsertFromTelegram(tgUser);
+    const saved = await users.updateSettings(tgUser.id, parsed.data);
+    if (!saved) return reply.code(404).send({ error: 'not_found' } satisfies ApiError);
+    return saved satisfies SettingsResponse;
   });
 
   if (stats) {

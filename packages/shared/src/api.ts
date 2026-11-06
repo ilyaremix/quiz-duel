@@ -57,8 +57,12 @@ export interface MeResponse {
   wins: number;
   losses: number;
   draws: number;
-  /** Принял ли игрок текущую версию документов. Без этого создать игру или войти в неё нельзя. */
+  /** Принял ли игрок текущую версию документов. Без этого создать игру или войти нельзя. */
   docsAccepted: boolean;
+  /** Уведомления от бота включены в настройках (по умолчанию да). */
+  notifications: boolean;
+  /** Бот может писать игроку (нажал /start или разрешил в мини-аппе). */
+  writeAccess: boolean;
   /** Время сервера в мс, клиент по нему считает смещение часов. */
   serverNow: number;
 }
@@ -243,4 +247,19 @@ export interface AchievementsResponse {
   items: AchievementView[];
   unlocked: number;
   total: number;
+}
+
+// ---------------------------------------------------------------------------
+// Этап 8: уведомления от бота
+
+/** POST /api/settings - настройки игрока (этап 8: уведомления; остальное - этап 9). */
+export interface SettingsRequest {
+  notifications?: boolean;
+  /** Игрок разрешил боту писать (requestWriteAccess в мини-аппе вернул allowed). */
+  writeAccess?: true;
+}
+
+export interface SettingsResponse {
+  notifications: boolean;
+  writeAccess: boolean;
 }

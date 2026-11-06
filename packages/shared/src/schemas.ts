@@ -40,3 +40,7 @@ export const ConsentRequestSchema = z.strictObject({
     .max(CONSENT_DOCS.length),
   version: z.string().min(1).max(32),
 });
+
+export const SettingsRequestSchema = z
+  .strictObject({ notifications: z.boolean().optional(), writeAccess: z.literal(true).optional() })
+  .refine((v) => v.notifications !== undefined || v.writeAccess !== undefined, 'empty');

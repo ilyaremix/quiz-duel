@@ -5,6 +5,7 @@ import {
   init,
   isTMA,
   miniApp,
+  requestWriteAccess,
   retrieveRawInitData,
   swipeBehavior,
   themeParams,
@@ -179,4 +180,17 @@ export function setupTelegram(): TelegramSession | null {
 export function closeMiniApp() {
   if (miniApp.close.ifAvailable().ok) return;
   window.close();
+}
+
+/**
+ * Просит у игрока разрешение, чтобы бот мог ему писать (уведомления о лобби, реванше, итогах).
+ * true - разрешил. Вне Telegram или в старом клиенте - false.
+ */
+export async function askWriteAccess(): Promise<boolean> {
+  try {
+    if (!requestWriteAccess.isAvailable()) return false;
+    return (await requestWriteAccess()) === 'allowed';
+  } catch {
+    return false;
+  }
 }

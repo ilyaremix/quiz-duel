@@ -49,6 +49,8 @@ export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord>; cons
         losses: 0,
         draws: 0,
         docsVersion: null,
+        notifications: true,
+        writeAccess: false,
         ...existing,
         firstName: profile.firstName,
         lastName: profile.lastName,
@@ -56,6 +58,7 @@ export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord>; cons
         photoUrl: profile.photoUrl,
         tgLanguage: profile.tgLanguage,
       };
+      if (user.allows_write_to_pm === true) record.writeAccess = true;
       rows.set(user.id, record);
       return record;
     },
@@ -83,6 +86,20 @@ export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord>; cons
     },
     async ping() {
       return true;
+    },
+    async alertTarget(id) {
+      const r = rows.get(id);
+      return r ? { id, lang: resolveLang(r.language, r.tgLanguage), notifications: r.notifications, writeAccess: r.writeAccess } : null;
+    },
+    async setWriteAccess(id, allowed) {
+      const r = rows.get(id);
+      if (r) r.writeAccess = allowed;
+    },
+    async updateSettings(id, patch) {
+      const r = rows.get(id);
+      if (!r) return null;
+      Object.assign(r, patch);
+      return { notifications: r.notifications, writeAccess: r.writeAccess };
     },
   };
 }

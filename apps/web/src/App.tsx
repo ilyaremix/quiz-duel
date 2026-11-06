@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ACTIVE_PHASES, gameIdFromStartParam, TIMINGS, type GameView, type MeResponse } from '@quiz-duel/shared';
 import { api, ApiRequestError, queryKeys, setSessionAuth } from './lib/api';
-import { closeMiniApp, onBack, setGameGuards, type TelegramSession } from './lib/telegram';
+import { askWriteAccess, closeMiniApp, onBack, setGameGuards, type TelegramSession } from './lib/telegram';
 import { gameActions, useGame } from './lib/game';
 import { setLang } from './i18n';
 import { useTranslation } from 'react-i18next';
@@ -123,6 +123,25 @@ function useRefreshAfterGame(game: GameView | null) {
   }, [settled, oppId, queryClient]);
 }
 
+/**
+ * В лобби (ждём соперника или он уже пришёл) один раз за сессию просим разрешение писать:
+ * бот позовёт, когда соперник зайдёт, будет ждать или предложит реванш. Уже разрешил - не спрашиваем.
+ */
+let writeAccessAsked = false;
+function useWriteAccessAsk(game: GameView | null, me: MeResponse | undefined) {
+  const queryClient = useQueryClient();
+  const inLobby = Boolean(game && (game.phase === 'waiting' || game.phase === 'lobby'));
+  useEffect(() => {
+    if (!inLobby || !me || me.writeAccess || writeAccessAsked) return;
+    writeAccessAsked = true;
+    void askWriteAccess().then(async (allowed) => {
+      if (!allowed) return;
+      const saved = await api.settings({ writeAccess: true }).catch(() => null);
+      if (saved) queryClient.setQueryData<MeResponse>(['me'], (prev) => (prev ? { ...prev, writeAccess: true } : prev));
+    });
+  }, [inLobby, me, queryClient]);
+}
+
 function InTelegram({ session }: { session: TelegramSession }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -142,6 +161,7 @@ function InTelegram({ session }: { session: TelegramSession }) {
   const consent = useGame((s) => s.consent);
   const review = useGame((s) => s.review);
   useRefreshAfterGame(game);
+  useWriteAccessAsk(game, me.data);
 
   useEffect(() => {
     if (me.data) setLang(me.data.lang);

@@ -26,6 +26,7 @@ import {
   type GameView,
   type AnswerResult,
   type InviteResult,
+  type Outcome,
   type Reaction,
   type ReactionEvent,
   REACTION_COOLDOWN_MS,
@@ -53,6 +54,36 @@ export interface PreparedInvite {
   id: string;
   /** До какого времени Telegram хранит подготовленное сообщение (мс). */
   expiresAt: number;
+}
+
+/**
+ * Поводы написать игроку от бота, когда его нет в приложении. Менеджер только решает, когда
+ * и кому; отправка (язык, разрешения, ошибки Telegram) - в bot/alerts.ts. Сбой отправки
+ * никак не влияет на партию.
+ */
+export type AlertKind =
+  /** Соперник занял место в лобби, а создателя нет в приложении. */
+  | 'joined'
+  /** Соперник готов и ждёт в лобби. */
+  | 'waitingLobby'
+  /** Посреди партии игрок пропал: у него идёт отсчёт 30 с до технического поражения. */
+  | 'waitingGame'
+  /** Соперник предлагает реванш, а игрок закрыл приложение. */
+  | 'rematch'
+  /** Партия закончилась без игрока. */
+  | 'result';
+
+export interface GameAlert {
+  kind: AlertKind;
+  gameId: string;
+  opponent: string;
+  /** Для waitingGame: когда наступит техническое поражение (мс). */
+  until?: number;
+  result?: { outcome: Outcome; technical: boolean; me: number; opp: number; ratingAfter: number | null; delta: number | null };
+}
+
+export interface GameAlerts {
+  send(userId: number, alert: GameAlert): void;
 }
 
 /** Бот: готовит карточку «Вызов на дуэль» для shareMessage. */
@@ -89,6 +120,8 @@ export interface ManagerDeps {
   docsVersion: string;
   log: Log;
   invites?: InviteMaker;
+  /** Уведомления от бота тем, кого нет в приложении (этап 8). */
+  alerts?: GameAlerts;
   /** Часы и таймеры (по умолчанию настоящие). */
   clock?: ServerClock;
   /** Только часы (тесты менеджера с фейковыми таймерами vitest). */
@@ -110,6 +143,8 @@ interface Entry {
   /** Повтор подсчёта итогов после сбоя базы. */
   settleTimer: unknown;
   settleAttempts: number;
+  /** Какие уведомления по этой партии уже отправлены (kind:userId) - каждое не больше одного раза. */
+  alerted: Set<string>;
 }
 
 /** Лимит создания игр на игрока. */
@@ -762,6 +797,7 @@ export class GameManager {
       invite: null,
       settleTimer: null,
       settleAttempts: 0,
+      alerted: new Set(),
     };
     this.games.set(state.id, entry);
     if (!FINAL_PHASES.includes(state.phase)) {
@@ -827,6 +863,59 @@ export class GameManager {
 
     this.notifyAll(entry, meta);
     this.schedule(entry);
+    this.alert(entry, step.events);
+  }
+
+  /** Уведомления от бота после шага партии: только тем, у кого сейчас нет открытого приложения. */
+  private alert(entry: Entry, events: GameEvent[]) {
+    const alerts = this.d.alerts;
+    if (!alerts || this.shuttingDown) return;
+    const s = entry.state;
+    if (s.mode === 'solo') return;
+    const send = (userId: number, kind: AlertKind, extra: Partial<GameAlert> = {}) => {
+      const key = `${kind}:${userId}`;
+      if (entry.alerted.has(key) || this.isOnline(userId)) return;
+      entry.alerted.add(key);
+      const opp = machine.otherOf(s, userId);
+      const opponent = (opp && this.cardCache.get(opp.userId)?.name) ?? '';
+      try {
+        alerts.send(userId, { kind, gameId: s.id, opponent, ...extra });
+      } catch (error) {
+        this.d.log.warn({ err: error, gameId: s.id }, 'alert failed');
+      }
+    };
+
+    if (events.some((e) => e.type === 'joined')) send(s.creator.userId, 'joined');
+
+    // Соперник готов, а игрока нет: «Соперник ждёт - вернитесь».
+    if (s.phase === 'lobby' && s.opponent) {
+      for (const p of machine.participants(s)) if (machine.otherOf(s, p.userId)?.ready) send(p.userId, 'waitingLobby');
+    }
+    // Посреди партии у пропавшего идёт отсчёт 30 с.
+    if (ACTIVE_PHASES.includes(s.phase)) {
+      for (const p of machine.participants(s)) if (p.graceEndsAt !== null) send(p.userId, 'waitingGame', { until: p.graceEndsAt });
+    }
+    // Предложение реванша висит, а соперник закрыл приложение: бот зовёт его на итоги (30 с).
+    if (s.phase === 'finished' && s.rematch?.status === 'offered') {
+      const to = machine.otherOf(s, s.rematch.by);
+      if (to && !to.left) send(to.userId, 'rematch', { until: s.rematch.expiresAt });
+    }
+    if (s.phase === 'finished' && events.some((e) => e.type === 'finished')) {
+      for (const p of machine.participants(s)) {
+        const opp = machine.otherOf(s, p.userId);
+        const mine = s.settlement?.players.find((x) => x.userId === p.userId);
+        send(p.userId, 'result', {
+          result: {
+            outcome: machine.outcomeFor(s, p.userId) ?? 'draw',
+            technical: s.finish?.reason !== 'completed',
+            me: p.score,
+            opp: opp?.score ?? 0,
+            ratingAfter: mine?.after ?? null,
+            delta: mine?.delta ?? null,
+          },
+        });
+      }
+    }
   }
 
   private notifyAll(entry: Entry, meta: GameStateMeta = {}) {

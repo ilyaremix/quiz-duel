@@ -5,6 +5,7 @@ import { createPrismaStatsRepo } from './stats.js';
 import { buildApp } from './http/app.js';
 import { attachSocket, socketNotifier, type IoServer } from './socket.js';
 import { botInvites, configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
+import { botAlerts } from './bot/alerts.js';
 import { createPrismaGamesRepo } from './game/repo.js';
 import { GameManager, realClock } from './game/manager.js';
 import { loadQuestionBank } from './questions/bank.js';
@@ -23,7 +24,7 @@ async function main() {
   let bot: QuizBot | null = null;
   let botUsername = 'quiz_duel_bot';
   if (env.BOT_ENABLED) {
-    bot = await createBot(env.BOT_TOKEN, env.WEB_APP_URL);
+    bot = await createBot(env.BOT_TOKEN, env.WEB_APP_URL, users);
     botUsername = bot.botInfo.username;
   }
 
@@ -35,6 +36,7 @@ async function main() {
   app.log.info(synced, 'questions synced');
 
   let io: IoServer | null = null;
+  const appUrl = `https://t.me/${botUsername}/${env.APP_SHORT_NAME}`;
   const games = new GameManager({
     repo: createPrismaGamesRepo(prisma),
     users,
@@ -44,6 +46,7 @@ async function main() {
     docsVersion: env.DOCS_VERSION,
     log: app.log,
     invites: bot ? botInvites(bot) : undefined,
+    alerts: bot ? botAlerts(bot.api, users, appUrl, app.log) : undefined,
     clock: realClock,
   });
   // Партии, шедшие до перезапуска, поднимаются из базы; просроченные фазы закрываются сразу.

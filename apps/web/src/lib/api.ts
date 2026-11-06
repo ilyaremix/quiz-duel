@@ -10,6 +10,8 @@ import {
   type PlayerResponse,
   type ProfileResponse,
   type ReviewResponse,
+  type SettingsRequest,
+  type SettingsResponse,
 } from '@quiz-duel/shared';
 
 export class ApiRequestError extends Error {
@@ -63,6 +65,7 @@ export const api = {
   profile: () => request<ProfileResponse>('/api/profile', sessionAuth),
   leaderboard: () => request<LeaderboardResponse>('/api/leaderboard', sessionAuth),
   player: (id: number) => request<PlayerResponse>(`/api/players/${id}`, sessionAuth),
+  settings: (body: SettingsRequest) => request<SettingsResponse>('/api/settings', sessionAuth, body),
   achievements: () => request<AchievementsResponse>('/api/achievements', sessionAuth),
   review: (gameId: string) => request<ReviewResponse>(`/api/games/${encodeURIComponent(gameId)}/review`, sessionAuth),
 };

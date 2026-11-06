@@ -3,20 +3,35 @@ import type { FastifyBaseLogger } from 'fastify';
 import { langFromTelegram } from '@quiz-duel/shared';
 import { botTexts, inviteTexts } from './texts.js';
 import type { InviteMaker } from '../game/manager.js';
+import type { UsersRepo } from '../users.js';
+import type { TelegramUser } from '../auth/initData.js';
 
 /**
  * Создаёт бота и проверяет токен (getMe). Сам опрос Telegram
  * запускается отдельно через startBot, чтобы сервер успел подняться.
  */
-export async function createBot(token: string, webAppUrl: string) {
+export async function createBot(token: string, webAppUrl: string, users?: UsersRepo) {
   const bot = new Bot(token);
   await bot.init();
 
   bot.command('start', async (ctx) => {
+    // Нажал /start - бот может ему писать (уведомления о лобби, реванше, итогах).
+    if (users && ctx.from) {
+      await users.upsertFromTelegram(ctx.from as TelegramUser);
+      await users.setWriteAccess(ctx.from.id, true);
+    }
     const t = botTexts[langFromTelegram(ctx.from?.language_code)];
     await ctx.reply(t.start, {
       reply_markup: new InlineKeyboard().webApp(t.play, webAppUrl),
     });
+  });
+
+  // Заблокировал бота - писать больше нельзя; разблокировал - снова можно.
+  bot.on('my_chat_member', async (ctx) => {
+    const status = ctx.myChatMember.new_chat_member.status;
+    if (!users || ctx.chat.type !== 'private') return;
+    if (status === 'kicked') await users.setWriteAccess(ctx.chat.id, false);
+    if (status === 'member') await users.setWriteAccess(ctx.chat.id, true);
   });
 
   return bot;
@@ -47,7 +62,7 @@ export function startBot(bot: QuizBot, log: FastifyBaseLogger) {
   bot
     .start({
       drop_pending_updates: true,
-      allowed_updates: ['message', 'inline_query', 'callback_query'],
+      allowed_updates: ['message', 'inline_query', 'callback_query', 'my_chat_member'],
       onStart: (info) => log.info({ bot: info.username }, 'bot polling started'),
     })
     .catch((error: unknown) => {

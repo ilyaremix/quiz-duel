@@ -246,3 +246,37 @@ describe('этап 7: профиль, лидерборд, соперник, ра
     ]);
   });
 });
+
+describe('этап 8: уведомления от бота - POST /api/settings и разрешение писать', () => {
+  const post = (app: Awaited<ReturnType<typeof makeApp>>['app'], body: unknown, initData = makeInitData()) =>
+    app.inject({
+      method: 'POST',
+      url: '/api/settings',
+      headers: { authorization: `tma ${initData}`, 'content-type': 'application/json' },
+      payload: JSON.stringify(body),
+    });
+
+  it('allows_write_to_pm из подписанного initData включает write_access; /api/me его показывает', async () => {
+    const { app, users } = await makeApp();
+    const me = await app.inject({ method: 'GET', url: '/api/me', headers: { authorization: `tma ${makeInitData()}` } });
+    expect(me.json()).toMatchObject({ notifications: true, writeAccess: false });
+    const allowed = makeInitData({ user: { ...ilya, allows_write_to_pm: true } });
+    const again = await app.inject({ method: 'GET', url: '/api/me', headers: { authorization: `tma ${allowed}` } });
+    expect(again.json()).toMatchObject({ writeAccess: true });
+    // Следующий вход без поля разрешение не снимает (его мог дать /start у бота).
+    await app.inject({ method: 'GET', url: '/api/me', headers: { authorization: `tma ${makeInitData()}` } });
+    expect(users.rows.get(ilya.id)!.writeAccess).toBe(true);
+  });
+
+  it('выключить уведомления и отметить разрешение; id - только из initData; мусор - 400; без initData - 401', async () => {
+    const { app, users } = await makeApp();
+    expect((await post(app, { notifications: false })).json()).toEqual({ notifications: false, writeAccess: false });
+    expect((await post(app, { writeAccess: true })).json()).toEqual({ notifications: false, writeAccess: true });
+    expect(users.rows.get(ilya.id)).toMatchObject({ notifications: false, writeAccess: true });
+    expect((await post(app, {})).statusCode).toBe(400);
+    expect((await post(app, { writeAccess: false })).statusCode).toBe(400);
+    expect((await post(app, { notifications: true, userId: 5 })).statusCode).toBe(400);
+    const res = await app.inject({ method: 'POST', url: '/api/settings', payload: { notifications: true } });
+    expect(res.statusCode).toBe(401);
+  });
+});

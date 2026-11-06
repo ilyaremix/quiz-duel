@@ -27,6 +27,16 @@ export interface UserRecord {
   draws: number;
   /** Последняя принятая версия документов; null - ещё не принимал. */
   docsVersion: string | null;
+  notifications: boolean;
+  writeAccess: boolean;
+}
+
+/** Кому и на каком языке бот может написать. */
+export interface AlertTarget {
+  id: number;
+  lang: Lang;
+  notifications: boolean;
+  writeAccess: boolean;
 }
 
 /** Что нужно игровому серверу об игроке: карточка для соперника, язык вопросов и согласие. */
@@ -53,6 +63,12 @@ export interface UsersRepo {
   acceptDocs(input: ConsentInput): Promise<void>;
   /** Жива ли база (для /api/health). */
   ping(): Promise<boolean>;
+  /** Язык и разрешения для уведомлений бота; null - игрока нет. */
+  alertTarget(id: number): Promise<AlertTarget | null>;
+  /** Бот может (или больше не может) писать игроку. */
+  setWriteAccess(id: number, allowed: boolean): Promise<void>;
+  /** Настройки игрока; возвращает итоговые значения. null - игрока нет. */
+  updateSettings(id: number, patch: { notifications?: boolean; writeAccess?: boolean }): Promise<{ notifications: boolean; writeAccess: boolean } | null>;
 }
 
 /** Длины как в Telegram, плюс запас; защищает базу от мусора в initData. */
@@ -76,10 +92,12 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
   return {
     async upsertFromTelegram(user) {
       const profile = telegramProfile(user);
+      // allows_write_to_pm подписан Telegram: разрешение писать берём из него (снять его может только ошибка отправки).
+      const allowed = user.allows_write_to_pm === true ? { writeAccess: true } : {};
       const row = await prisma.user.upsert({
         where: { id: BigInt(user.id) },
-        create: { id: BigInt(user.id), ...profile },
-        update: { ...profile, lastSeenAt: new Date() },
+        create: { id: BigInt(user.id), ...profile, ...allowed },
+        update: { ...profile, ...allowed, lastSeenAt: new Date() },
       });
       return {
         id: Number(row.id),
@@ -96,6 +114,8 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
         losses: row.losses,
         draws: row.draws,
         docsVersion: row.docsVersion,
+        notifications: row.notifications,
+        writeAccess: row.writeAccess,
       };
     },
     async cards(ids) {
@@ -127,6 +147,21 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
         prisma.user.update({ where: { id }, data: { docsVersion: version } }),
       ]);
     },
+    async alertTarget(id) {
+      const row = await prisma.user.findUnique({
+        where: { id: BigInt(id) },
+        select: { language: true, tgLanguage: true, notifications: true, writeAccess: true },
+      });
+      return row ? { id, lang: resolveLang(row.language, row.tgLanguage), notifications: row.notifications, writeAccess: row.writeAccess } : null;
+    },
+    async setWriteAccess(id, allowed) {
+      await prisma.user.updateMany({ where: { id: BigInt(id) }, data: { writeAccess: allowed } });
+    },
+    async updateSettings(id, patch) {
+      const done = await prisma.user.updateMany({ where: { id: BigInt(id) }, data: patch });
+      if (done.count === 0) return null;
+      return prisma.user.findUniqueOrThrow({ where: { id: BigInt(id) }, select: { notifications: true, writeAccess: true } });
+    },
     async ping() {
       try {
         await prisma.$queryRaw`SELECT 1`;
@@ -154,6 +189,8 @@ export function toMeResponse(user: UserRecord, docsVersion: string, serverNow = 
     losses: user.losses,
     draws: user.draws,
     docsAccepted: user.docsVersion === docsVersion,
+    notifications: user.notifications,
+    writeAccess: user.writeAccess,
     serverNow,
   };
 }
