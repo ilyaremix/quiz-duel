@@ -1,4 +1,11 @@
-import { AUTH_SCHEME, type ApiError, type ConfigResponse, type MeResponse } from '@quiz-duel/shared';
+import {
+  AUTH_SCHEME,
+  type ApiError,
+  type ConfigResponse,
+  type ConsentRequest,
+  type ConsentResponse,
+  type MeResponse,
+} from '@quiz-duel/shared';
 
 export class ApiRequestError extends Error {
   constructor(
@@ -17,11 +24,15 @@ export class ApiRequestError extends Error {
 
 const TIMEOUT_MS = 10_000;
 
-async function request<T>(path: string, initDataRaw?: string): Promise<T> {
+async function request<T>(path: string, initDataRaw?: string, body?: unknown): Promise<T> {
   let response: Response;
+  const headers: Record<string, string> = initDataRaw ? { Authorization: `${AUTH_SCHEME} ${initDataRaw}` } : {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
   try {
     response = await fetch(path, {
-      headers: initDataRaw ? { Authorization: `${AUTH_SCHEME} ${initDataRaw}` } : {},
+      method: body === undefined ? 'GET' : 'POST',
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch {
@@ -37,4 +48,5 @@ async function request<T>(path: string, initDataRaw?: string): Promise<T> {
 export const api = {
   config: () => request<ConfigResponse>('/api/config'),
   me: (initDataRaw: string) => request<MeResponse>('/api/me', initDataRaw),
+  consents: (initDataRaw: string, body: ConsentRequest) => request<ConsentResponse>('/api/consents', initDataRaw, body),
 };

@@ -5,12 +5,35 @@ export const AUTH_SCHEME = 'tma';
 
 export type MotionSetting = 'auto' | 'on' | 'off';
 
+/** Документы, которые игрок принимает перед первой партией. */
+export type ConsentDoc = 'terms' | 'privacy';
+export const CONSENT_DOCS: readonly ConsentDoc[] = ['terms', 'privacy'];
+
+export interface DocsInfo {
+  /** Текущая версия текстов, например "2026-11-06". Новая версия - игрок снова видит галочки. */
+  version: string;
+  termsUrl: string;
+  privacyUrl: string;
+}
+
 /** GET /api/config - публичные настройки, нужны и вне Telegram. */
 export interface ConfigResponse {
   botUsername: string;
   appShortName: string;
   /** Прямая ссылка на мини-апп: https://t.me/<bot>/<app> */
   appUrl: string;
+  docs: DocsInfo;
+}
+
+/** POST /api/consents - игрок принял документы версии version. */
+export interface ConsentRequest {
+  docs: ConsentDoc[];
+  version: string;
+}
+
+export interface ConsentResponse {
+  ok: true;
+  docsVersion: string;
 }
 
 /** GET /api/me - профиль текущего игрока. */
@@ -30,6 +53,8 @@ export interface MeResponse {
   wins: number;
   losses: number;
   draws: number;
+  /** Принял ли игрок текущую версию документов. Без этого создать игру или войти в неё нельзя. */
+  docsAccepted: boolean;
   /** Время сервера в мс, клиент по нему считает смещение часов. */
   serverNow: number;
 }
@@ -47,6 +72,8 @@ export type ApiErrorCode =
   | 'invalid_init_data'
   | 'rate_limited'
   | 'not_found'
+  | 'bad_request'
+  | 'stale_version'
   | 'internal';
 
 export interface ApiError {

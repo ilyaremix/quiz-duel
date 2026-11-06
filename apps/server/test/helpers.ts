@@ -1,5 +1,6 @@
 import { signInitData, type TelegramUser } from '../src/auth/initData.js';
-import { telegramProfile, type UserRecord, type UsersRepo } from '../src/users.js';
+import { resolveLang } from '@quiz-duel/shared';
+import { telegramProfile, type ConsentInput, type UserCard, type UserRecord, type UsersRepo } from '../src/users.js';
 import type { AppDeps } from '../src/http/app.js';
 
 export const BOT_TOKEN = '1234567890:AAH-test-token-for-unit-tests-only_xyz';
@@ -26,11 +27,15 @@ export function makeInitData(
   return signInitData(fields, options.token ?? BOT_TOKEN);
 }
 
+export const DOCS_VERSION = '2026-11-06';
+
 /** Хранилище игроков в памяти: тестам HTTP и сокета база не нужна. */
-export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord> } {
+export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord>; consents: ConsentInput[] } {
   const rows = new Map<number, UserRecord>();
+  const consents: ConsentInput[] = [];
   return {
     rows,
+    consents,
     async upsertFromTelegram(user) {
       const profile = telegramProfile(user);
       const existing = rows.get(user.id);
@@ -43,6 +48,7 @@ export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord> } {
         wins: 0,
         losses: 0,
         draws: 0,
+        docsVersion: null,
         ...existing,
         firstName: profile.firstName,
         lastName: profile.lastName,
@@ -52,6 +58,28 @@ export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord> } {
       };
       rows.set(user.id, record);
       return record;
+    },
+    async cards(ids) {
+      const out = new Map<number, UserCard>();
+      for (const id of ids) {
+        const r = rows.get(id);
+        if (!r) continue;
+        out.set(id, {
+          id,
+          name: r.firstName,
+          username: r.username,
+          photoUrl: r.photoUrl,
+          rating: r.rating,
+          lang: resolveLang(r.language, r.tgLanguage),
+          docsVersion: r.docsVersion,
+        });
+      }
+      return out;
+    },
+    async acceptDocs(input) {
+      consents.push(input);
+      const r = rows.get(input.userId);
+      if (r) r.docsVersion = input.version;
     },
     async ping() {
       return true;
@@ -67,5 +95,8 @@ export function testEnv(): AppDeps['env'] {
     APP_SHORT_NAME: 'play',
     TRUST_PROXY: '127.0.0.1',
     LOG_LEVEL: 'silent',
+    DOCS_VERSION,
+    TERMS_URL: undefined,
+    PRIVACY_URL: undefined,
   };
 }

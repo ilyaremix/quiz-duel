@@ -12,6 +12,8 @@ const VARIANTS = {
   brand: { bg: 'var(--qd-brand-tint)', fg: 'var(--qd-brand-text)', lip: 'var(--qd-lip)' },
   ghost: { bg: 'transparent', fg: 'var(--tg-theme-link-color)', lip: '' },
   danger: { bg: 'var(--qd-wrong-tint)', fg: 'var(--qd-wrong-text)', lip: 'var(--qd-lip)' },
+  /** Белая кнопка на синем блоке «Дуэль с другом». */
+  onColor: { bg: '#FFFFFF', fg: '#1F4DB0', lip: '#1B3F8F' },
 } as const;
 
 interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'style'> {

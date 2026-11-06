@@ -39,6 +39,24 @@
   --qd-gold-tint: #3a3016;
   --qd-gold-text: #ffc94a;
   --qd-on-fill: #14101c;
+  --qd-inverse-bg: #f7f4ff;
+  --qd-inverse-text: #14101c;
+  --qd-inverse-hint: #6e6787;
+  --qd-cat-science-bg: #163a3d;
+  --qd-cat-science-fg: #5ed4de;
+  --qd-cat-history-bg: #3b2e1c;
+  --qd-cat-history-fg: #f0b96a;
+  --qd-cat-culture-bg: #3d1d35;
+  --qd-cat-culture-fg: #f59ad6;
+  --qd-cat-sport-bg: #2a3516;
+  --qd-cat-sport-fg: #b8e05a;
+  --qd-cat-tech-bg: #1d2a4a;
+  --qd-cat-tech-fg: #8fb2ff;
+  --qd-glass-bg: rgba(38, 32, 54, 0.95);
+  --qd-glass-hi: rgba(255, 255, 255, 0.12);
+  --qd-glass-rim: rgba(255, 255, 255, 0.14);
+  --qd-glass-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
+  --qd-scrim: rgba(8, 6, 14, 0.62);
 }
 
 .qd-light {
@@ -74,6 +92,24 @@
   --qd-gold-tint: #fff1cc;
   --qd-gold-text: #8a5a00;
   --qd-on-fill: #14101c;
+  --qd-inverse-bg: #1b1530;
+  --qd-inverse-text: #ffffff;
+  --qd-inverse-hint: #a59dc0;
+  --qd-cat-science-bg: #d9f3f4;
+  --qd-cat-science-fg: #0b6f78;
+  --qd-cat-history-bg: #fbebd2;
+  --qd-cat-history-fg: #8e530a;
+  --qd-cat-culture-bg: #fbe0f1;
+  --qd-cat-culture-fg: #a02d77;
+  --qd-cat-sport-bg: #e8f4cf;
+  --qd-cat-sport-fg: #46700b;
+  --qd-cat-tech-bg: #e0e8ff;
+  --qd-cat-tech-fg: #2b50bf;
+  --qd-glass-bg: rgba(255, 255, 255, 0.94);
+  --qd-glass-hi: rgba(255, 255, 255, 0.9);
+  --qd-glass-rim: rgba(27, 21, 48, 0.08);
+  --qd-glass-shadow: 0 14px 30px rgba(60, 40, 120, 0.16);
+  --qd-scrim: rgba(8, 6, 14, 0.62);
 }
 
 /*
@@ -97,6 +133,10 @@
   --qd-ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
   --qd-dur-press: 120ms;
   --qd-dur-screen: 200ms;
+  --qd-dur-toast-in: 300ms;
+  --qd-dur-toast-out: 150ms;
+  --qd-dur-sheet-in: 380ms;
+  --qd-dur-sheet-out: 240ms;
 }
 
 @theme inline {
@@ -212,13 +252,138 @@ body {
   animation: qd-fade-in 300ms var(--qd-ease-ui) both;
 }
 
-/* Системное «Уменьшить движение»: оставляем только мягкий fade. Полный режим без анимаций - на этапе 9. */
+/*
+ * Анимации из прототипа (Proto.dc.html). Появление от scale(0.95) и прозрачности,
+ * выход всегда быстрее входа, ease-in не используем.
+ */
+@keyframes qd-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes qd-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+@keyframes qd-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes qd-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes qd-sheet-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes qd-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.95);
+  }
+}
+@keyframes qd-toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+}
+@keyframes qd-strip-in {
+  from {
+    transform: translateY(-100%);
+  }
+}
+@keyframes qd-arrive {
+  from {
+    opacity: 0;
+    transform: translateX(36px) scale(0.95);
+  }
+}
+@keyframes qd-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.7;
+  }
+}
+
+.qd-backdrop-in {
+  animation: qd-fade-in 300ms var(--qd-ease-ui) both;
+}
+.qd-backdrop-out {
+  animation: qd-fade-out 150ms var(--qd-ease-ui) both;
+}
+.qd-sheet-in {
+  animation: qd-sheet-in var(--qd-dur-sheet-in) var(--qd-ease-sheet) both;
+}
+.qd-sheet-out {
+  animation: qd-sheet-out var(--qd-dur-sheet-out) var(--qd-ease-sheet) both;
+}
+.qd-toast-in {
+  animation: qd-toast-in var(--qd-dur-toast-in) var(--qd-ease-ui) both;
+}
+.qd-toast-out {
+  animation: qd-toast-out var(--qd-dur-toast-out) var(--qd-ease-ui) both;
+}
+.qd-strip-in {
+  animation: qd-strip-in 300ms var(--qd-ease-ui) both;
+}
+.qd-pop {
+  animation: qd-pop 300ms var(--qd-ease-ui) both;
+}
+.qd-rise {
+  animation: qd-rise 260ms var(--qd-ease-ui) 60ms both;
+}
+/* Прилёт карточки соперника в лобби - редкий момент, здесь можно чуть больше движения. */
+.qd-arrive {
+  animation: qd-arrive 300ms var(--qd-ease-ui) both;
+}
+/* Пульсация пустого места: непрерывное движение. */
+.qd-pulse {
+  animation: qd-pulse 1600ms var(--qd-ease-move) infinite;
+}
+
+/* Шторка: перетаскивание без анимации, возврат на место - по кривой шторки. */
+.qd-sheet-drag {
+  touch-action: none;
+}
+
+/* Системное «Уменьшить движение»: меньше движения, а не ноль - остаются мягкие fade.
+   Полный режим без анимаций с настройкой в профиле - на этапе 9. */
 @media (prefers-reduced-motion: reduce) {
-  .qd-screen-in {
-    animation-name: qd-fade-in;
+  .qd-screen-in,
+  .qd-pop,
+  .qd-rise,
+  .qd-arrive,
+  .qd-toast-in,
+  .qd-strip-in,
+  .qd-sheet-in,
+  .qd-backdrop-in {
+    animation: qd-fade-in 160ms var(--qd-ease-ui) both;
+    animation-delay: 0ms;
+  }
+  .qd-toast-out,
+  .qd-sheet-out,
+  .qd-backdrop-out {
+    animation: qd-fade-out 120ms var(--qd-ease-ui) both;
+  }
+  .qd-pulse {
+    animation: none;
   }
   .qd-press:active:not(:disabled) {
     transform: none;
+    opacity: 0.7;
   }
   .qd-spin {
     animation-duration: 2.4s;

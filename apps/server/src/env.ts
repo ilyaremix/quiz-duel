@@ -19,6 +19,17 @@ const EnvSchema = z.object({
    * В docker-compose это подсеть контейнеров (перед сервером стоит Caddy).
    */
   TRUST_PROXY: z.string().default('127.0.0.1'),
+  /**
+   * Версия Пользовательского соглашения и Политики конфиденциальности.
+   * Поменяли тексты - поменяйте версию: игроки снова увидят галочки.
+   */
+  DOCS_VERSION: z
+    .string()
+    .regex(/^[\w.-]{1,32}$/)
+    .default('2026-11-06'),
+  /** Адреса документов; по умолчанию - страницы мини-аппа /legal/*.html. */
+  TERMS_URL: z.url({ protocol: /^https$/ }).optional(),
+  PRIVACY_URL: z.url({ protocol: /^https$/ }).optional(),
   /** Запускать ли бота (в тестах и при локальной вёрстке можно выключить). */
   BOT_ENABLED: z
     .enum(['true', 'false'])
@@ -41,4 +52,14 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
 /** Origin мини-аппа, единственный, которому открыт CORS. */
 export function webOrigin(env: Pick<Env, 'WEB_APP_URL'>): string {
   return new URL(env.WEB_APP_URL).origin;
+}
+
+/** Версия и адреса документов для /api/config. */
+export function docsInfo(env: Pick<Env, 'WEB_APP_URL' | 'DOCS_VERSION' | 'TERMS_URL' | 'PRIVACY_URL'>) {
+  const base = new URL(env.WEB_APP_URL).origin;
+  return {
+    version: env.DOCS_VERSION,
+    termsUrl: env.TERMS_URL ?? `${base}/legal/terms.html`,
+    privacyUrl: env.PRIVACY_URL ?? `${base}/legal/privacy.html`,
+  };
 }

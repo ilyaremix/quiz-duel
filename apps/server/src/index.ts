@@ -2,8 +2,10 @@ import { loadEnv, webOrigin } from './env.js';
 import { createPrisma } from './db.js';
 import { createPrismaUsersRepo } from './users.js';
 import { buildApp } from './http/app.js';
-import { attachSocket } from './socket.js';
-import { configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
+import { attachSocket, socketNotifier, type IoServer } from './socket.js';
+import { botInvites, configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
+import { createPrismaGamesRepo } from './game/repo.js';
+import { GameManager } from './game/manager.js';
 import { loadQuestionBank } from './questions/bank.js';
 import { syncQuestions } from './questions/sync.js';
 
@@ -25,16 +27,34 @@ async function main() {
   }
 
   const app = await buildApp({ env, users, botUsername });
-  const io = attachSocket(app.server, {
+
+  // Таблица questions всегда совпадает с data/questions.json из этой сборки
+  // (до восстановления партий: их ответы ссылаются на вопросы).
+  const synced = await syncQuestions(prisma, questions.all);
+  app.log.info(synced, 'questions synced');
+
+  let io: IoServer | null = null;
+  const games = new GameManager({
+    repo: createPrismaGamesRepo(prisma),
+    users,
+    bank: questions,
+    notify: socketNotifier(() => io),
+    appUrl: `https://t.me/${botUsername}/${env.APP_SHORT_NAME}`,
+    docsVersion: env.DOCS_VERSION,
+    log: app.log,
+    invites: bot ? botInvites(bot) : undefined,
+  });
+  // Партии, шедшие до перезапуска, поднимаются из базы; просроченные фазы закрываются сразу.
+  const restored = await games.restore();
+  app.log.info({ restored }, 'games restored');
+
+  io = attachSocket(app.server, {
     botToken: env.BOT_TOKEN,
     maxAgeSec: env.INIT_DATA_MAX_AGE_SEC,
     origin: webOrigin(env),
     log: app.log,
+    games,
   });
-
-  // Таблица questions всегда совпадает с data/questions.json из этой сборки.
-  const synced = await syncQuestions(prisma, questions.all);
-  app.log.info(synced, 'questions synced');
 
   await app.listen({ host: env.HOST, port: env.PORT });
 
@@ -50,7 +70,8 @@ async function main() {
     app.log.info({ signal }, 'shutting down');
     try {
       await bot?.stop();
-      await new Promise<void>((resolve) => io.close(() => resolve()));
+      games.stop();
+      await new Promise<void>((resolve) => (io ? io.close(() => resolve()) : resolve()));
       await app.close();
       await prisma.$disconnect();
     } finally {

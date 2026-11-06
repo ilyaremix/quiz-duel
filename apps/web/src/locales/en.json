@@ -1,39 +1,200 @@
 {
   "app": {
     "name": "Quiz Duel",
-    "tagline": "1v1 quiz"
+    "tagline": "1-on-1 quiz"
+  },
+  "common": {
+    "close": "Close",
+    "questions_one": "{{count}} question",
+    "questions_other": "{{count}} questions"
   },
   "s01": {
     "aria": "Loading",
     "long": "Connecting…",
     "longHint": "Checking the connection to the server"
   },
-  "hello": {
-    "title": "Hi, {{name}}!",
-    "rating": "Rating",
-    "games_one": "{{count}} game",
-    "games_other": "{{count}} games"
+  "cat": {
+    "mix": {
+      "title": "Mix",
+      "count": "All topics · 100 questions"
+    },
+    "science": {
+      "title": "Science & Nature",
+      "count": "20 questions"
+    },
+    "history": {
+      "title": "History & Geography",
+      "count": "20 questions"
+    },
+    "culture": {
+      "title": "Film, Music & Books",
+      "count": "20 questions"
+    },
+    "sport": {
+      "title": "Sports",
+      "count": "20 questions"
+    },
+    "tech": {
+      "title": "Tech & Internet",
+      "count": "20 questions"
+    }
   },
-  "check": {
-    "title": "Stage 1 · skeleton",
-    "note": "The home screen with duels will live here. For now we check that every part of the app is connected.",
-    "auth": "Telegram signature",
-    "authOk": "valid",
-    "db": "Database",
-    "dbOk": "profile saved",
-    "socket": "Real-time",
-    "socketWait": "connecting…",
-    "socketOk": "connected",
-    "socketFail": "no connection",
-    "clock": "Clock",
-    "clockValue": "offset {{ms}} ms",
-    "lang": "Language",
-    "langAuto": "{{lang}} (from Telegram)",
-    "langSet": "{{lang}}"
+  "tabs": {
+    "aria": "Main menu",
+    "home": "Home",
+    "rating": "Leaderboard",
+    "profile": "Profile"
   },
-  "langName": {
-    "ru": "Русский",
-    "en": "English"
+  "status": {
+    "ready": "Ready",
+    "notready": "Not ready",
+    "offline": "Offline",
+    "host": "Host",
+    "waiting": "Waiting for opponent",
+    "waitingHint": "Whoever opens the link first"
+  },
+  "badge": {
+    "online": "Online",
+    "ready": "Ready",
+    "offline": "Offline"
+  },
+  "toast": {
+    "copied": "Link copied",
+    "invited": "Challenge sent to chat",
+    "error": "Couldn’t send",
+    "cancelled": "Game cancelled",
+    "slotFreed": "Your opponent didn’t come back - the seat is free again",
+    "oppLeft": "{{opp}} left the lobby - the seat is free again",
+    "soon": "Coming in one of the next updates",
+    "connection": "No connection to the server - try again"
+  },
+  "banner": {
+    "resume": {
+      "title": "You have a game in progress",
+      "text": "{{opp}} is waiting · question {{n}}/10",
+      "textLobby": "{{opp}} is waiting in the lobby",
+      "action": "Return"
+    },
+    "offline": {
+      "title": "Reconnecting…"
+    }
+  },
+  "s03": {
+    "greeting": "Hi, {{me}}!",
+    "settings": "Settings",
+    "place": "Rank #{{n}}",
+    "newbie": "Newbie",
+    "heroTitle": "Duel a friend",
+    "heroText": "Send a link to any chat - whoever opens it first is your opponent",
+    "create": "Create duel",
+    "quick": "Quick game",
+    "quickHint": "Random opponent",
+    "training": "Practice",
+    "trainingHint": "No rating",
+    "recent": "Recent matches",
+    "emptyTitle": "Your matches will show up here",
+    "emptyText": "Play your first duel - a win earns the “First Blood” achievement"
+  },
+  "s04": {
+    "aria": "Choose a category",
+    "title": "Choose a category",
+    "sub": "10 questions, 15 seconds each",
+    "create": "Create duel"
+  },
+  "s05": {
+    "title": "Waiting for opponent",
+    "sub": "Send the invite to any chat",
+    "open": "Lobby open for {{t}}",
+    "expiring": "Invite expires in {{t}}",
+    "copyAria": "Copy link",
+    "invite": "Invite",
+    "copy": "Copy link",
+    "cancel": "Cancel game",
+    "shareText": "Up for a 1v1 quiz? Whoever opens the link first is my opponent"
+  },
+  "s06": {
+    "none": {
+      "title": "{{opp}} is here!",
+      "sub": "Tap “Ready” when you’re ready"
+    },
+    "oppReady": {
+      "title": "{{opp}} is here!",
+      "sub": "Opponent is ready - tap “Ready”"
+    },
+    "meReady": {
+      "title": "You’re ready",
+      "sub": "Waiting for {{opp}} to tap “Ready”"
+    },
+    "both": {
+      "title": "Both ready!",
+      "sub": "Starting in {{n}}…"
+    },
+    "oppOffline": {
+      "title": "{{opp}} went missing",
+      "sub": "Let’s wait - they may come back"
+    },
+    "offTitle": "{{opp}} is offline",
+    "offText": "Seat frees up in",
+    "offTextHost": "Lobby closes in",
+    "ready": "Ready",
+    "unready": "Cancel “Ready”",
+    "starting": "Starting…",
+    "leave": "Leave lobby"
+  },
+  "consent": {
+    "title": "{{opp}} challenges you",
+    "titleSelf": "Welcome to Quiz Duel",
+    "text": "Accept the documents before your first game. You can’t play without this",
+    "play": "Go to lobby",
+    "playSelf": "Continue",
+    "declined": "You can’t play without accepting the documents",
+    "terms": {
+      "before": "I accept the ",
+      "link": "Terms of Use"
+    },
+    "policy": {
+      "before": "I accept the ",
+      "link": "Privacy Policy"
+    },
+    "hint": "Tick both boxes to start"
+  },
+  "s23": {
+    "own": "Create your own",
+    "home": "Home",
+    "back": "Back to the game",
+    "taken": {
+      "title": "Game already taken",
+      "text": "Another player has already joined this duel"
+    },
+    "notFound": {
+      "title": "Game not found",
+      "text": "The link is wrong or the game was deleted"
+    },
+    "expired": {
+      "title": "Invite expired",
+      "text": "The lobby waits 15 minutes for an opponent. Ask for a new link or create your own duel"
+    },
+    "cancelled": {
+      "title": "Game cancelled",
+      "text": "The host cancelled the duel before it started"
+    },
+    "finished": {
+      "title": "Game over",
+      "text": "This duel has already been played. Only its players can see the results"
+    },
+    "busy": {
+      "title": "You have a game in progress",
+      "text": "Finish your current duel first - you can’t play two games at once"
+    }
+  },
+  "stub": {
+    "title": "The duel has started!",
+    "text": "Question {{n}} of 10 is already running on the server. The question and reveal screens arrive in the next stage",
+    "finished": "Game over",
+    "finishedText": "The results screen arrives in one of the next stages",
+    "noAnswers": "Game cancelled",
+    "noAnswersText": "Nobody answered a single question, so the game was unrated",
+    "home": "Home"
   },
   "s24": {
     "outside": {
@@ -50,6 +211,11 @@
       "title": "Open again",
       "text": "Your sign-in data has expired or failed the check. Close the app and open it again from the bot.",
       "action": "Close"
+    },
+    "otherDevice": {
+      "title": "Game open on another device",
+      "text": "The game continues there. You can move it to this device",
+      "action": "Play here"
     }
   }
 }

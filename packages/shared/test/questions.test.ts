@@ -1,7 +1,8 @@
 /// <reference types="node" />
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { BANK_RULES, CATEGORIES, DIFFICULTIES, MIX_SPLIT, QUESTIONS_PER_GAME, validateQuestionBank } from '../src/questions.js';
+import { CATEGORIES, DIFFICULTIES } from '../src/categories.js';
+import { BANK_RULES, MIX_SPLIT, QUESTIONS_PER_GAME, validateQuestionBank } from '../src/questions.js';
 
 // Сама база лежит в data/ и попадает только в сервер; здесь читаем её с диска.
 const bankUrl = new URL('../../../data/questions.json', import.meta.url);

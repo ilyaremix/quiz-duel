@@ -1,5 +1,5 @@
 import type { Outcome } from './elo.js';
-import type { GameCategory } from './questions.js';
+import type { GameCategory } from './categories.js';
 
 /**
  * Фазы партии: waiting (ждём соперника) → lobby (оба на месте) → countdown (3 с)
@@ -22,12 +22,23 @@ export const ACTIVE_PHASES: readonly GamePhase[] = ['countdown', 'question', 're
 export const OPEN_PHASES: readonly GamePhase[] = ['waiting', 'lobby'];
 export const FINAL_PHASES: readonly GamePhase[] = ['finished', 'expired', 'cancelled'];
 
-export interface PlayerView {
+/** Публичная карточка игрока: то, что видит соперник в лобби и в партии. */
+export interface PlayerProfile {
+  /** Имя из Telegram (first_name). */
+  name: string;
+  username: string | null;
+  photoUrl: string | null;
+  rating: number;
+}
+
+export interface PlayerView extends PlayerProfile {
   userId: number;
   ready: boolean;
   online: boolean;
   /** Соперник офлайн посреди партии: когда наступит техническая победа (мс, время сервера). */
   graceEndsAt: number | null;
+  /** Лобби: соперник офлайн - когда освободится его место (мс, время сервера). */
+  seatFreesAt: number | null;
   /** Счёт без очков текущего вопроса - они появляются на раскрытии. */
   score: number;
 }

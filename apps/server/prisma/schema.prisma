@@ -1,5 +1,5 @@
-// Схема базы Quiz Duel. Этап 1: игроки. Этап 2: вопросы.
-// Партии, ответы, ачивки и согласия добавляются миграциями на следующих этапах.
+// Схема базы Quiz Duel. Этап 1: игроки. Этап 2: вопросы. Этап 4: партии, ответы, согласия.
+// Ачивки, тренировки и статистика по категориям добавляются миграциями на следующих этапах.
 
 generator client {
   provider     = "prisma-client"
@@ -56,6 +56,11 @@ model User {
   updatedAt     DateTime      @updatedAt @map("updated_at")
   lastSeenAt    DateTime      @default(now()) @map("last_seen_at")
 
+  gamesCreated  Game[]        @relation("GameCreator")
+  gamesJoined   Game[]        @relation("GameOpponent")
+  answers       Answer[]
+  consents      Consent[]
+
   @@index([rating(sort: Desc)])
   @@map("users")
 }
@@ -91,7 +96,148 @@ model Question {
   /// false - вопрос убрали из файла; строку не удаляем, на неё могут ссылаться старые партии
   active       Boolean    @default(true)
   updatedAt    DateTime   @updatedAt @map("updated_at")
+  answers      Answer[]
 
   @@index([category, difficulty])
   @@map("questions")
+}
+
+/// Категория партии: «Микс» или одна из пяти.
+enum GameCategory {
+  mix
+  science
+  history
+  culture
+  sport
+  tech
+}
+
+/// link - дуэль по ссылке, quick - быстрая игра, rematch - реванш, solo - тренировка
+enum GameMode {
+  link
+  quick
+  rematch
+  solo
+}
+
+enum GamePhase {
+  waiting
+  lobby
+  countdown
+  question
+  reveal
+  finished
+  expired
+  cancelled
+}
+
+enum FinishReason {
+  completed
+  forfeit
+  abandoned
+}
+
+enum CancelReason {
+  creator
+  left
+  no_answers
+}
+
+/// Партия. Сервер держит активные партии в памяти и пишет сюда каждую смену состояния.
+/// Колонки - для запросов (история, «что видели игроки», восстановление),
+/// snapshot - полное состояние машины, из него партия поднимается после перезапуска.
+model Game {
+  /// 10 случайных символов [A-Za-z0-9], они же в ссылке startapp=g_<id>
+  id                   String        @id @db.VarChar(10)
+  mode                 GameMode
+  phase                GamePhase
+  finishReason         FinishReason? @map("finish_reason")
+  cancelReason         CancelReason? @map("cancel_reason")
+  category             GameCategory
+  creatorId            BigInt        @map("creator_id")
+  opponentId           BigInt?       @map("opponent_id")
+  /// 10 вопросов партии по порядку (пусто до старта отсчёта)
+  questionIds          String[]      @map("question_ids")
+  /// Порядок вариантов на экране для каждого вопроса: [[2,0,3,1], …]
+  optionOrders         Json          @default("[]") @map("option_orders")
+  /// -1 до первого вопроса
+  questionIndex        Int           @default(-1) @map("question_index")
+  phaseEndsAt          DateTime?     @map("phase_ends_at")
+  lobbyExpiresAt       DateTime?     @map("lobby_expires_at")
+  creatorScore         Int           @default(0) @map("creator_score")
+  opponentScore        Int           @default(0) @map("opponent_score")
+  winnerId             BigInt?       @map("winner_id")
+  /// Рейтинг до партии и изменение - заполняются на этапе 7 при подсчёте итогов
+  creatorRatingBefore  Int?          @map("creator_rating_before")
+  creatorRatingDelta   Int?          @map("creator_rating_delta")
+  opponentRatingBefore Int?          @map("opponent_rating_before")
+  opponentRatingDelta  Int?          @map("opponent_rating_delta")
+  rematchOf            String?       @map("rematch_of") @db.VarChar(10)
+  /// Номер версии состояния; растёт с каждым изменением
+  rev                  Int
+  snapshot             Json
+  createdAt            DateTime      @default(now()) @map("created_at")
+  startedAt            DateTime?     @map("started_at")
+  finishedAt           DateTime?     @map("finished_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  creator  User     @relation("GameCreator", fields: [creatorId], references: [id])
+  opponent User?    @relation("GameOpponent", fields: [opponentId], references: [id])
+  answers  Answer[]
+
+  @@index([phase])
+  @@index([creatorId, createdAt(sort: Desc)])
+  @@index([opponentId, createdAt(sort: Desc)])
+  @@map("games")
+}
+
+/// Ответ игрока на вопрос. Уникальный индекс - вторая линия защиты от двойного ответа.
+model Answer {
+  id            BigInt   @id @default(autoincrement())
+  gameId        String   @map("game_id") @db.VarChar(10)
+  userId        BigInt   @map("user_id")
+  questionIndex Int      @map("question_index")
+  questionId    String   @map("question_id")
+  /// Индекс варианта в базе (общий для RU и EN)
+  optionIndex   Int      @map("option_index")
+  /// Позиция, которую игрок нажал на экране
+  position      Int
+  isCorrect     Boolean  @map("is_correct")
+  timeMs        Int      @map("time_ms")
+  points        Int
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  game     Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+  question Question @relation(fields: [questionId], references: [id])
+
+  @@unique([gameId, userId, questionIndex])
+  @@index([userId])
+  @@map("answers")
+}
+
+/// terms - Пользовательское соглашение, privacy - Политика конфиденциальности,
+/// pd_consent - отдельное согласие на обработку ПД (если юрист скажет, что оно нужно)
+enum ConsentDoc {
+  terms
+  privacy
+  pd_consent
+}
+
+/// Журнал принятия документов: строки только добавляются, не меняются и не удаляются.
+model Consent {
+  id         BigInt     @id @default(autoincrement())
+  userId     BigInt     @map("user_id")
+  doc        ConsentDoc
+  docVersion String     @map("doc_version")
+  /// Время сервера (UTC), не клиента
+  acceptedAt DateTime   @default(now()) @map("accepted_at")
+  /// Первый адрес из X-Forwarded-For, который выставляет Caddy
+  ip         String?
+  userAgent  String?    @map("user_agent")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, doc, docVersion])
+  @@map("consents")
 }

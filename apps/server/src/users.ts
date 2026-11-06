@@ -1,4 +1,12 @@
-import { resolveLang, type LangSetting, type MeResponse, type MotionSetting } from '@quiz-duel/shared';
+import {
+  resolveLang,
+  type ConsentDoc,
+  type Lang,
+  type LangSetting,
+  type MeResponse,
+  type MotionSetting,
+  type PlayerProfile,
+} from '@quiz-duel/shared';
 import type { PrismaClient } from './generated/prisma/client.js';
 import type { TelegramUser } from './auth/initData.js';
 
@@ -17,11 +25,32 @@ export interface UserRecord {
   wins: number;
   losses: number;
   draws: number;
+  /** Последняя принятая версия документов; null - ещё не принимал. */
+  docsVersion: string | null;
+}
+
+/** Что нужно игровому серверу об игроке: карточка для соперника, язык вопросов и согласие. */
+export interface UserCard extends PlayerProfile {
+  id: number;
+  lang: Lang;
+  docsVersion: string | null;
+}
+
+export interface ConsentInput {
+  userId: number;
+  docs: ConsentDoc[];
+  version: string;
+  ip: string | null;
+  userAgent: string | null;
 }
 
 export interface UsersRepo {
   /** Создаёт игрока при первом входе, при следующих - обновляет имя, фото и язык из Telegram. */
   upsertFromTelegram(user: TelegramUser): Promise<UserRecord>;
+  /** Карточки игроков по id (кого нет в базе - того нет в ответе). */
+  cards(ids: readonly number[]): Promise<Map<number, UserCard>>;
+  /** Записывает принятие документов в журнал consents и запоминает версию у игрока. */
+  acceptDocs(input: ConsentInput): Promise<void>;
   /** Жива ли база (для /api/health). */
   ping(): Promise<boolean>;
 }
@@ -66,7 +95,37 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
         wins: row.wins,
         losses: row.losses,
         draws: row.draws,
+        docsVersion: row.docsVersion,
       };
+    },
+    async cards(ids) {
+      if (ids.length === 0) return new Map();
+      const rows = await prisma.user.findMany({ where: { id: { in: ids.map((id) => BigInt(id)) } } });
+      return new Map(
+        rows.map((row) => {
+          const id = Number(row.id);
+          const card: UserCard = {
+            id,
+            name: row.firstName,
+            username: row.username,
+            photoUrl: row.photoUrl,
+            rating: row.rating,
+            lang: resolveLang(row.language, row.tgLanguage),
+            docsVersion: row.docsVersion,
+          };
+          return [id, card];
+        }),
+      );
+    },
+    async acceptDocs({ userId, docs, version, ip, userAgent }) {
+      const id = BigInt(userId);
+      // Журнал и версия у игрока меняются вместе: либо оба, либо ничего.
+      await prisma.$transaction([
+        prisma.consent.createMany({
+          data: docs.map((doc) => ({ userId: id, doc, docVersion: version, ip, userAgent })),
+        }),
+        prisma.user.update({ where: { id }, data: { docsVersion: version } }),
+      ]);
     },
     async ping() {
       try {
@@ -79,7 +138,7 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
   };
 }
 
-export function toMeResponse(user: UserRecord, serverNow = Date.now()): MeResponse {
+export function toMeResponse(user: UserRecord, docsVersion: string, serverNow = Date.now()): MeResponse {
   return {
     id: user.id,
     firstName: user.firstName,
@@ -94,6 +153,7 @@ export function toMeResponse(user: UserRecord, serverNow = Date.now()): MeRespon
     wins: user.wins,
     losses: user.losses,
     draws: user.draws,
+    docsAccepted: user.docsVersion === docsVersion,
     serverNow,
   };
 }

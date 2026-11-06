@@ -1,12 +1,23 @@
-import { TIMINGS, type GameView, type Lang, type PlayerView, type RevealSide } from '@quiz-duel/shared';
+import { OPEN_PHASES, TIMINGS, type GameView, type Lang, type PlayerProfile, type PlayerView, type RevealSide } from '@quiz-duel/shared';
 import type { QuestionBank } from '../questions/bank.js';
 import { otherOf, outcomeFor, playerOf, type GameState, type PlayerState } from './machine.js';
 
-const playerView = (p: PlayerState): PlayerView => ({
+/** Карточка игрока по id; нет данных - нейтральная заглушка (имя покажется инициалом «?»). */
+export type ProfileLookup = (userId: number) => PlayerProfile | undefined;
+
+const UNKNOWN: PlayerProfile = { name: '', username: null, photoUrl: null, rating: 1000 };
+
+const playerView = (state: GameState, p: PlayerState, profileOf: ProfileLookup): PlayerView => ({
+  ...(profileOf(p.userId) ?? UNKNOWN),
   userId: p.userId,
   ready: p.ready,
   online: p.online,
   graceEndsAt: p.graceEndsAt,
+  // Так же считает машина: место соперника освобождается через 60 с офлайна в лобби.
+  seatFreesAt:
+    OPEN_PHASES.includes(state.phase) && state.opponent?.userId === p.userId && !p.online && p.offlineSince !== null
+      ? p.offlineSince + TIMINGS.lobbyOfflineMs
+      : null,
   score: p.score,
 });
 
@@ -14,7 +25,14 @@ const playerView = (p: PlayerState): PlayerView => ({
  * Снимок партии для одного игрока на его языке. Верный вариант и чужой выбор
  * появляются только в фазе раскрытия, когда вопрос уже закрыт. null - не участник.
  */
-export function viewFor(state: GameState, viewerId: number, lang: Lang, bank: QuestionBank, now: number): GameView | null {
+export function viewFor(
+  state: GameState,
+  viewerId: number,
+  lang: Lang,
+  bank: QuestionBank,
+  now: number,
+  profileOf: ProfileLookup = () => undefined,
+): GameView | null {
   const me = playerOf(state, viewerId);
   if (!me) return null;
   const opp = otherOf(state, viewerId);
@@ -50,8 +68,8 @@ export function viewFor(state: GameState, viewerId: number, lang: Lang, bank: Qu
     phaseEndsAt: state.phaseEndsAt,
     lobbyExpiresAt: state.lobbyExpiresAt,
     creatorId: state.creator.userId,
-    me: playerView(me),
-    opponent: opp ? playerView(opp) : null,
+    me: playerView(state, me, profileOf),
+    opponent: opp ? playerView(state, opp, profileOf) : null,
     question:
       gq && source
         ? {

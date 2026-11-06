@@ -1,5 +1,5 @@
 import type { Outcome } from './elo.js';
-import { CATEGORIES, type Category, type GameCategory } from './questions.js';
+import { CATEGORIES, type Category, type GameCategory } from './categories.js';
 import { TIMINGS } from './scoring.js';
 
 /** Сводные цифры игрока - то, что лежит в users и category_stats. */

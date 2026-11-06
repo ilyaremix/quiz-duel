@@ -41,8 +41,8 @@ describe('словари RU / EN', () => {
   });
 
   it('русские формы множественного числа полные (one / few / many)', () => {
-    const forms = Object.keys(ru.hello).filter((k) => k.startsWith('games_'));
-    expect(forms).toEqual(expect.arrayContaining(['games_one', 'games_few', 'games_many']));
+    const forms = Object.keys(ru.common).filter((k) => k.startsWith('questions_'));
+    expect(forms).toEqual(expect.arrayContaining(['questions_one', 'questions_few', 'questions_many']));
   });
 
   it('нет пустых строк', () => {

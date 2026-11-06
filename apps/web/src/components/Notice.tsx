@@ -1,30 +1,33 @@
 import { Icon, type IconGlyph } from './Icon';
 
 const TONES = {
+  muted: { bg: 'var(--qd-surface-2)', fg: 'var(--tg-theme-hint-color)' },
   brand: { bg: 'var(--qd-brand-tint)', fg: 'var(--qd-brand-text)' },
-  wrong: { bg: 'var(--qd-wrong-tint)', fg: 'var(--qd-wrong-text)' },
-  gold: { bg: 'var(--qd-gold-tint)', fg: 'var(--qd-gold-text)' },
+  gold: { bg: 'var(--qd-gold-tint)', fg: 'var(--qd-gold)' },
+  wrong: { bg: 'var(--qd-wrong-tint)', fg: 'var(--qd-wrong)' },
 } as const;
+
+export type NoticeTone = keyof typeof TONES;
 
 interface NoticeProps {
   title: string;
   text: string;
   glyph?: IconGlyph;
-  tone?: keyof typeof TONES;
+  tone?: NoticeTone;
 }
 
-/** Блок «иконка + заголовок + текст» для заглушек и пустых состояний. */
-export function Notice({ title, text, glyph, tone = 'brand' }: NoticeProps) {
+/** Блок «иконка + заголовок + текст» для заглушек и ошибок (экраны 23 и 24). */
+export function Notice({ title, text, glyph, tone = 'muted' }: NoticeProps) {
   const t = TONES[tone];
   return (
-    <div className="flex flex-col items-center gap-4 px-2 text-center">
+    <div className="flex flex-col items-center gap-2.5 text-center">
       {glyph && (
-        <div className="flex h-20 w-20 items-center justify-center rounded-full" style={{ background: t.bg, color: t.fg }}>
-          <Icon glyph={glyph} size={36} stroke={2.4} />
+        <div className="mb-2.5 flex h-24 w-24 items-center justify-center rounded-full" style={{ background: t.bg, color: t.fg }}>
+          <Icon glyph={glyph} size={44} stroke={2.5} />
         </div>
       )}
-      <h1 className="m-0 text-[28px] font-black leading-tight">{title}</h1>
-      <p className="m-0 max-w-[320px] text-[15px] font-semibold leading-snug text-hint">{text}</p>
+      <h1 className="m-0 text-[26px] leading-[1.15] font-black">{title}</h1>
+      <p className="m-0 max-w-[300px] text-[15px] leading-[1.4] font-semibold text-hint">{text}</p>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/http/app.js';
-import { ilya, makeInitData, memoryUsers, testEnv } from './helpers.js';
+import { DOCS_VERSION, ilya, makeInitData, memoryUsers, testEnv } from './helpers.js';
 
 const apps: Array<Awaited<ReturnType<typeof buildApp>>> = [];
 
@@ -56,6 +56,7 @@ describe('GET /api/me', () => {
       lang: 'ru',
       rating: 1000,
       games: 0,
+      docsAccepted: false,
     });
     expect(Math.abs(body.serverNow - Date.now())).toBeLessThan(5_000);
     expect(users.rows.size).toBe(1);
@@ -95,6 +96,11 @@ describe('публичные маршруты', () => {
       botUsername: 'quizduel_test_bot',
       appShortName: 'play',
       appUrl: 'https://t.me/quizduel_test_bot/play',
+      docs: {
+        version: DOCS_VERSION,
+        termsUrl: 'https://quiz.example.sslip.io/legal/terms.html',
+        privacyUrl: 'https://quiz.example.sslip.io/legal/privacy.html',
+      },
     });
   });
 
@@ -116,5 +122,67 @@ describe('публичные маршруты', () => {
     const evil = await app.inject({ method: 'GET', url: '/api/config', headers: { origin: 'https://evil.example' } });
     // Чужой origin не отражается в ответе, поэтому браузер заблокирует чтение.
     expect(evil.headers['access-control-allow-origin']).not.toBe('https://evil.example');
+  });
+});
+
+describe('POST /api/consents', () => {
+  const post = (app: Awaited<ReturnType<typeof makeApp>>['app'], body: unknown, extra: Record<string, string> = {}) =>
+    app.inject({
+      method: 'POST',
+      url: '/api/consents',
+      headers: { authorization: `tma ${makeInitData()}`, 'content-type': 'application/json', ...extra },
+      payload: JSON.stringify(body),
+    });
+
+  it('без initData - 401', async () => {
+    const { app } = await makeApp();
+    const res = await app.inject({ method: 'POST', url: '/api/consents', payload: { docs: ['terms', 'privacy'], version: DOCS_VERSION } });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('записывает оба документа с IP и User-Agent, /api/me видит принятие', async () => {
+    const { app, users } = await makeApp();
+    const res = await post(app, { docs: ['terms', 'privacy'], version: DOCS_VERSION }, { 'user-agent': 'TelegramBot-Test/1.0' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true, docsVersion: DOCS_VERSION });
+    expect(users.consents).toHaveLength(1);
+    expect(users.consents[0]).toMatchObject({ userId: ilya.id, docs: ['terms', 'privacy'], version: DOCS_VERSION, userAgent: 'TelegramBot-Test/1.0' });
+    expect(users.consents[0]!.ip).toBeTruthy();
+
+    const me = await app.inject({ method: 'GET', url: '/api/me', headers: { authorization: `tma ${makeInitData()}` } });
+    expect(me.json().docsAccepted).toBe(true);
+  });
+
+  it('поддельный user_id в теле игнорируется: id только из initData', async () => {
+    const { app, users } = await makeApp();
+    const res = await post(app, { docs: ['terms', 'privacy'], version: DOCS_VERSION, user_id: 1 });
+    // Лишние поля отклоняет строгая схема - чужой id подставить нельзя никак.
+    expect(res.statusCode).toBe(400);
+    expect(users.consents).toHaveLength(0);
+    const ok = await post(app, { docs: ['terms', 'privacy'], version: DOCS_VERSION });
+    expect(ok.statusCode).toBe(200);
+    expect(users.consents[0]!.userId).toBe(ilya.id);
+  });
+
+  it('нужны оба документа', async () => {
+    const { app } = await makeApp();
+    const res = await post(app, { docs: ['terms'], version: DOCS_VERSION });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: 'bad_request', reason: 'all_docs_required' });
+  });
+
+  it('устаревшая версия - 409 и текущая версия в ответе', async () => {
+    const { app } = await makeApp();
+    const res = await post(app, { docs: ['terms', 'privacy'], version: '2020-01-01' });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toEqual({ error: 'stale_version', reason: DOCS_VERSION });
+  });
+
+  it('повторная отправка - новая строка в журнале, без ошибки', async () => {
+    const { app, users } = await makeApp();
+    await post(app, { docs: ['terms', 'privacy'], version: DOCS_VERSION });
+    const again = await post(app, { docs: ['terms', 'privacy'], version: DOCS_VERSION });
+    expect(again.statusCode).toBe(200);
+    expect(users.consents).toHaveLength(2);
   });
 });

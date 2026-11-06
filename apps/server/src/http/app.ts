@@ -1,8 +1,16 @@
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
-import type { ApiError, ConfigResponse, HealthResponse } from '@quiz-duel/shared';
-import { webOrigin, type Env } from '../env.js';
+import {
+  CONSENT_DOCS,
+  ConsentRequestSchema,
+  type ApiError,
+  type ConfigResponse,
+  type ConsentDoc,
+  type ConsentResponse,
+  type HealthResponse,
+} from '@quiz-duel/shared';
+import { docsInfo, webOrigin, type Env } from '../env.js';
 import { InitDataError } from '../auth/initData.js';
 import { authErrorBody, requireTelegramAuth } from '../auth/fastify.js';
 import { toMeResponse, type UsersRepo } from '../users.js';
@@ -10,7 +18,15 @@ import { toMeResponse, type UsersRepo } from '../users.js';
 export interface AppDeps {
   env: Pick<
     Env,
-    'BOT_TOKEN' | 'INIT_DATA_MAX_AGE_SEC' | 'WEB_APP_URL' | 'APP_SHORT_NAME' | 'TRUST_PROXY' | 'LOG_LEVEL'
+    | 'BOT_TOKEN'
+    | 'INIT_DATA_MAX_AGE_SEC'
+    | 'WEB_APP_URL'
+    | 'APP_SHORT_NAME'
+    | 'TRUST_PROXY'
+    | 'LOG_LEVEL'
+    | 'DOCS_VERSION'
+    | 'TERMS_URL'
+    | 'PRIVACY_URL'
   >;
   users: UsersRepo;
   botUsername: string;
@@ -88,12 +104,39 @@ export async function buildApp({ env, users, botUsername, logger }: AppDeps) {
     botUsername,
     appShortName: env.APP_SHORT_NAME,
     appUrl: `https://t.me/${botUsername}/${env.APP_SHORT_NAME}`,
+    docs: docsInfo(env),
   }));
 
   app.get('/api/me', { onRequest: auth }, async (request) => {
     // request.tg гарантированно заполнен: без него хук auth отклонил бы запрос.
     const user = await users.upsertFromTelegram(request.tg!.user);
-    return toMeResponse(user);
+    return toMeResponse(user, env.DOCS_VERSION);
+  });
+
+  // Принятие документов. userId - только из проверенного initData, тело запроса его не задаёт.
+  // IP - адрес клиента из X-Forwarded-For, которому верим только от своих прокси (trustProxy).
+  app.post('/api/consents', { onRequest: auth }, async (request, reply) => {
+    const parsed = ConsentRequestSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'bad_request' } satisfies ApiError);
+    // Играть можно, только приняв оба документа, поэтому и принимаются они вместе.
+    if (!CONSENT_DOCS.every((doc) => parsed.data.docs.includes(doc))) {
+      return reply.code(400).send({ error: 'bad_request', reason: 'all_docs_required' } satisfies ApiError);
+    }
+    if (parsed.data.version !== env.DOCS_VERSION) {
+      return reply.code(409).send({ error: 'stale_version', reason: env.DOCS_VERSION } satisfies ApiError);
+    }
+    const tgUser = request.tg!.user;
+    // Строка игрока должна существовать (внешний ключ журнала).
+    await users.upsertFromTelegram(tgUser);
+    const ua = request.headers['user-agent'];
+    await users.acceptDocs({
+      userId: tgUser.id,
+      docs: [...new Set(parsed.data.docs)] as ConsentDoc[],
+      version: parsed.data.version,
+      ip: request.ip || null,
+      userAgent: typeof ua === 'string' ? ua.slice(0, 512) : null,
+    });
+    return { ok: true, docsVersion: env.DOCS_VERSION } satisfies ConsentResponse;
   });
 
   return app;

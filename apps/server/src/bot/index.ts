@@ -1,8 +1,8 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import type { FastifyBaseLogger } from 'fastify';
 import { langFromTelegram } from '@quiz-duel/shared';
-import { botTexts } from './texts.js';
-
+import { botTexts, inviteTexts } from './texts.js';
+import type { InviteMaker } from '../game/manager.js';
 
 /**
  * Создаёт бота и проверяет токен (getMe). Сам опрос Telegram
@@ -53,4 +53,35 @@ export function startBot(bot: QuizBot, log: FastifyBaseLogger) {
     .catch((error: unknown) => {
       log.error({ err: error }, 'bot polling stopped with error');
     });
+}
+
+const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/**
+ * Подготовленное сообщение для shareMessage: игрок выбирает чат, туда уходит карточка
+ * «Вызов на дуэль» с кнопкой «Принять» - она открывает мини-апп сразу в этой игре.
+ */
+export function botInvites(bot: QuizBot): InviteMaker {
+  return {
+    async prepare({ userId, gameId, link, category, lang, creatorName }) {
+      const t = inviteTexts[lang];
+      const prepared = await bot.api.savePreparedInlineMessage(
+        userId,
+        {
+          type: 'article',
+          id: `g_${gameId}`,
+          title: t.title,
+          description: t.description,
+          input_message_content: {
+            message_text: t.body(escapeHtml(creatorName), t.categories[category]),
+            parse_mode: 'HTML',
+            link_preview_options: { is_disabled: true },
+          },
+          reply_markup: new InlineKeyboard().url(t.accept, link),
+        },
+        { allow_user_chats: true, allow_group_chats: true, allow_channel_chats: true },
+      );
+      return { id: prepared.id, expiresAt: prepared.expiration_date * 1000 };
+    },
+  };
 }

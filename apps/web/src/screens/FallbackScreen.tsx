@@ -4,12 +4,13 @@ import { Notice } from '../components/Notice';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 
-export type FallbackKind = 'outside' | 'error' | 'session';
+export type FallbackKind = 'outside' | 'error' | 'session' | 'otherDevice';
 
 const LOOK = {
   outside: { glyph: undefined, tone: 'brand', action: 'send' },
   error: { glyph: 'alert', tone: 'wrong', action: 'retry' },
   session: { glyph: 'clock', tone: 'gold', action: undefined },
+  otherDevice: { glyph: 'offline', tone: 'gold', action: 'retry' },
 } as const;
 
 interface FallbackScreenProps {
@@ -18,7 +19,7 @@ interface FallbackScreenProps {
   actionDisabled?: boolean;
 }
 
-/** Экран 24: «Откройте в Telegram», ошибка сервера, устаревший вход. */
+/** Экран 24: «Откройте в Telegram», ошибка сервера, устаревший вход, игра открыта на другом устройстве. */
 export function FallbackScreen({ kind, onAction, actionDisabled }: FallbackScreenProps) {
   const { t } = useTranslation();
   const look = LOOK[kind];
