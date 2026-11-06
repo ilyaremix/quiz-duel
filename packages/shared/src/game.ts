@@ -90,6 +90,15 @@ export interface RatingChange {
   delta: number;
 }
 
+/** Итог тренировки: счёт и рекорд категории до этой попытки. */
+export interface SoloResultView {
+  score: number;
+  /** Рекорд категории до этой попытки; null - тренировок в ней ещё не было. */
+  prevBest: number | null;
+  /** Побит рекорд (первая попытка с очками - тоже рекорд). */
+  record: boolean;
+}
+
 export interface GameResultView {
   reason: FinishReason;
   outcome: Outcome;
@@ -99,8 +108,10 @@ export interface GameResultView {
   stats: ResultStats;
   /** Мой рейтинг до и после; null - сервер ещё считает итоги (придёт следующим снимком). */
   rating: RatingChange | null;
-  /** Ачивки, полученные в этой партии (показ - этап 8). */
+  /** Ачивки, полученные в этой партии. */
   newAchievements: AchievementCode[];
+  /** Только у тренировки: счёт и рекорд; null - дуэль или итоги ещё считаются. */
+  solo: SoloResultView | null;
 }
 
 /**
@@ -157,6 +168,8 @@ export interface GameView {
   rematchOf: string | null;
   /** Состояние реванша - только у завершённой партии. */
   rematch: RematchView | null;
+  /** Тренировка: рекорд категории до этой попытки (показывается в счёте вместо соперника). */
+  soloBest: number | null;
 }
 
 /** Реакции сопернику: фиксированный набор, свободного чата нет - модерировать нечего. */

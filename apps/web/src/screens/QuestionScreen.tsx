@@ -116,6 +116,7 @@ export function QuestionScreen({ game }: { game: GameView }) {
         total={q.total}
         oppState={oppState}
         meState={!reveal && answered ? 'answered' : 'none'}
+        best={game.mode === 'solo' ? (game.soloBest ? formatNumber(game.soloBest, lang) : '-') : undefined}
       />
         <ReactionBubble userId={game.me.userId} side="me" className="top-[46px] left-0" />
         {opp && <ReactionBubble userId={opp.userId} side="opp" className="top-[46px] right-0" />}

@@ -461,6 +461,58 @@ export class GameManager {
     return { ok: true, link, preparedMessageId: prepared?.id ?? null };
   }
 
+  /**
+   * Тренировка: одиночная партия из 10 вопросов на том же движке (таймер 15 с, очки за скорость),
+   * без рейтинга. Вопрос закрывается сразу после ответа. Пока идёт дуэль или открыто своё лобби
+   * (кто-то может прийти по ссылке) - busy: в двух партиях сразу играть нельзя.
+   */
+  async soloStart(userId: number, category: GameCategory): Promise<Result<{ game: GameView }>> {
+    if (!this.allowCreate(userId)) return fail('rate_limited');
+    const card = await this.card(userId);
+    if (!card) return fail('internal');
+    if (card.docsVersion !== this.d.docsVersion) return fail('consent_required');
+
+    const currentId = this.current.get(userId);
+    const cur = currentId ? this.games.get(currentId) : undefined;
+    if (currentId && cur && machine.playerOf(cur.state, userId) && !FINAL_PHASES.includes(cur.state.phase)) {
+      return fail('busy', { busyGameId: currentId });
+    }
+    // С итогов дуэли - в тренировку: реванш этому игроку больше не предложить.
+    const busy = await this.releaseOpenGame(userId, null);
+    if (busy) return busy;
+
+    let id: string | null = null;
+    for (let attempt = 0; attempt < 3 && !id; attempt++) {
+      const candidate = (this.d.newId ?? newGameId)();
+      if (!this.games.has(candidate) && !(await this.d.repo.load(candidate))) id = candidate;
+    }
+    if (!id) return fail('internal');
+
+    const [seen, soloBest] = await Promise.all([
+      this.d.repo.seenQuestions([userId]).catch(() => new Map<string, number>()),
+      this.d.repo.soloBest(userId, category).catch(() => null),
+    ]);
+    const now = this.now();
+    this.pendingSeen.set(id, seen);
+    let state: GameState;
+    try {
+      state = machine.createGame({ id, mode: 'solo', category, creatorId: userId, soloBest }, now, this.deps);
+    } finally {
+      this.pendingSeen.delete(id);
+    }
+    try {
+      // startedAt - чтобы вопросы тренировки учитывались как «уже виденные» и в следующих партиях.
+      await this.d.repo.save(state, { startedAt: now });
+    } catch (error) {
+      this.d.log.error({ err: error, gameId: id }, 'solo create failed');
+      return fail('internal');
+    }
+    const entry = this.adopt(state);
+    entry.seen = seen;
+    this.schedule(entry);
+    return { ok: true, game: this.viewOf(entry.state, userId)! };
+  }
+
   // -------------------------------------------------------------------------
   // Партия
 
@@ -761,7 +813,8 @@ export class GameManager {
     }
 
     // Конец рейтинговой дуэли: финальный снимок пишется в одной транзакции с итогами.
-    const settled = finished && machine.isRated(entry.state) && !entry.state.settlement ? await this.settleNow(entry) : null;
+    const needs = machine.isRated(entry.state) || machine.isSoloDone(entry.state);
+    const settled = finished && needs && !entry.state.settlement ? await this.settleNow(entry) : null;
     if (settled === false) this.scheduleSettleRetry(entry);
     if (!settled) {
       try {
@@ -791,6 +844,17 @@ export class GameManager {
   private async settleNow(entry: Entry): Promise<boolean> {
     const state = entry.state;
     if (state.settlement) return true;
+    if (state.mode === 'solo') {
+      try {
+        entry.state = machine.withSettlement(entry.state, await this.d.repo.settleSolo(state, this.now()));
+        if (entry.settleTimer) this.clock.clearTimeout(entry.settleTimer);
+        entry.settleTimer = null;
+        return true;
+      } catch (error) {
+        this.d.log.error({ err: error, gameId: state.id }, 'solo settle failed');
+        return false;
+      }
+    }
     try {
       const previous = state.rematchOf
         ? (this.games.get(state.rematchOf)?.state ?? (await this.d.repo.load(state.rematchOf)))

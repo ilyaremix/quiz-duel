@@ -162,6 +162,11 @@ export interface ClientToServerEvents {
   'time:sync': (ack: (payload: TimeSyncAck) => void) => void;
   'game:create': (payload: CreateGamePayload, ack: AckFn<GameResult>) => void;
   'game:join': (payload: GameIdPayload, ack: AckFn<GameResult>) => void;
+  /**
+   * Тренировка в категории: сразу первый вопрос. Ответы и выход - те же game:answer и game:forfeit
+   * (движок один); итог - game:state с result.solo.
+   */
+  'solo:start': (payload: CreateGamePayload, ack: AckFn<GameResult>) => void;
   'game:sync': (payload: SyncPayload, ack: AckFn<SyncResult>) => void;
   'game:invite': (payload: GameIdPayload, ack: AckFn<InviteResult>) => void;
   'game:ready': (payload: ReadyPayload, ack: AckFn<GameResult>) => void;

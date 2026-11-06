@@ -74,6 +74,8 @@ export interface SettlementPlayer {
 export interface Settlement {
   at: number;
   players: SettlementPlayer[];
+  /** Тренировка: счёт, прошлый рекорд категории и побит ли он. */
+  solo?: { score: number; prevBest: number | null; record: boolean };
 }
 
 export interface GameState {
@@ -100,6 +102,8 @@ export interface GameState {
   rematch?: RematchState | null;
   /** Рейтинг и ачивки по итогам; нет - ещё не посчитаны. */
   settlement?: Settlement | null;
+  /** Тренировка: рекорд категории до этой попытки (null - не было). */
+  soloBest?: number | null;
   rev: number;
 }
 
@@ -154,6 +158,8 @@ export interface CreateParams {
   /** Реванш: согласие обоих уже есть, сразу отсчёт. */
   startNow?: boolean;
   rematchOf?: string;
+  /** Тренировка: рекорд категории до этой попытки. */
+  soloBest?: number | null;
 }
 
 const newPlayer = (userId: number, ready = false): PlayerState => ({
@@ -206,6 +212,7 @@ export function createGame(params: CreateParams, now: number, deps: MachineDeps)
     settlement: null,
     rev: 1,
   };
+  if (solo) state.soloBest = params.soloBest ?? null;
   // Тренировка: без лобби, VS и отсчёта - сразу первый вопрос.
   if (solo) {
     state.questions = deps.pickQuestions(state);
@@ -616,6 +623,11 @@ export function outcomeFor(state: GameState, userId: number): Outcome | null {
   if (!state.finish) return null;
   if (state.finish.winnerId === null) return 'draw';
   return state.finish.winnerId === userId ? 'win' : 'loss';
+}
+
+/** Доигранная тренировка: её итог (рекорд, «Эрудит») записывается так же, одной транзакцией. */
+export function isSoloDone(state: GameState): boolean {
+  return state.phase === 'finished' && state.mode === 'solo';
 }
 
 /** Рейтинговая ли партия: дуэли по ссылке, быстрая игра и реванш, доигранные или технические. */

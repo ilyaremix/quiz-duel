@@ -161,6 +161,37 @@ describe.skipIf(!url)('итоги на Postgres', () => {
     expect(await prisma.userAchievement.count()).toBe(0);
   });
 
+  it('тренировка: строка solo_runs, «Эрудит» и итог одной транзакцией; повтор ничего не добавляет', async () => {
+    const d = deps();
+    await prisma.user.update({ where: { id: BigInt(A) }, data: { totalCorrect: 95, rating: 1111 } });
+    let now = T0;
+    let s = machine.createGame({ id: 'SoloGame01', mode: 'solo', category: 'tech', creatorId: A, soloBest: null }, now, d);
+    for (let i = 0; i < 10; i++) {
+      const q = s.questions[i]!;
+      const r = machine.answer(s, A, i, q.order.indexOf(bank.byId.get(q.id)!.correct), now + 2_000, d);
+      if (!r.ok) throw new Error(r.error);
+      now += 2_000 + TIMINGS.revealMs;
+      const t = machine.tick(r.state, now, d);
+      if (!t.ok) throw new Error(t.error);
+      s = t.state;
+    }
+    expect(s.phase).toBe('finished');
+    await repo.save({ ...s, phase: 'reveal', finish: null });
+    const first = await repo.settleSolo(s, now);
+    expect(first.solo).toEqual({ score: s.creator.score, prevBest: null, record: true });
+    expect(first.players[0]!.achievements).toEqual(['erudite']);
+    const again = await repo.settleSolo(s, now + 5_000);
+    expect(again).toEqual(first);
+    expect(await prisma.soloRun.count()).toBe(1);
+    // Рейтинг и дуэльная статистика не тронуты; верные ответы - в «Эрудита».
+    expect(await user(A)).toMatchObject({ rating: 1111, games: 0, totalCorrect: 105, duelCorrect: 0 });
+    expect(await repo.soloBest(A, 'tech')).toBe(s.creator.score);
+    expect(await repo.soloBest(A, 'sport')).toBeNull();
+    expect((await prisma.game.findUniqueOrThrow({ where: { id: 'SoloGame01' } })).settledAt).not.toBeNull();
+    // В историю матчей и разбор тренировка не попадает.
+    expect((await stats.profile(A))?.matches).toEqual([]);
+  });
+
   describe('чтение для экранов', () => {
     it('профиль: цифры, точность, среднее время верного, категории и история', async () => {
       await finish(played('ReadGame01', A, B, [n(7), n(4)], { at: T0 }));

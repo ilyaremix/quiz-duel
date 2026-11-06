@@ -136,7 +136,9 @@
     "aria": "Choose a category",
     "title": "Choose a category",
     "sub": "10 questions, 15 seconds each",
-    "create": "Create duel"
+    "create": "Create duel",
+    "train": "Start practice",
+    "trainSub": "10 questions, no opponent, no rating"
   },
   "s05": {
     "title": "Waiting for opponent",
@@ -222,7 +224,7 @@
     },
     "busy": {
       "title": "You have a game in progress",
-      "text": "Finish your current duel first - you can’t play two games at once"
+      "text": "Finish your current game or practice first - you can’t play two at once"
     }
   },
   "s24": {
@@ -288,7 +290,8 @@
     "aria": "Score",
     "answered": "Opponent answered",
     "offline": "Offline",
-    "opp": "Opponent"
+    "opp": "Opponent",
+    "best": "Best"
   },
   "units": {
     "sec": "{{t}} s"
@@ -498,5 +501,33 @@
       "Bravo"
     ],
     "from": "Reaction: {{r}}"
+  },
+  "s19": {
+    "title": "Practice",
+    "record": "New record!",
+    "scoreAria": "Points",
+    "best": "Best",
+    "prevBest": "Previous best",
+    "toRecord": "{{n}} short of your best",
+    "plusRecord": "+{{n}} over your best",
+    "firstRecord": "First record",
+    "equalRecord": "Equal to your best",
+    "correct": "{{n}} correct",
+    "avg": "{{t}} avg",
+    "noRating": "Practice doesn’t affect your rating",
+    "saving": "Saving your result…",
+    "again": "Again",
+    "other": "Another category",
+    "home": "Home",
+    "noAnswers": {
+      "title": "Attempt not counted",
+      "text": "You didn’t answer a single question"
+    },
+    "exit": {
+      "title": "Leave practice?",
+      "text": "This attempt won’t be saved",
+      "stay": "Stay",
+      "leave": "Leave"
+    }
   }
 }

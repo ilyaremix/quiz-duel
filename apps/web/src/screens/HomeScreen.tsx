@@ -127,7 +127,7 @@ export function HomeScreen({ me }: { me: MeResponse }) {
 
         <section className="grid grid-cols-2 gap-3">
           <ModeCard glyph="bolt" tone="brand" title={t('s03.quick')} hint={t('s03.quickHint')} onPress={soon} />
-          <ModeCard glyph="target" tone="gold" title={t('s03.training')} hint={t('s03.trainingHint')} onPress={soon} />
+          <ModeCard glyph="target" tone="gold" title={t('s03.training')} hint={t('s03.trainingHint')} onPress={() => gameActions.openSolo(me.docsAccepted)} />
         </section>
 
         <section className="flex flex-col gap-2">

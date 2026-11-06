@@ -1,5 +1,5 @@
 // Схема базы Quiz Duel. Этап 1: игроки. Этап 2: вопросы. Этап 4: партии, ответы, согласия.
-// Этап 7: итоги партии (рейтинг, статистика по категориям, ачивки). Тренировки - этап 8.
+// Этап 7: итоги партии (рейтинг, статистика по категориям, ачивки). Этап 8: тренировки.
 
 generator client {
   provider     = "prisma-client"
@@ -69,6 +69,7 @@ model User {
   consents      Consent[]
   categoryStats CategoryStat[]
   achievements  UserAchievement[]
+  soloRuns      SoloRun[]
 
   @@index([rating(sort: Desc)])
   @@map("users")
@@ -196,6 +197,7 @@ model Game {
   creator  User     @relation("GameCreator", fields: [creatorId], references: [id])
   opponent User?    @relation("GameOpponent", fields: [opponentId], references: [id])
   answers  Answer[]
+  soloRun  SoloRun?
 
   @@index([phase])
   @@index([creatorId, createdAt(sort: Desc)])
@@ -285,4 +287,22 @@ model UserAchievement {
 
   @@id([userId, code])
   @@map("user_achievements")
+}
+
+/// Тренировка (одиночная партия): одна строка на доигранную попытку. Рейтинг не трогает;
+/// лучший счёт по категории - личный рекорд. Верные ответы идут только в «Эрудита».
+model SoloRun {
+  /// Партия тренировки (mode = solo) - одна строка на партию, повторный подсчёт ничего не добавит
+  gameId    String       @id @map("game_id") @db.VarChar(10)
+  userId    BigInt       @map("user_id")
+  category  GameCategory
+  score     Int
+  correct   Int
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, category, score(sort: Desc)])
+  @@map("solo_runs")
 }

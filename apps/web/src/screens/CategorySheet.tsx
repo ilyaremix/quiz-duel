@@ -7,11 +7,12 @@ import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { gameActions, useGame } from '../lib/game';
 
-/** Экран 4: нижняя шторка выбора категории перед созданием дуэли. */
+/** Экран 4: нижняя шторка выбора категории перед дуэлью или тренировкой. */
 export function CategorySheet() {
   const { t } = useTranslation();
   const open = useGame((s) => s.categorySheet);
-  const creating = useGame((s) => Boolean(s.pending['game:create']));
+  const solo = useGame((s) => s.categoryMode === 'solo');
+  const creating = useGame((s) => Boolean(s.pending['game:create'] || s.pending['solo:start']));
   const [selected, setSelected] = useState<GameCategory | null>(null);
 
   return (
@@ -19,7 +20,7 @@ export function CategorySheet() {
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h2 className="m-0 text-[22px] font-black">{t('s04.title')}</h2>
-          <p className="m-0 text-[14px] font-semibold text-hint">{t('s04.sub')}</p>
+          <p className="m-0 text-[14px] font-semibold text-hint">{t(solo ? 's04.trainSub' : 's04.sub')}</p>
         </div>
         <button
           type="button"
@@ -36,8 +37,11 @@ export function CategorySheet() {
         ))}
       </div>
       <div className="mt-1">
-        <Button disabled={!selected || creating} onClick={() => selected && void gameActions.create(selected)}>
-          {t('s04.create')}
+        <Button
+          disabled={!selected || creating}
+          onClick={() => selected && void (solo ? gameActions.startSolo(selected) : gameActions.create(selected))}
+        >
+          {t(solo ? 's04.train' : 's04.create')}
         </Button>
       </div>
     </Sheet>

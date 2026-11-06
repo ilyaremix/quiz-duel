@@ -39,6 +39,8 @@ export interface ConsentAsk {
   inviter: (PlayerProfile & { userId: number }) | null;
   gameId: string | null;
   category: GameCategory | null;
+  /** После принятия - тренировка, а не дуэль. */
+  solo?: boolean;
 }
 
 interface GameStore {
@@ -54,6 +56,8 @@ interface GameStore {
   linkError: { kind: LinkErrorKind; busyGameId?: string } | null;
   consent: ConsentAsk | null;
   categorySheet: boolean;
+  /** Для чего выбирают категорию: дуэль с другом или тренировка. */
+  categoryMode: 'duel' | 'solo';
   /** Открыли по ссылке на игру, и вход ещё не решился (лобби, шторка с документами или ошибка). */
   linkEntry: boolean;
   invite: { gameId: string; link: string; preparedMessageId: string | null } | null;
@@ -91,6 +95,7 @@ export const useGame = create<GameStore>(() => ({
   linkError: null,
   consent: null,
   categorySheet: false,
+  categoryMode: 'duel',
   linkEntry: false,
   invite: null,
   pending: {},
@@ -548,7 +553,25 @@ export const gameActions = {
   /** «Создать дуэль»: без принятых документов сначала шторка с галочками. */
   openCreate(docsAccepted: boolean) {
     if (!docsAccepted) set({ consent: { inviter: null, gameId: null, category: null } });
-    else set({ categorySheet: true });
+    else set({ categorySheet: true, categoryMode: 'duel' });
+  },
+
+  /** «Тренировка»: та же шторка категорий, но кнопка «Начать тренировку». */
+  openSolo(docsAccepted: boolean) {
+    if (!docsAccepted) set({ consent: { inviter: null, gameId: null, category: null, solo: true } });
+    else set({ categorySheet: true, categoryMode: 'solo' });
+  },
+
+  /** Тренировка в категории: сразу первый вопрос (сервер - тот же движок, без соперника и рейтинга). */
+  async startSolo(category: GameCategory) {
+    const res = await request('solo:start', { category });
+    if (res.ok) {
+      set({ game: res.game, hidden: false, linkError: null, categorySheet: false, review: null, picked: null, exitAsk: false });
+      return;
+    }
+    if (res.error === 'consent_required') set({ consent: { inviter: null, gameId: null, category, solo: true }, categorySheet: false });
+    else if (res.error === 'busy') set({ linkError: { kind: 'busy', busyGameId: res.busyGameId }, categorySheet: false });
+    else showToast('error', 'toast.connection');
   },
 
   closeCategory() {
@@ -575,8 +598,8 @@ export const gameActions = {
     if (!ask || !(await gameActions.acceptDocs())) return;
     set({ consent: null });
     if (ask.gameId) await gameActions.join(ask.gameId);
-    else if (ask.category) await gameActions.create(ask.category);
-    else set({ categorySheet: true });
+    else if (ask.category) await (ask.solo ? gameActions.startSolo(ask.category) : gameActions.create(ask.category));
+    else set({ categorySheet: true, categoryMode: ask.solo ? 'solo' : 'duel' });
   },
 
   declineConsent() {
@@ -630,7 +653,9 @@ export const gameActions = {
     if (!g) return;
     const res = await request('game:forfeit', { gameId: g.id });
     set({ exitAsk: false });
-    if (res.ok) applyView(res.game);
+    // Из тренировки - сразу на главную, без сохранения попытки.
+    if (res.ok && g.mode === 'solo') set({ game: null, hidden: false, tab: 'home' });
+    else if (res.ok) applyView(res.game);
     else if (res.error === 'wrong_phase') void gameActions.resync(g.id);
     else showToast('error', 'toast.connection');
   },

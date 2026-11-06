@@ -27,6 +27,7 @@ import { LeaderboardScreen } from './screens/LeaderboardScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { OppSheet } from './screens/OppSheet';
 import { AchievementsScreen } from './screens/AchievementsScreen';
+import { SoloResultScreen } from './screens/SoloResultScreen';
 
 /** Вне Telegram: заглушка с кнопкой, ведущей в мини-апп (адрес отдаёт сервер). */
 function OutsideTelegram() {
@@ -65,10 +66,12 @@ function GameRoute({ game, me, review }: { game: GameView; me: MeResponse; revie
     case 'reveal':
       return game.question ? <QuestionScreen game={game} /> : <LoadingScreen />;
     case 'finished':
+      if (game.mode === 'solo') return <SoloResultScreen game={game} />;
       return review ? <ReviewScreen gameId={review} /> : <ResultScreen game={game} />;
     case 'expired':
       return <LinkErrorScreen kind="expired" docsAccepted={me.docsAccepted} />;
     case 'cancelled':
+      if (game.mode === 'solo') return <SoloResultScreen game={game} />;
       if (game.cancelReason === 'creator') {
         return iAmCreator ? <HomeScreen me={me} /> : <LinkErrorScreen kind="cancelled" docsAccepted={me.docsAccepted} />;
       }
@@ -109,7 +112,7 @@ function TabsRoute({ me }: { me: MeResponse }) {
 /** Итоги посчитаны (пришёл рейтинг) - профиль, история и лидерборд перезапрашиваются. */
 function useRefreshAfterGame(game: GameView | null) {
   const queryClient = useQueryClient();
-  const settled = game?.result?.rating ? `${game.id}:${game.result.rating.after}` : null;
+  const settled = game?.result?.rating ? `${game.id}:${game.result.rating.after}` : game?.result?.solo ? `${game.id}:solo` : null;
   const oppId = game?.opponent?.userId;
   useEffect(() => {
     if (!settled) return;

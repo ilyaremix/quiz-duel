@@ -59,8 +59,9 @@ function resultFor(state: GameState, me: PlayerState): GameResultView | null {
     technical,
     leaverId: technical && winner !== null ? (otherOf(state, winner)?.userId ?? null) : null,
     stats: statsOf(state, me),
-    rating: mine ? { before: mine.before, after: mine.after, delta: mine.delta } : null,
+    rating: mine && state.mode !== 'solo' ? { before: mine.before, after: mine.after, delta: mine.delta } : null,
     newAchievements: mine?.achievements ?? [],
+    solo: state.mode === 'solo' ? (state.settlement?.solo ?? null) : null,
   };
 }
 
@@ -154,5 +155,6 @@ export function viewFor(
     cancelReason: state.cancelReason,
     rematchOf: state.rematchOf,
     rematch: rematchFor(state, me),
+    soloBest: state.mode === 'solo' ? (state.soloBest ?? null) : null,
   };
 }

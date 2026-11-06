@@ -30,7 +30,7 @@ const ICONS: Record<Look, { bg: string; fg: string; glyph: IconGlyph; stroke: nu
 const CONFETTI = ['var(--qd-me)', 'var(--qd-gold)', 'var(--qd-brand)', 'var(--qd-opp)', 'var(--qd-correct)'];
 
 /** Конфетти на победу: ~24 кусочка разлетаются один раз (в режиме без анимаций скрыты). */
-function Confetti() {
+export function Confetti() {
   const pieces = useMemo(
     () =>
       Array.from({ length: 24 }, (_, i) => {

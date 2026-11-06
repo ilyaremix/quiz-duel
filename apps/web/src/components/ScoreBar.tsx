@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Avatar, type AvatarBadge } from './Avatar';
+import { Icon } from './Icon';
 
 export interface ScoreSide {
   id: number;
@@ -18,10 +19,12 @@ interface ScoreBarProps {
   /** answered - соперник ответил (без варианта), offline - не в сети. */
   oppState: 'none' | 'answered' | 'offline';
   meState: 'none' | 'answered';
+  /** Тренировка: справа вместо соперника - рекорд категории (уже отформатирован; «-» если нет). */
+  best?: string;
 }
 
 /** Счёт партии сверху: я слева (синий), соперник справа (оранжевый), точки прогресса и «3/10». */
-export function ScoreBar({ me, opp, current, total, oppState, meState }: ScoreBarProps) {
+export function ScoreBar({ me, opp, current, total, oppState, meState, best }: ScoreBarProps) {
   const { t } = useTranslation();
   const oppBadge: AvatarBadge = oppState === 'answered' ? 'answered' : oppState === 'offline' ? 'offline' : 'none';
   const note =
@@ -64,6 +67,17 @@ export function ScoreBar({ me, opp, current, total, oppState, meState }: ScoreBa
               <span className="qd-num text-[20px] font-extrabold text-opp-text">{opp.score}</span>
             </div>
             <Avatar id={opp.id} name={opp.name} photoUrl={opp.photoUrl} size={44} ring="opp" badge={oppBadge} />
+          </div>
+        )}
+        {!opp && best !== undefined && (
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+            <div className="flex min-w-0 flex-col items-end">
+              <span className="text-[13px] font-bold whitespace-nowrap text-hint">{t('score.best')}</span>
+              <span className="qd-num text-[20px] font-extrabold text-gold-text">{best}</span>
+            </div>
+            <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold-tint text-gold">
+              <Icon glyph="rating" size={20} stroke={2.2} />
+            </span>
           </div>
         )}
       </div>

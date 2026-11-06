@@ -135,6 +135,7 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
 
     if (games) {
       on('game:create', CreateGamePayloadSchema, (p) => games.create(userId, p.category as GameCategory));
+      on('solo:start', CreateGamePayloadSchema, (p) => games.soloStart(userId, p.category as GameCategory));
       on('game:join', GameIdPayloadSchema, (p) => games.join(userId, p.gameId));
       on('game:sync', SyncPayloadSchema, (p) => games.sync(userId, p.gameId));
       on('game:invite', GameIdPayloadSchema, (p) => games.invite(userId, p.gameId));

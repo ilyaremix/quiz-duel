@@ -1,4 +1,14 @@
-import { CATEGORIES, ELO, type AchievementCode, type Category, type GamePhase } from '@quiz-duel/shared';
+import {
+  applySolo,
+  CATEGORIES,
+  ELO,
+  EMPTY_TOTALS,
+  newAchievements,
+  type AchievementCode,
+  type Category,
+  type GameCategory,
+  type GamePhase,
+} from '@quiz-duel/shared';
 import { FINAL_PHASES } from '@quiz-duel/shared';
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import { withSettlement, type GameState, type PlayerAnswer, type Settlement } from './machine.js';
@@ -24,8 +34,47 @@ export interface GamesRepo {
    * ничего не меняет и возвращает уже посчитанное (после перезапуска, при гонке).
    */
   settle(state: GameState, input: SettleInput, now: number): Promise<Settlement>;
-  /** Завершённые рейтинговые партии, итоги которых ещё не посчитаны (сервер упал между ними). */
+  /** Завершённые рейтинговые партии и тренировки, итоги которых ещё не посчитаны (сервер упал между ними). */
   loadUnsettled(): Promise<GameState[]>;
+  /** Личный рекорд тренировки в категории; null - тренировок в ней ещё не было. */
+  soloBest(userId: number, category: GameCategory): Promise<number | null>;
+  /**
+   * Итог тренировки одной транзакцией: строка solo_runs (рекорд), верные ответы в «Эрудита»,
+   * ачивка «Эрудит», финальный снимок. Рейтинг и статистика дуэлей не меняются.
+   * Повторный вызов ничего не меняет и возвращает уже посчитанное.
+   */
+  settleSolo(state: GameState, now: number): Promise<Settlement>;
+}
+
+/** Счёт и верные ответы тренировки (только закрытые вопросы). */
+export function soloScore(state: GameState) {
+  const me = state.creator;
+  let correct = 0;
+  for (let i = 0; i < state.closed; i++) if (me.answers[i]?.correct) correct += 1;
+  return { score: me.score, correct };
+}
+
+/** Итог тренировки из прошлого рекорда и цифр игрока. Чистая функция - её же использует хранилище в памяти. */
+export function soloSettlement(
+  state: GameState,
+  player: { rating: number; totalCorrect: number; unlocked: ReadonlySet<AchievementCode> },
+  prevBest: number | null,
+  now: number,
+): { settlement: Settlement; correct: number; totalCorrect: number } {
+  const { score, correct } = soloScore(state);
+  const totals = applySolo({ ...EMPTY_TOTALS, rating: player.rating, totalCorrect: player.totalCorrect }, { kind: 'solo', correct });
+  const achievements = newAchievements(totals, { kind: 'solo', correct }, player.unlocked);
+  // Рекорд - больше прошлого; первая попытка с очками - тоже рекорд.
+  const record = score > (prevBest ?? 0);
+  return {
+    settlement: {
+      at: now,
+      players: [{ userId: state.creator.userId, before: player.rating, delta: 0, after: player.rating, achievements }],
+      solo: { score, prevBest, record },
+    },
+    correct,
+    totalCorrect: totals.totalCorrect,
+  };
 }
 
 /** Сколько последних партий игроков учитывать, чтобы не повторять вопросы. */
@@ -195,9 +244,51 @@ export function createPrismaGamesRepo(prisma: PrismaClient): GamesRepo {
       });
     },
 
+    async soloBest(userId, category) {
+      const best = await prisma.soloRun.aggregate({ where: { userId: BigInt(userId), category }, _max: { score: true } });
+      return best._max.score ?? null;
+    },
+
+    async settleSolo(state, now) {
+      const userId = state.creator.userId;
+      return prisma.$transaction(async (tx) => {
+        const locked = await tx.$queryRaw<{ settled_at: Date | null; snapshot: unknown }[]>`
+          SELECT settled_at, snapshot FROM games WHERE id = ${state.id} FOR UPDATE`;
+        if (locked[0]?.settled_at) {
+          const saved = fromSnapshot(locked[0].snapshot, state.id)?.settlement;
+          if (saved) return saved;
+        }
+        const rows = await tx.$queryRaw<{ rating: number; total_correct: number }[]>`
+          SELECT rating, total_correct FROM users WHERE id = ${BigInt(userId)} FOR UPDATE`;
+        const u = rows[0];
+        if (!u) throw new Error(`игрок ${userId} не найден`);
+        const unlocked = await tx.userAchievement.findMany({ where: { userId: BigInt(userId) }, select: { code: true } });
+        // Прошлый рекорд - на момент подсчёта (другие тренировки игрока могли закончиться раньше).
+        const best = await tx.soloRun.aggregate({ where: { userId: BigInt(userId), category: state.category }, _max: { score: true } });
+        const r = soloSettlement(
+          state,
+          { rating: u.rating, totalCorrect: u.total_correct, unlocked: new Set(unlocked.map((x) => x.code as AchievementCode)) },
+          best._max.score ?? null,
+          now,
+        );
+        const final = withSettlement(state, r.settlement);
+        const data = { ...columns(final), settledAt: new Date(now) };
+        await tx.game.upsert({ where: { id: state.id }, create: { id: state.id, ...data, createdAt: new Date(state.createdAt) }, update: data });
+        await tx.soloRun.create({
+          data: { gameId: state.id, userId: BigInt(userId), category: state.category, score: r.settlement.solo!.score, correct: r.correct },
+        });
+        await tx.user.update({ where: { id: BigInt(userId) }, data: { totalCorrect: r.totalCorrect } });
+        const codes = r.settlement.players[0]!.achievements;
+        if (codes.length > 0) {
+          await tx.userAchievement.createMany({ data: codes.map((code) => ({ userId: BigInt(userId), code, gameId: state.id })), skipDuplicates: true });
+        }
+        return r.settlement;
+      });
+    },
+
     async loadUnsettled() {
       const rows = await prisma.game.findMany({
-        where: { phase: 'finished', settledAt: null, mode: { not: 'solo' }, opponentId: { not: null } },
+        where: { phase: 'finished', settledAt: null, OR: [{ mode: 'solo' }, { opponentId: { not: null } }] },
         select: { id: true, snapshot: true },
       });
       return rows.map((r) => fromSnapshot(r.snapshot, r.id)).filter((s): s is GameState => s !== null);
@@ -292,17 +383,46 @@ export function memoryGamesRepo(): GamesRepo & {
   settledCount: number;
   /** Сломать следующий подсчёт итогов (проверка повтора после сбоя). */
   failNextSettle: boolean;
+  /** Тренировки: gameId → строка solo_runs. */
+  soloRuns: Map<string, { userId: number; category: GameCategory; score: number; correct: number }>;
 } {
   const rows = new Map<string, { state: GameState; startedAt: number | null; settledAt?: number | null }>();
   const answers: string[] = [];
   const players = new Map<number, MemoryPlayer>();
+  const soloRuns = new Map<string, { userId: number; category: GameCategory; score: number; correct: number }>();
   const copy = (s: GameState) => structuredClone(s);
+  const bestOf = (userId: number, category: GameCategory) => {
+    const scores = [...soloRuns.values()].filter((r) => r.userId === userId && r.category === category).map((r) => r.score);
+    return scores.length ? Math.max(...scores) : null;
+  };
   const repo = {
     rows,
     answers,
     players,
     settledCount: 0,
     failNextSettle: false,
+    soloRuns,
+    async soloBest(userId: number, category: GameCategory) {
+      return bestOf(userId, category);
+    },
+    async settleSolo(state: GameState, now: number): Promise<Settlement> {
+      if (repo.failNextSettle) {
+        repo.failNextSettle = false;
+        throw new Error('settle failed (test)');
+      }
+      const prev = rows.get(state.id);
+      if (prev?.settledAt && prev.state.settlement) return structuredClone(prev.state.settlement);
+      const id = state.creator.userId;
+      if (!players.has(id)) players.set(id, memoryPlayer(id));
+      const p = players.get(id)!;
+      const r = soloSettlement(state, p, bestOf(id, state.category), now);
+      soloRuns.set(state.id, { userId: id, category: state.category, score: r.settlement.solo!.score, correct: r.correct });
+      p.totalCorrect = r.totalCorrect;
+      for (const code of r.settlement.players[0]!.achievements) p.unlocked.add(code);
+      rows.set(state.id, { state: copy(withSettlement(state, r.settlement)), startedAt: prev?.startedAt ?? null, settledAt: now });
+      repo.settledCount += 1;
+      return r.settlement;
+    },
     async save(state: GameState, meta?: { startedAt?: number }) {
       const prev = rows.get(state.id);
       rows.set(state.id, { state: copy(state), startedAt: meta?.startedAt ?? prev?.startedAt ?? null, settledAt: prev?.settledAt ?? null });
@@ -344,7 +464,7 @@ export function memoryGamesRepo(): GamesRepo & {
     },
     async loadUnsettled() {
       return [...rows.values()]
-        .filter((r) => r.state.phase === 'finished' && !r.settledAt && r.state.mode !== 'solo' && r.state.opponent)
+        .filter((r) => r.state.phase === 'finished' && !r.settledAt && (r.state.mode === 'solo' || r.state.opponent))
         .map((r) => copy(r.state));
     },
     async saveAnswer(gameId: string, userId: number, questionIndex: number) {
