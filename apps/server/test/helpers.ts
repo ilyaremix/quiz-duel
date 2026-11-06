@@ -27,7 +27,7 @@ export function makeInitData(
   return signInitData(fields, options.token ?? BOT_TOKEN);
 }
 
-export const DOCS_VERSION = '2026-11-06';
+export const DOCS_VERSION = '2026-11-07';
 
 /** Хранилище игроков в памяти: тестам HTTP и сокета база не нужна. */
 export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord>; consents: ConsentInput[] } {
@@ -96,7 +96,7 @@ export function testEnv(): AppDeps['env'] {
     TRUST_PROXY: '127.0.0.1',
     LOG_LEVEL: 'silent',
     DOCS_VERSION,
-    TERMS_URL: undefined,
-    PRIVACY_URL: undefined,
+    TERMS_URL: 'https://telegra.ph/Quiz-Duel---Terms-of-Use-11-06',
+    PRIVACY_URL: 'https://telegra.ph/Quiz-Duel---Privacy-Policy-11-06',
   };
 }

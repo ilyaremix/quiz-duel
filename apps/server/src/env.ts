@@ -26,10 +26,10 @@ const EnvSchema = z.object({
   DOCS_VERSION: z
     .string()
     .regex(/^[\w.-]{1,32}$/)
-    .default('2026-11-06'),
-  /** Адреса документов; по умолчанию - страницы мини-аппа /legal/*.html. */
-  TERMS_URL: z.url({ protocol: /^https$/ }).optional(),
-  PRIVACY_URL: z.url({ protocol: /^https$/ }).optional(),
+    .default('2026-11-07'),
+  /** Адреса документов: страницы в Telegraph на английском (открываются в Telegram через Instant View). */
+  TERMS_URL: z.url({ protocol: /^https$/ }).default('https://telegra.ph/Quiz-Duel---Terms-of-Use-11-06'),
+  PRIVACY_URL: z.url({ protocol: /^https$/ }).default('https://telegra.ph/Quiz-Duel---Privacy-Policy-11-06'),
   /** Запускать ли бота (в тестах и при локальной вёрстке можно выключить). */
   BOT_ENABLED: z
     .enum(['true', 'false'])
@@ -55,11 +55,6 @@ export function webOrigin(env: Pick<Env, 'WEB_APP_URL'>): string {
 }
 
 /** Версия и адреса документов для /api/config. */
-export function docsInfo(env: Pick<Env, 'WEB_APP_URL' | 'DOCS_VERSION' | 'TERMS_URL' | 'PRIVACY_URL'>) {
-  const base = new URL(env.WEB_APP_URL).origin;
-  return {
-    version: env.DOCS_VERSION,
-    termsUrl: env.TERMS_URL ?? `${base}/legal/terms.html`,
-    privacyUrl: env.PRIVACY_URL ?? `${base}/legal/privacy.html`,
-  };
+export function docsInfo(env: Pick<Env, 'DOCS_VERSION' | 'TERMS_URL' | 'PRIVACY_URL'>) {
+  return { version: env.DOCS_VERSION, termsUrl: env.TERMS_URL, privacyUrl: env.PRIVACY_URL };
 }

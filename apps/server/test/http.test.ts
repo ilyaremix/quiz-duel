@@ -98,8 +98,8 @@ describe('публичные маршруты', () => {
       appUrl: 'https://t.me/quizduel_test_bot/play',
       docs: {
         version: DOCS_VERSION,
-        termsUrl: 'https://quiz.example.sslip.io/legal/terms.html',
-        privacyUrl: 'https://quiz.example.sslip.io/legal/privacy.html',
+        termsUrl: 'https://telegra.ph/Quiz-Duel---Terms-of-Use-11-06',
+        privacyUrl: 'https://telegra.ph/Quiz-Duel---Privacy-Policy-11-06',
       },
     });
   });
