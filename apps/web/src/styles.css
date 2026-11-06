@@ -546,6 +546,42 @@ body {
   animation: qd-skel 1200ms linear infinite;
 }
 
+/* Новая ачивка на итогах: проявляется после заголовка и счёта (редкий момент). */
+@keyframes qd-ach-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.qd-ach-in {
+  animation: qd-ach-in 300ms var(--qd-ease-ui) 450ms both;
+}
+/* Блеск бейджа новой ачивки: блик проходит дважды. */
+@keyframes qd-shine {
+  from {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  to {
+    transform: translateX(220%) skewX(-20deg);
+  }
+}
+.qd-shine {
+  position: relative;
+  overflow: hidden;
+}
+.qd-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: qd-shine 900ms var(--qd-ease-ui) 700ms 2 both;
+}
+
 /* Шторка: перетаскивание без анимации, возврат на место - по кривой шторки. */
 .qd-sheet-drag {
   touch-action: none;
@@ -569,7 +605,8 @@ body {
   .qd-count,
   .qd-cascade,
   .qd-pts,
-  .qd-pts-2 {
+  .qd-pts-2,
+  .qd-ach-in {
     animation: qd-fade-in 160ms var(--qd-ease-ui) both;
     animation-delay: 0ms !important;
   }
@@ -586,7 +623,8 @@ body {
   .qd-skel {
     animation: none;
   }
-  .qd-confetti {
+  .qd-confetti,
+  .qd-shine::after {
     display: none;
   }
   .qd-press:active:not(:disabled) {

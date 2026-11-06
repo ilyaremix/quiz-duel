@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { MeResponse, PlayerStats } from '@quiz-duel/shared';
+import { ACH_GLYPH } from '../components/Achievement';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
 import { CATEGORY_LOOK } from '../components/Category';
@@ -34,6 +35,12 @@ export function ProfileScreen({ me }: { me: MeResponse }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const profile = useQuery({ queryKey: queryKeys.profile, queryFn: api.profile });
+  const achievements = useQuery({ queryKey: queryKeys.achievements, queryFn: api.achievements });
+  const ach = achievements.data;
+  // Блок ачивок: до 5 полученных золотыми кружками и «+N» за остальные.
+  const got = ach?.items.filter((a) => a.unlocked) ?? [];
+  const shown = got.slice(0, 5);
+  const rest = ach ? ach.total - shown.length : 0;
   const p = profile.data;
   const newbie = p ? p.stats.games === 0 : me.games === 0;
   const stats = p?.stats ?? null;
@@ -115,6 +122,41 @@ export function ProfileScreen({ me }: { me: MeResponse }) {
                 })}
               </div>
             </section>
+
+            {ach && (
+              <section className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between pl-1">
+                  <h2 className="m-0 text-[17px] font-extrabold">
+                    {t('s16.ach')} <span className="qd-num text-hint">{`${ach.unlocked}/${ach.total}`}</span>
+                  </h2>
+                  <Button variant="ghost" size="s" full={false} onClick={gameActions.openAchievements}>
+                    {t('s16.all')}
+                  </Button>
+                </div>
+                <button
+                  type="button"
+                  aria-label={t('s16.achAria', { n: ach.unlocked, m: ach.total })}
+                  onClick={gameActions.openAchievements}
+                  className="qd-press flex cursor-pointer gap-2.5 border-0 bg-transparent p-0 text-left font-[inherit]"
+                >
+                  {shown.map((a) => (
+                    <span
+                      key={a.code}
+                      aria-hidden="true"
+                      className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full"
+                      style={{ background: 'var(--qd-gold)', color: '#2A1F05' }}
+                    >
+                      <Icon glyph={ACH_GLYPH[a.code]} size={22} stroke={2.5} />
+                    </span>
+                  ))}
+                  {rest > 0 && (
+                    <span aria-hidden="true" className="qd-num flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-surface-2 text-[14px] font-black text-hint">
+                      +{rest}
+                    </span>
+                  )}
+                </button>
+              </section>
+            )}
 
             <section className="flex flex-col gap-2">
               <h2 className="m-0 ml-1 text-[17px] font-extrabold">{t('s16.history')}</h2>

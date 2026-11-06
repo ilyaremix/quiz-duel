@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TIMINGS, type GameView, type RatingChange } from '@quiz-duel/shared';
+import { Achievement, ACH_GLYPH } from '../components/Achievement';
 import { Avatar } from '../components/Avatar';
 import { RematchBanner, RematchWaitBanner } from '../components/Banner';
 import { Button } from '../components/Button';
@@ -113,7 +114,7 @@ function rematchNote(game: GameView, look: Look): { glyph: IconGlyph; key: strin
 
 /**
  * Экран 12: итог партии из снимка сервера - рейтинг «+16», цифры партии и реванш (экран 13).
- * Ачивки сервер уже считает, их показ и «Поделиться» - этап 8.
+ * Новая ачивка партии - строкой под цифрами и тостом.
  */
 export function ResultScreen({ game }: { game: GameView }) {
   const { t, i18n } = useTranslation();
@@ -139,6 +140,18 @@ export function ResultScreen({ game }: { game: GameView }) {
     if (look === 'win' || look === 'techWin') haptic.win();
     else if (look === 'loss' || look === 'techLoss') haptic.error();
   }, [look]);
+
+  // Новые ачивки партии: тост один раз на каждую (приходят вместе с рейтингом).
+  const fresh = result?.newAchievements ?? [];
+  const toasted = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${game.id}:${fresh.join(',')}`;
+    if (fresh.length === 0 || toasted.current === key) return;
+    toasted.current = key;
+    const first = fresh[0]!;
+    showToast('achievement', fresh.length > 1 ? 'toast.achMany' : 'toast.ach', { name: t(`ach.${first}.t`), n: String(fresh.length - 1) }, ACH_GLYPH[first]);
+    haptic.success();
+  }, [game.id, fresh, t]);
 
   if (!result || !look) return <CancelledScreen game={game} />;
 
@@ -237,6 +250,12 @@ export function ResultScreen({ game }: { game: GameView }) {
         <span className={`${PILL} bg-section`}>{t('s12.correct', { n: `${stats.correct}/${stats.played}` })}</span>
         <span className={`${PILL} bg-section`}>{t('s12.avg', { t: stats.avgMs === null ? '-' : formatSec(stats.avgMs, t, lang) })}</span>
       </section>
+
+      {fresh[0] && (
+        <div className="qd-ach-in">
+          <Achievement code={fresh[0]} state="new" />
+        </div>
+      )}
 
       <div className="grow" />
 

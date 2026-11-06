@@ -1,5 +1,6 @@
 import {
   AUTH_SCHEME,
+  type AchievementsResponse,
   type ApiError,
   type ConfigResponse,
   type ConsentRequest,
@@ -62,6 +63,7 @@ export const api = {
   profile: () => request<ProfileResponse>('/api/profile', sessionAuth),
   leaderboard: () => request<LeaderboardResponse>('/api/leaderboard', sessionAuth),
   player: (id: number) => request<PlayerResponse>(`/api/players/${id}`, sessionAuth),
+  achievements: () => request<AchievementsResponse>('/api/achievements', sessionAuth),
   review: (gameId: string) => request<ReviewResponse>(`/api/games/${encodeURIComponent(gameId)}/review`, sessionAuth),
 };
 
@@ -71,4 +73,5 @@ export const queryKeys = {
   leaderboard: ['leaderboard'] as const,
   player: (id: number) => ['player', id] as const,
   review: (gameId: string) => ['review', gameId] as const,
+  achievements: ['achievements'] as const,
 };

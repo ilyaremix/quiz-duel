@@ -26,6 +26,7 @@ import { ReviewScreen } from './screens/ReviewScreen';
 import { LeaderboardScreen } from './screens/LeaderboardScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { OppSheet } from './screens/OppSheet';
+import { AchievementsScreen } from './screens/AchievementsScreen';
 
 /** Вне Telegram: заглушка с кнопкой, ведущей в мини-апп (адрес отдаёт сервер). */
 function OutsideTelegram() {
@@ -97,7 +98,9 @@ function useGameChrome(game: GameView | null, onScreen: boolean) {
 function TabsRoute({ me }: { me: MeResponse }) {
   const tab = useGame((s) => s.tab);
   const review = useGame((s) => s.review);
+  const achievements = useGame((s) => s.achievements);
   if (review) return <ReviewScreen gameId={review} />;
+  if (achievements && tab === 'profile') return <AchievementsScreen />;
   if (tab === 'rating') return <LeaderboardScreen me={me} />;
   if (tab === 'profile') return <ProfileScreen me={me} />;
   return <HomeScreen me={me} />;
@@ -112,6 +115,7 @@ function useRefreshAfterGame(game: GameView | null) {
     if (!settled) return;
     void queryClient.invalidateQueries({ queryKey: queryKeys.profile });
     void queryClient.invalidateQueries({ queryKey: queryKeys.leaderboard });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.achievements });
     if (oppId) void queryClient.invalidateQueries({ queryKey: queryKeys.player(oppId) });
   }, [settled, oppId, queryClient]);
 }

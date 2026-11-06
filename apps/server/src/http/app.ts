@@ -163,6 +163,11 @@ export async function buildApp({ env, users, stats, botUsername, logger }: AppDe
       return player ?? reply.code(404).send(notFound);
     });
 
+    app.get('/api/achievements', { onRequest: auth }, async (request, reply) => {
+      const list = await stats.achievements(request.tg!.user.id);
+      return list ?? reply.code(404).send(notFound);
+    });
+
     // Разбор: только участникам и только завершённой партии.
     app.get<{ Params: { id: string } }>('/api/games/:id/review', { onRequest: auth }, async (request, reply) => {
       if (!isGameId(request.params.id)) return reply.code(400).send({ error: 'bad_request' } satisfies ApiError);

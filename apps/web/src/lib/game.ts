@@ -19,15 +19,17 @@ import {
 } from '@quiz-duel/shared';
 import { createSocket, type GameSocket } from './socket';
 import { haptic, onResume } from './telegram';
+import type { IconGlyph } from '../components/Icon';
 
 export type LinkErrorKind = 'taken' | 'notFound' | 'expired' | 'cancelled' | 'finished' | 'busy';
-export type ToastKind = 'success' | 'error' | 'info';
+export type ToastKind = 'success' | 'error' | 'info' | 'achievement';
 
 export interface ToastState {
   id: number;
   kind: ToastKind;
   key: string;
   vars?: Record<string, string>;
+  glyph?: IconGlyph;
 }
 
 /** Шторка с документами: по ссылке (кто зовёт и куда войти) или перед своей первой игрой. */
@@ -69,6 +71,8 @@ interface GameStore {
   review: string | null;
   /** Открыта шторка профиля соперника (userId). */
   oppSheet: number | null;
+  /** Открыт экран ачивок (из профиля). */
+  achievements: boolean;
 }
 
 export type Tab = 'home' | 'rating' | 'profile';
@@ -90,6 +94,7 @@ export const useGame = create<GameStore>(() => ({
   tab: 'home',
   review: null,
   oppSheet: null,
+  achievements: false,
 }));
 
 const set = useGame.setState;
@@ -99,8 +104,8 @@ const get = useGame.getState;
 export const serverNow = () => Date.now() + get().clockOffset;
 
 let toastSeq = 0;
-export function showToast(kind: ToastKind, key: string, vars?: Record<string, string>) {
-  set({ toast: { id: ++toastSeq, kind, key, vars } });
+export function showToast(kind: ToastKind, key: string, vars?: Record<string, string>, glyph?: IconGlyph) {
+  set({ toast: { id: ++toastSeq, kind, key, vars, glyph } });
 }
 
 const LINK_ERRORS: Partial<Record<GameErrorCode, LinkErrorKind>> = {
@@ -453,7 +458,7 @@ export const gameActions = {
   },
 
   setTab(tab: Tab) {
-    set({ tab, review: null });
+    set({ tab, review: null, achievements: false });
     window.scrollTo(0, 0);
   },
 
@@ -471,6 +476,15 @@ export const gameActions = {
 
   closeOpp() {
     set({ oppSheet: null });
+  },
+
+  openAchievements() {
+    set({ achievements: true });
+    window.scrollTo(0, 0);
+  },
+
+  closeAchievements() {
+    set({ achievements: false });
   },
 
   // -------------------------------------------------------------------------

@@ -208,6 +208,10 @@ describe('этап 7: профиль, лидерборд, соперник, ра
         calls.push(`review:${viewer}:${gameId}`);
         return null;
       },
+      async achievements(userId) {
+        calls.push(`achievements:${userId}`);
+        return { items: [], unlocked: 0, total: 12 };
+      },
     };
     const app = await buildApp({ env: testEnv(), users: memoryUsers(), stats, botUsername: 'quizduel_test_bot', logger: false });
     apps.push(app);
@@ -217,7 +221,7 @@ describe('этап 7: профиль, лидерборд, соперник, ра
 
   it('без initData - 401 на всех маршрутах', async () => {
     const { app, calls } = await withStats();
-    for (const url of ['/api/profile', '/api/leaderboard', '/api/players/5', '/api/games/Abcde12345/review']) {
+    for (const url of ['/api/profile', '/api/leaderboard', '/api/players/5', '/api/games/Abcde12345/review', '/api/achievements']) {
       expect((await app.inject({ method: 'GET', url })).statusCode).toBe(401);
     }
     expect(calls).toEqual([]);
@@ -232,6 +236,13 @@ describe('этап 7: профиль, лидерборд, соперник, ра
     expect((await app.inject({ method: 'GET', url: '/api/players/99999999999999999999', headers: auth() })).statusCode).toBe(400);
     expect((await app.inject({ method: 'GET', url: '/api/games/Abcde12345/review', headers: auth() })).statusCode).toBe(404);
     expect((await app.inject({ method: 'GET', url: '/api/games/bad/review', headers: auth() })).statusCode).toBe(400);
-    expect(calls).toEqual([`leaderboard:${ilya.id}`, `profile:${ilya.id}`, `player:${ilya.id}:42`, `review:${ilya.id}:Abcde12345`]);
+    expect((await app.inject({ method: 'GET', url: '/api/achievements?userId=1', headers: auth() })).json()).toMatchObject({ total: 12 });
+    expect(calls).toEqual([
+      `leaderboard:${ilya.id}`,
+      `profile:${ilya.id}`,
+      `player:${ilya.id}:42`,
+      `review:${ilya.id}:Abcde12345`,
+      `achievements:${ilya.id}`,
+    ]);
   });
 });

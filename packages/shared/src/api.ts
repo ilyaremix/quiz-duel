@@ -2,6 +2,7 @@ import type { Lang, LangSetting } from './lang.js';
 import type { Category, GameCategory } from './categories.js';
 import type { GameMode } from './game.js';
 import type { Outcome } from './elo.js';
+import type { AchievementCode } from './achievements.js';
 
 /** Заголовок авторизации: `Authorization: tma <initData>`. */
 export const AUTH_SCHEME = 'tma';
@@ -222,4 +223,24 @@ export interface ReviewResponse {
   me: PlayerBrief;
   /** Только сыгранные (закрытые) вопросы; при технической победе их меньше 10. */
   questions: ReviewQuestion[];
+}
+
+// ---------------------------------------------------------------------------
+// Этап 8: ачивки
+
+/** Одна ачивка на экране 18: получена (с датой) или закрыта с прогрессом «37/100». */
+export interface AchievementView {
+  code: AchievementCode;
+  unlocked: boolean;
+  /** Когда получена (мс); null - ещё нет. */
+  unlockedAt: number | null;
+  current: number;
+  goal: number;
+}
+
+/** GET /api/achievements - все 12 ачивок в порядке ТЗ. */
+export interface AchievementsResponse {
+  items: AchievementView[];
+  unlocked: number;
+  total: number;
 }

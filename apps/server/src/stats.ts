@@ -3,12 +3,17 @@
  * профиль соперника и разбор партии. Только чтение - всё пишется в repo.settle.
  */
 import {
+  ACHIEVEMENTS,
+  achievementProgress,
   CATEGORIES,
   LEADERBOARD_MIN_GAMES,
   LEADERBOARD_SIZE,
   resolveLang,
   type Category,
+  type AchievementCode,
+  type AchievementsResponse,
   type CategoryStatView,
+  type PlayerTotals,
   type HeadToHead,
   type LeaderboardResponse,
   type MatchSummary,
@@ -31,6 +36,8 @@ export interface StatsRepo {
   player(viewerId: number, targetId: number): Promise<PlayerResponse | null>;
   /** null - партии нет, она не завершена или вы в ней не участвовали. */
   review(viewerId: number, gameId: string): Promise<ReviewResponse | null>;
+  /** 12 ачивок игрока: полученные и прогресс закрытых. null - игрока нет. */
+  achievements(userId: number): Promise<AchievementsResponse | null>;
 }
 
 /** Колонки игрока, нужные для его цифр. */
@@ -239,6 +246,21 @@ export function createPrismaStatsRepo(prisma: PrismaClient): StatsRepo {
       return { player: brief(u), stats: statsOf(u, place), headToHead: h2h };
     },
 
+    async achievements(userId) {
+      const id = BigInt(userId);
+      const u = await prisma.user.findUnique({
+        where: { id },
+        select: { rating: true, games: true, wins: true, losses: true, draws: true, currentStreak: true, bestStreak: true, totalCorrect: true },
+      });
+      if (!u) return null;
+      const [cats, rows] = await Promise.all([
+        prisma.categoryStat.findMany({ where: { userId: id }, select: { category: true, wins: true } }),
+        prisma.userAchievement.findMany({ where: { userId: id }, select: { code: true, unlockedAt: true } }),
+      ]);
+      const totals: PlayerTotals = { ...u, categoryWins: Object.fromEntries(cats.map((c) => [c.category, c.wins])) };
+      return achievementsView(totals, rows.map((r) => ({ code: r.code as AchievementCode, at: r.unlockedAt.getTime() })));
+    },
+
     async review(viewerId, gameId) {
       const row = await prisma.game.findUnique({ where: { id: gameId }, select: { snapshot: true, phase: true } });
       if (!row || row.phase !== 'finished') return null;
@@ -295,4 +317,17 @@ export function createPrismaStatsRepo(prisma: PrismaClient): StatsRepo {
       };
     },
   };
+}
+
+/** Прогресс всех 12 ачивок по сводным цифрам игрока (тем же, по которым их выдаёт сервер). */
+export function achievementsView(totals: PlayerTotals, unlocked: readonly { code: AchievementCode; at: number }[]): AchievementsResponse {
+  const known = new Map(unlocked.map((u) => [u.code, u.at]));
+  const codes = new Set(known.keys());
+  const items = ACHIEVEMENTS.map((a) => ({
+    code: a.code,
+    unlocked: known.has(a.code),
+    unlockedAt: known.get(a.code) ?? null,
+    ...achievementProgress(a.code, totals, codes),
+  }));
+  return { items, unlocked: items.filter((i) => i.unlocked).length, total: items.length };
 }

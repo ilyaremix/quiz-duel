@@ -77,7 +77,9 @@
     "connection": "No connection to the server - try again",
     "rmAccepted": "Rematch accepted - let’s go!",
     "rmGone": "Your opponent has already left",
-    "loadFailed": "Couldn’t load - check your connection"
+    "loadFailed": "Couldn’t load - check your connection",
+    "ach": "New achievement: {{name}}",
+    "achMany": "New achievements: {{name}} and {{n}} more"
   },
   "banner": {
     "resume": {
@@ -411,7 +413,10 @@
     "create": "Create duel",
     "cats": "Accuracy by category",
     "history": "Match history",
-    "error": "Couldn’t load the profile"
+    "error": "Couldn’t load the profile",
+    "ach": "Achievements",
+    "all": "All",
+    "achAria": "Achievements: {{n}} of {{m}}. Open all"
   },
   "s17": {
     "aria": "Opponent profile",
@@ -420,5 +425,64 @@
     "meta_other": "{{count}} games · last one {{when}}",
     "first": "This is your first meeting",
     "error": "Couldn’t load the profile"
+  },
+  "ach": {
+    "newBadge": "New achievement!",
+    "got": "Unlocked",
+    "progress": "Progress",
+    "first_blood": {
+      "t": "First Blood",
+      "d": "First win"
+    },
+    "on_a_roll": {
+      "t": "On a Roll",
+      "d": "3 wins in a row"
+    },
+    "unstoppable": {
+      "t": "Unstoppable",
+      "d": "5 wins in a row"
+    },
+    "perfect_game": {
+      "t": "Perfect Game",
+      "d": "10 of 10 correct in a duel"
+    },
+    "lightning": {
+      "t": "Lightning",
+      "d": "Correct answer in under 2 seconds"
+    },
+    "ice_cold": {
+      "t": "Ice Cold",
+      "d": "Correct answer in the last second"
+    },
+    "comeback": {
+      "t": "Comeback",
+      "d": "Win after trailing after question 5"
+    },
+    "revenge": {
+      "t": "Rematcher",
+      "d": "Win a rematch after a loss"
+    },
+    "erudite": {
+      "t": "Scholar",
+      "d": "100 correct answers in total"
+    },
+    "category_master": {
+      "t": "Topic Master",
+      "d": "10 wins in one category"
+    },
+    "veteran": {
+      "t": "Veteran",
+      "d": "50 duels played"
+    },
+    "summit": {
+      "t": "Summit",
+      "d": "Rating 1,200"
+    }
+  },
+  "s18": {
+    "title": "Achievements",
+    "aria": "Achievements unlocked",
+    "count": "{{n}} of {{m}}",
+    "error": "Couldn’t load achievements"
   }
 }

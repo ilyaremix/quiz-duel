@@ -202,6 +202,25 @@ describe.skipIf(!url)('итоги на Postgres', () => {
       expect(await stats.player(A, A)).toBeNull();
     });
 
+    it('ачивки: полученные с датой и прогресс закрытых по тем же цифрам, что и выдача', async () => {
+      await finish(played('AchGame001', A, B, [n(10), n(4)], { at: T0 }));
+      const list = await stats.achievements(A);
+      expect(list).toMatchObject({ total: 12 });
+      const by = (code: string) => list!.items.find((i) => i.code === code)!;
+      // 10 из 10 верных и первая победа - получены в этой партии, с датой подсчёта.
+      expect(by('first_blood')).toMatchObject({ unlocked: true, unlockedAt: expect.any(Number), current: 1, goal: 1 });
+      expect(by('perfect_game')).toMatchObject({ unlocked: true });
+      // Закрытые - с прогрессом: 10 верных из 100, 1 партия из 50, серия 1 из 3.
+      expect(by('erudite')).toMatchObject({ unlocked: false, unlockedAt: null, current: 10, goal: 100 });
+      expect(by('veteran')).toMatchObject({ unlocked: false, current: 1, goal: 50 });
+      expect(by('on_a_roll')).toMatchObject({ unlocked: false, current: 1, goal: 3 });
+      expect(list!.unlocked).toBe(list!.items.filter((i) => i.unlocked).length);
+      expect(list!.items.map((i) => i.code)[0]).toBe('first_blood');
+      // У Марка (поражение) - ничего, кроме прогресса.
+      expect((await stats.achievements(B))!.unlocked).toBe(0);
+      expect(await stats.achievements(999_999)).toBeNull();
+    });
+
     it('разбор: вопросы на языке игрока, верный вариант, ответы и время обоих; только участникам', async () => {
       const s = played('ReviewG001', A, B, [n(7), n(4)]);
       await finish(s);

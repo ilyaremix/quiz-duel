@@ -1,15 +1,16 @@
 import { Icon, type IconGlyph } from './Icon';
 
-export type ToastKind = 'success' | 'error' | 'info';
+export type ToastKind = 'success' | 'error' | 'info' | 'achievement';
 
 const KINDS: Record<ToastKind, { bg: string; fg: string; glyph: IconGlyph }> = {
   success: { bg: 'var(--qd-correct)', fg: 'var(--qd-on-fill)', glyph: 'check' },
   error: { bg: 'var(--qd-wrong)', fg: 'var(--qd-on-fill)', glyph: 'close' },
   info: { bg: 'var(--qd-brand)', fg: '#FFFFFF', glyph: 'info' },
+  achievement: { bg: 'var(--qd-gold)', fg: '#2A1F05', glyph: 'medal' },
 };
 
 /** Тост: тёмная «таблетка» на светлой теме и наоборот (инверсные цвета), иконка по типу. */
-export function Toast({ kind, text }: { kind: ToastKind; text: string }) {
+export function Toast({ kind, text, glyph }: { kind: ToastKind; text: string; glyph?: IconGlyph }) {
   const k = KINDS[kind];
   return (
     <div className="flex w-full justify-center">
@@ -19,7 +20,7 @@ export function Toast({ kind, text }: { kind: ToastKind; text: string }) {
         style={{ background: 'var(--qd-inverse-bg)', color: 'var(--qd-inverse-text)', boxShadow: '0 10px 24px rgba(10, 8, 16, 0.28)' }}
       >
         <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: k.bg, color: k.fg }}>
-          <Icon glyph={k.glyph} size={18} stroke={3} />
+          <Icon glyph={glyph ?? k.glyph} size={18} stroke={kind === 'achievement' ? 2.5 : 3} />
         </span>
         <span className="text-[15px] font-extrabold">{text}</span>
       </div>
