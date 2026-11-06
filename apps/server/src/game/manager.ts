@@ -378,6 +378,37 @@ export class GameManager {
     return { ok: true, game: this.viewOf(entry.state, userId)! };
   }
 
+  /**
+   * Inline-режим: «@бот» в любом чате → карточка «Вызов на дуэль». Если у игрока уже открыто
+   * своё лобби, где ещё ждут соперника, карточка ведёт в него (Telegram шлёт запрос на каждую
+   * букву - новые игры на каждый запрос не создаются). Иначе - новая игра «Микс».
+   * Посреди партии или когда в лобби уже есть соперник - busy (лобби с соперником не трогаем).
+   */
+  async inlineChallenge(userId: number): Promise<Result<{ gameId: string; link: string; category: GameCategory; reused: boolean }>> {
+    const card = await this.card(userId);
+    if (!card) return fail('internal');
+    if (card.docsVersion !== this.d.docsVersion) return fail('consent_required');
+
+    const currentId = this.current.get(userId);
+    const cur = currentId ? this.games.get(currentId) : undefined;
+    if (currentId && cur && machine.playerOf(cur.state, userId) && !FINAL_PHASES.includes(cur.state.phase)) {
+      const s = cur.state;
+      if (s.phase === 'waiting' && s.creator.userId === userId && s.mode === 'link') {
+        return { ok: true, gameId: s.id, link: gameLink(this.d.appUrl, s.id), category: s.category, reused: true };
+      }
+      return fail('busy', { busyGameId: currentId });
+    }
+
+    const created = await this.create(userId, 'mix');
+    if (!created.ok) return created;
+    const entry = this.games.get(created.game.id)!;
+    // Игру создали из чата, а не из приложения: создателя в лобби пока нет.
+    if (!this.isOnline(userId)) {
+      await this.run(entry, () => this.apply(entry, machine.setPresence(entry.state, userId, false, this.now())));
+    }
+    return { ok: true, gameId: entry.state.id, link: gameLink(this.d.appUrl, entry.state.id), category: entry.state.category, reused: false };
+  }
+
   /** Вход по ссылке. Участник получает снимок своей партии в любой фазе. */
   async join(userId: number, gameId: string): Promise<Result<{ game: GameView }>> {
     const entry = await this.entry(gameId);

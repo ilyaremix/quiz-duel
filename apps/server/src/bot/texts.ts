@@ -22,7 +22,17 @@ export const botTexts: Record<Lang, { start: string; play: string; startCommand:
 /** Карточка «Вызов на дуэль» для shareMessage. Язык - создателя игры. */
 export const inviteTexts: Record<
   Lang,
-  { title: string; description: string; body: (name: string, category: string) => string; accept: string; categories: Record<GameCategory, string> }
+  {
+    title: string;
+    description: string;
+    body: (name: string, category: string) => string;
+    accept: string;
+    categories: Record<GameCategory, string>;
+    /** Inline-режим: кнопка над результатами, когда карточку дать нельзя. */
+    inlineConsent: string;
+    inlineBusy: string;
+    inlineOpen: string;
+  }
 > = {
   ru: {
     title: 'Вызов на дуэль',
@@ -31,6 +41,9 @@ export const inviteTexts: Record<
       `⚔️ <b>Вызов на дуэль</b>\n\n${name ? `${name} зовёт` : 'Вас зовут'} в Quiz Duel: 10 вопросов, 15 секунд на каждый.\n` +
       `Категория: ${category}\n\nКто первым нажмёт «Принять», тот и соперник.`,
     accept: 'Принять',
+    inlineConsent: 'Откройте Quiz Duel и примите документы',
+    inlineBusy: 'У вас идёт партия - вернуться в игру',
+    inlineOpen: 'Открыть Quiz Duel',
     categories: {
       mix: 'Микс',
       science: 'Наука и природа',
@@ -47,6 +60,9 @@ export const inviteTexts: Record<
       `⚔️ <b>Duel challenge</b>\n\n${name ? `${name} challenges you` : 'You are challenged'} to Quiz Duel: 10 questions, 15 seconds each.\n` +
       `Category: ${category}\n\nWhoever taps “Accept” first is the opponent.`,
     accept: 'Accept',
+    inlineConsent: 'Open Quiz Duel and accept the documents',
+    inlineBusy: 'You have a game in progress - go back',
+    inlineOpen: 'Open Quiz Duel',
     categories: {
       mix: 'Mix',
       science: 'Science & Nature',

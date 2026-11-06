@@ -1,8 +1,8 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import type { FastifyBaseLogger } from 'fastify';
-import { langFromTelegram } from '@quiz-duel/shared';
+import { langFromTelegram, type GameCategory, type Lang } from '@quiz-duel/shared';
 import { botTexts, inviteTexts } from './texts.js';
-import type { InviteMaker } from '../game/manager.js';
+import type { GameManager, InviteMaker } from '../game/manager.js';
 import type { UsersRepo } from '../users.js';
 import type { TelegramUser } from '../auth/initData.js';
 
@@ -54,6 +54,18 @@ export async function configureBot(bot: QuizBot, webAppUrl: string, log: Fastify
   }
 }
 
+/** Inline-режим подключается, когда менеджер партий уже создан. */
+export function attachInline(bot: QuizBot, games: GameManager, users: UsersRepo, webAppUrl: string, log: FastifyBaseLogger) {
+  bot.on('inline_query', async (ctx) => {
+    try {
+      const answer = await inlineAnswer(games, users, ctx.from as TelegramUser, webAppUrl);
+      await ctx.answerInlineQuery(answer.results, answer.options);
+    } catch (error) {
+      log.warn({ err: error }, 'inline query failed');
+    }
+  });
+}
+
 /** Long polling. Один токен может опрашивать только один процесс. */
 export function startBot(bot: QuizBot, log: FastifyBaseLogger) {
   bot.catch(({ error, ctx }) => {
@@ -72,6 +84,51 @@ export function startBot(bot: QuizBot, log: FastifyBaseLogger) {
 
 const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/** Карточка «Вызов на дуэль» с кнопкой «Принять» (shareMessage и inline-режим). */
+export function inviteArticle(input: { gameId: string; link: string; category: GameCategory; lang: Lang; creatorName: string }) {
+  const t = inviteTexts[input.lang];
+  return {
+    type: 'article' as const,
+    id: `g_${input.gameId}`,
+    title: t.title,
+    description: `${t.description} · ${t.categories[input.category]}`,
+    input_message_content: {
+      message_text: t.body(escapeHtml(input.creatorName), t.categories[input.category]),
+      parse_mode: 'HTML' as const,
+      link_preview_options: { is_disabled: true },
+    },
+    reply_markup: new InlineKeyboard().url(t.accept, input.link),
+  };
+}
+
+/**
+ * Ответ на inline-запрос «@бот» в любом чате. Есть открытое лобби - карточка ведёт в него,
+ * нет - создаётся игра «Микс». Не приняты документы или идёт партия - вместо карточки
+ * кнопка «Открыть Quiz Duel» над результатами (там - документы или текущая партия).
+ */
+export async function inlineAnswer(
+  games: Pick<GameManager, 'inlineChallenge'>,
+  users: Pick<UsersRepo, 'upsertFromTelegram'>,
+  from: TelegramUser,
+  webAppUrl: string,
+) {
+  const lang = langFromTelegram(from.language_code);
+  const t = inviteTexts[lang];
+  // Inline-запрос может прийти от того, кто ещё ни разу не открывал игру.
+  const user = await users.upsertFromTelegram(from);
+  const res = await games.inlineChallenge(from.id);
+  const options: { cache_time: number; is_personal: boolean; button?: { text: string; web_app: { url: string } } } = {
+    cache_time: 0,
+    is_personal: true,
+  };
+  if (!res.ok) {
+    const text = res.error === 'consent_required' ? t.inlineConsent : res.error === 'busy' ? t.inlineBusy : t.inlineOpen;
+    return { results: [], options: { ...options, button: { text, web_app: { url: webAppUrl } } } };
+  }
+  const article = inviteArticle({ gameId: res.gameId, link: res.link, category: res.category, lang, creatorName: user.firstName });
+  return { results: [article], options };
+}
+
 /**
  * Подготовленное сообщение для shareMessage: игрок выбирает чат, туда уходит карточка
  * «Вызов на дуэль» с кнопкой «Принять» - она открывает мини-апп сразу в этой игре.
@@ -79,21 +136,9 @@ const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '
 export function botInvites(bot: QuizBot): InviteMaker {
   return {
     async prepare({ userId, gameId, link, category, lang, creatorName }) {
-      const t = inviteTexts[lang];
       const prepared = await bot.api.savePreparedInlineMessage(
         userId,
-        {
-          type: 'article',
-          id: `g_${gameId}`,
-          title: t.title,
-          description: t.description,
-          input_message_content: {
-            message_text: t.body(escapeHtml(creatorName), t.categories[category]),
-            parse_mode: 'HTML',
-            link_preview_options: { is_disabled: true },
-          },
-          reply_markup: new InlineKeyboard().url(t.accept, link),
-        },
+        inviteArticle({ gameId, link, category, lang, creatorName }),
         { allow_user_chats: true, allow_group_chats: true, allow_channel_chats: true },
       );
       return { id: prepared.id, expiresAt: prepared.expiration_date * 1000 };

@@ -4,7 +4,7 @@ import { createPrismaUsersRepo } from './users.js';
 import { createPrismaStatsRepo } from './stats.js';
 import { buildApp } from './http/app.js';
 import { attachSocket, socketNotifier, type IoServer } from './socket.js';
-import { botInvites, configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
+import { attachInline, botInvites, configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
 import { botAlerts } from './bot/alerts.js';
 import { createPrismaGamesRepo } from './game/repo.js';
 import { GameManager, realClock } from './game/manager.js';
@@ -65,6 +65,7 @@ async function main() {
   await app.listen({ host: env.HOST, port: env.PORT });
 
   if (bot) {
+    attachInline(bot, games, users, env.WEB_APP_URL, app.log);
     await configureBot(bot, env.WEB_APP_URL, app.log);
     startBot(bot, app.log);
   }
