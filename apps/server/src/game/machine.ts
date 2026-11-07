@@ -10,12 +10,15 @@
  */
 import {
   ACTIVE_PHASES,
+  DEFAULT_RULES,
   FINAL_PHASES,
   isAnswerInTime,
+  isDoubled,
   OPEN_PHASES,
   pointsFor,
-  QUESTIONS_PER_GAME,
   TIMINGS,
+  VARIANT_LIVES,
+  type GameRules,
   type CancelReason,
   type FinishReason,
   type GameCategory,
@@ -104,6 +107,8 @@ export interface GameState {
   settlement?: Settlement | null;
   /** Тренировка: рекорд категории до этой попытки (null - не было). */
   soloBest?: number | null;
+  /** Режим, время на ответ и число вопросов (у партий до обновления 2.0 нет - значит по умолчанию). */
+  rules?: GameRules;
   rev: number;
 }
 
@@ -160,6 +165,8 @@ export interface CreateParams {
   rematchOf?: string;
   /** Тренировка: рекорд категории до этой попытки. */
   soloBest?: number | null;
+  /** Режим и настройки; по умолчанию - Классика, 10 вопросов по 15 с. */
+  rules?: GameRules;
 }
 
 const newPlayer = (userId: number, ready = false): PlayerState => ({
@@ -210,6 +217,7 @@ export function createGame(params: CreateParams, now: number, deps: MachineDeps)
     rematchOf: params.rematchOf ?? null,
     rematch: null,
     settlement: null,
+    rules: params.rules ?? DEFAULT_RULES,
     rev: 1,
   };
   if (solo) state.soloBest = params.soloBest ?? null;
@@ -331,12 +339,14 @@ export function answer(
   if (me.answers[questionIndex]) return fail('already_answered');
 
   const timeMs = now - prev.questionStartedAt!;
-  if (!isAnswerInTime(timeMs)) return fail('late');
+  const limit = limitMs(prev);
+  if (!isAnswerInTime(timeMs, limit)) return fail('late');
 
   const state = clone(prev);
   const option = q.order[position]!;
   const correct = option === deps.correctOf(q.id);
-  playerOf(state, userId)!.answers[questionIndex] = { position, option, correct, timeMs, points: pointsFor(correct, timeMs) };
+  const points = pointsFor(correct, timeMs, limit) * (isDoubled(rulesOf(prev), questionIndex, prev.questions.length) ? 2 : 1);
+  playerOf(state, userId)!.answers[questionIndex] = { position, option, correct, timeMs, points };
 
   const events: GameEvent[] = [{ type: 'opponentAnswered', userId, index: questionIndex }];
   if (participants(state).every((p) => p.answers[questionIndex])) closeQuestion(state, now, events);
@@ -508,7 +518,8 @@ function deadlines(state: GameState): Deadline[] {
     list.push({
       at,
       apply: (s, ev) => {
-        if (s.questionIndex + 1 < s.questions.length) startQuestion(s, s.questionIndex + 1, at, ev);
+        // Режим с жизнями: у кого-то кончились жизни - партия заканчивается досрочно.
+        if (s.questionIndex + 1 < s.questions.length && !participants(s).some((p) => isOut(s, p))) startQuestion(s, s.questionIndex + 1, at, ev);
         else completeGame(s, at, ev);
       },
     });
@@ -541,7 +552,7 @@ function deadlines(state: GameState): Deadline[] {
 
 function startCountdown(state: GameState, now: number, deps: MachineDeps, events: GameEvent[]) {
   state.questions = deps.pickQuestions(state);
-  if (state.questions.length !== QUESTIONS_PER_GAME) throw new Error('в партии должно быть 10 вопросов');
+  if (state.questions.length !== rulesOf(state).count) throw new Error(`в партии должно быть ${rulesOf(state).count} вопросов`);
   state.phase = 'countdown';
   state.phaseEndsAt = now + TIMINGS.countdownMs;
   state.lobbyExpiresAt = null;
@@ -553,7 +564,7 @@ function startQuestion(state: GameState, index: number, at: number, events: Game
   state.phase = 'question';
   state.questionIndex = index;
   state.questionStartedAt = at;
-  state.phaseEndsAt = at + TIMINGS.questionMs;
+  state.phaseEndsAt = at + limitMs(state);
   events.push({ type: 'question', index });
 }
 
@@ -573,7 +584,9 @@ function completeGame(state: GameState, at: number, events: GameEvent[]) {
   const anyAnswer = participants(state).some((p) => p.answers.some(Boolean));
   if (!anyAnswer) return cancelled(state, 'no_answers', events);
   const [a, b] = participants(state);
-  const winnerId = !b ? null : a!.score === b.score ? null : a!.score > b.score ? a!.userId : b.userId;
+  let winnerId = !b ? null : a!.score === b.score ? null : a!.score > b.score ? a!.userId : b.userId;
+  // Жизни кончились только у одного - победа другого, даже если очков у него меньше.
+  if (b && isOut(state, a!) !== isOut(state, b)) winnerId = isOut(state, a!) ? b.userId : a!.userId;
   finish(state, 'completed', winnerId, at, events);
 }
 
@@ -633,6 +646,36 @@ export function isSoloDone(state: GameState): boolean {
 /** Рейтинговая ли партия: дуэли по ссылке, быстрая игра и реванш, доигранные или технические. */
 export function isRated(state: GameState): boolean {
   return state.phase === 'finished' && state.mode !== 'solo' && state.opponent !== null;
+}
+
+// ---------------------------------------------------------------------------
+// Обновление 2.0: режимы
+
+export function rulesOf(state: Pick<GameState, 'rules'>): GameRules {
+  return state.rules ?? DEFAULT_RULES;
+}
+
+/** Время на ответ в этой партии (мс). */
+export function limitMs(state: Pick<GameState, 'rules'>): number {
+  return rulesOf(state).timeSec * 1000;
+}
+
+/** Рейтинг меняется только в «Классике». */
+export function changesRating(state: Pick<GameState, 'rules'>): boolean {
+  return rulesOf(state).variant === 'classic';
+}
+
+/** Сколько жизней осталось (по закрытым вопросам); null - режим без жизней. */
+export function livesLeft(state: GameState, p: PlayerState): number | null {
+  const start = VARIANT_LIVES[rulesOf(state).variant];
+  if (start === 0) return null;
+  let lost = 0;
+  for (let i = 0; i < state.closed; i++) if (!p.answers[i]?.correct) lost += 1;
+  return Math.max(0, start - lost);
+}
+
+export function isOut(state: GameState, p: PlayerState): boolean {
+  return livesLeft(state, p) === 0;
 }
 
 // ---------------------------------------------------------------------------

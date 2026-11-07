@@ -38,6 +38,7 @@ import { FriendsScreen } from './screens/FriendsScreen';
 import { ItemSheet } from './screens/ItemSheet';
 import { AdScreen } from './screens/AdScreen';
 import { InviteBanner } from './components/InviteBanner';
+import { SetupSheet } from './screens/SetupSheet';
 import { shop, useShop, useWallet } from './lib/economy';
 
 /** Вне Telegram: заглушка с кнопкой, ведущей в мини-апп (адрес отдаёт сервер). */
@@ -281,6 +282,7 @@ function InTelegram({ session }: { session: TelegramSession }) {
       )}
       {screen}
       <CategorySheet />
+      <SetupSheet />
       <ConsentSheet docs={config.data?.docs} />
       <ExitDialog />
       <OppSheet me={me.data} />

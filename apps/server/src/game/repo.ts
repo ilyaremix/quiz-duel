@@ -11,7 +11,7 @@ import {
 } from '@quiz-duel/shared';
 import { FINAL_PHASES } from '@quiz-duel/shared';
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
-import { withSettlement, type GameState, type PlayerAnswer, type Settlement } from './machine.js';
+import { changesRating, rulesOf, withSettlement, type GameState, type PlayerAnswer, type Settlement } from './machine.js';
 import { computeSettlement, toSettlement, type CategoryCounters, type PlayerUpdate, type SettleInput, type StoredPlayer } from './settle.js';
 
 /**
@@ -102,6 +102,9 @@ function columns(state: GameState) {
     opponentScore: state.opponent?.score ?? 0,
     winnerId: big(state.finish?.winnerId ?? null),
     rematchOf: state.rematchOf,
+    variant: rulesOf(state).variant,
+    timeSec: rulesOf(state).timeSec,
+    questionCount: rulesOf(state).count,
     rev: state.rev,
     snapshot: state as unknown as Prisma.InputJsonValue,
     finishedAt: asDate(finishedAt),
@@ -113,11 +116,13 @@ function ratingColumns(state: GameState, settlement: Settlement) {
   const of = (id: number | undefined) => settlement.players.find((p) => p.userId === id);
   const c = of(state.creator.userId);
   const o = of(state.opponent?.userId);
+  // Режимы, кроме «Классики», рейтинг не меняют: изменения в истории нет вовсе.
+  const rated = changesRating(state);
   return {
     creatorRatingBefore: c?.before ?? null,
-    creatorRatingDelta: c?.delta ?? null,
+    creatorRatingDelta: rated ? (c?.delta ?? null) : null,
     opponentRatingBefore: o?.before ?? null,
-    opponentRatingDelta: o?.delta ?? null,
+    opponentRatingDelta: rated ? (o?.delta ?? null) : null,
   };
 }
 

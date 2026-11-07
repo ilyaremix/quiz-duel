@@ -130,7 +130,7 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
   {
     code: 'perfect_game',
     goal: 1,
-    earned: (_, f) => duel(f) && f.answers.length === 10 && correctCount(f.answers) === 10,
+    earned: (_, f) => duel(f) && f.answers.length >= 10 && correctCount(f.answers) === f.answers.length,
   },
   {
     code: 'lightning',

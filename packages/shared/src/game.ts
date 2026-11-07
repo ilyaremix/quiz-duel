@@ -35,8 +35,47 @@ export interface PlayerProfile {
   glow: GlowId;
 }
 
+/**
+ * Обновление 2.0: режим партии. classic - как в ТЗ; lives - 3 ошибки и поражение;
+ * sudden - первая ошибка и поражение; final - последние 3 вопроса дают двойные очки.
+ * Время на ответ и число вопросов выбирает создатель (по умолчанию 10 вопросов по 15 с).
+ * В рейтинг идёт только «Классика».
+ */
+export const VARIANTS = ['classic', 'lives', 'sudden', 'final'] as const;
+export type Variant = (typeof VARIANTS)[number];
+export const TIME_OPTIONS = [5, 10, 15, 20] as const;
+export const COUNT_OPTIONS = [5, 10, 15, 20] as const;
+export const MAX_QUESTIONS = 20;
+
+export interface GameRules {
+  variant: Variant;
+  /** Секунд на ответ. */
+  timeSec: number;
+  /** Вопросов в партии. */
+  count: number;
+}
+
+export const DEFAULT_RULES: GameRules = { variant: 'classic', timeSec: 15, count: 10 };
+
+/** Сколько ошибок до поражения (0 - жизней нет). */
+export const VARIANT_LIVES: Readonly<Record<Variant, number>> = { classic: 0, lives: 3, sudden: 1, final: 0 };
+
+/** «Финал ×2»: столько последних вопросов идут вдвойне. */
+export const FINAL_DOUBLE = 3;
+
+/** Очки этого вопроса удваиваются («Финал ×2»). */
+export function isDoubled(rules: GameRules, index: number, total = rules.count): boolean {
+  return rules.variant === 'final' && index >= total - Math.min(FINAL_DOUBLE, total);
+}
+
+export function sameRules(a: GameRules, b: GameRules): boolean {
+  return a.variant === b.variant && a.timeSec === b.timeSec && a.count === b.count;
+}
+
 export interface PlayerView extends PlayerProfile {
   userId: number;
+  /** Режим с жизнями: сколько осталось; null - жизней нет. */
+  lives: number | null;
   ready: boolean;
   online: boolean;
   /** Соперник офлайн посреди партии: когда наступит техническая победа (мс, время сервера). */
@@ -52,6 +91,8 @@ export interface PlayerView extends PlayerProfile {
 export interface QuestionView {
   index: number;
   total: number;
+  /** Очки за этот вопрос удваиваются («Финал ×2»). */
+  doubled: boolean;
   questionId: string;
   /** Тема самого вопроса (в «Миксе» у каждого своя). */
   category: Category;
@@ -160,6 +201,8 @@ export interface GameView {
   me: PlayerView;
   opponent: PlayerView | null;
   question: QuestionView | null;
+  /** Режим, время на ответ и число вопросов. */
+  rules: GameRules;
   /** Мой выбор в текущем вопросе (чтобы после переподключения он остался выделен). */
   myAnswer: { position: number } | null;
   opponentAnswered: boolean;

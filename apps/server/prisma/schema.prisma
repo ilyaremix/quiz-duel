@@ -223,7 +223,10 @@ model Game {
   opponentRatingBefore Int?          @map("opponent_rating_before")
   opponentRatingDelta  Int?          @map("opponent_rating_delta")
   rematchOf            String?       @map("rematch_of") @db.VarChar(10)
-  /// Номер версии состояния; растёт с каждым изменением
+  /// Обновление 2.0: режим (classic, lives, sudden, final), секунд на ответ, вопросов
+  variant              String        @default("classic")
+  timeSec              Int           @default(15) @map("time_sec")
+  questionCount        Int           @default(10) @map("question_count")
   rev                  Int
   snapshot             Json
   createdAt            DateTime      @default(now()) @map("created_at")

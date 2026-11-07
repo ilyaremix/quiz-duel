@@ -168,7 +168,7 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
         if (friendId !== undefined && !(deps.isFriend && (await deps.isFriend(userId, friendId)))) {
           return { ok: false, error: 'not_participant' } as const;
         }
-        const res = await games.create(userId, p.category as GameCategory);
+        const res = await games.create(userId, p.category as GameCategory, p.rules);
         if (res.ok && friendId !== undefined) deps.onChallenge?.(userId, friendId, res.game);
         return res;
       });

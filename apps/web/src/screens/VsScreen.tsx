@@ -25,7 +25,14 @@ export function VsScreen({ game, count }: { game: GameView; count: 1 | 2 | 3 }) 
       <header className="qd-in flex flex-col items-center gap-2.5 text-center">
         <CategoryChip cat={game.category} />
         <h1 className="m-0 text-[28px] font-bold tracking-[-0.02em]">{t('s08.title')}</h1>
-        <p className="m-0 text-[15px] font-medium text-hint">{t('s08.sub')}</p>
+        <p className="m-0 text-[15px] font-medium text-hint">
+          {t('s08.subRules', {
+            mode: t(`s32.mode.${game.rules.variant}.t`),
+            n: game.rules.count,
+            questions: t('plural.question', { count: game.rules.count }),
+            t: game.rules.timeSec,
+          })}
+        </p>
       </header>
 
       <div className="relative grid grid-cols-2 gap-3">

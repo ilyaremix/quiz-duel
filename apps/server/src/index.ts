@@ -105,7 +105,7 @@ async function main() {
       void friends.brief(fromId).then((from) => {
         if (!from) return;
         const expiresAt = game.lobbyExpiresAt ?? Date.now() + TIMINGS.lobbyTtlMs;
-        push.friendInvite(friendId, { gameId: game.id, from, category: game.category, expiresAt });
+        push.friendInvite(friendId, { gameId: game.id, from, category: game.category, rules: game.rules, expiresAt });
         alerts?.send(friendId, { kind: 'friendInvite', gameId: game.id, opponent: from.name });
       });
     },

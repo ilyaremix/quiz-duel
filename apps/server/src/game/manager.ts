@@ -21,6 +21,7 @@ import {
   gameLink,
   OPEN_PHASES,
   type GameCategory,
+  type GameRules,
   type GameErrorCode,
   type GameFailure,
   type GameStateMeta,
@@ -264,6 +265,7 @@ export class GameManager {
           category: state.category,
           seen: this.games.get(state.id)?.seen ?? this.pendingSeen.get(state.id) ?? new Map(),
           rng,
+          count: machine.rulesOf(state).count,
         }),
     };
   }
@@ -416,7 +418,7 @@ export class GameManager {
   // -------------------------------------------------------------------------
   // Лобби
 
-  async create(userId: number, category: GameCategory): Promise<Result<{ game: GameView }>> {
+  async create(userId: number, category: GameCategory, rules?: GameRules): Promise<Result<{ game: GameView }>> {
     this.queue.delete(userId);
     if (!this.allowCreate(userId)) return fail('rate_limited');
     const card = await this.card(userId);
@@ -430,7 +432,7 @@ export class GameManager {
     for (let attempt = 0; attempt < 3 && !state; attempt++) {
       const id = (this.d.newId ?? newGameId)();
       if (this.games.has(id) || (await this.d.repo.load(id))) continue;
-      state = machine.createGame({ id, mode: 'link', category, creatorId: userId }, this.now(), this.deps);
+      state = machine.createGame({ id, mode: 'link', category, creatorId: userId, rules }, this.now(), this.deps);
     }
     if (!state) return fail('internal');
 
@@ -937,7 +939,17 @@ export class GameManager {
     let next: GameState;
     try {
       next = machine.createGame(
-        { id, mode: 'rematch', category: s.category, creatorId: s.creator.userId, opponentId: s.opponent!.userId, startNow: true, rematchOf: s.id },
+        {
+          id,
+          mode: 'rematch',
+          category: s.category,
+          creatorId: s.creator.userId,
+          opponentId: s.opponent!.userId,
+          startNow: true,
+          rematchOf: s.id,
+          // Реванш - в том же режиме и с теми же настройками.
+          rules: machine.rulesOf(s),
+        },
         now,
         this.deps,
       );

@@ -11,7 +11,8 @@ import {
   type RematchView,
 } from '@quiz-duel/shared';
 import type { QuestionBank } from '../questions/bank.js';
-import { isGone, otherOf, outcomeFor, playerOf, rematchAvailable, type GameState, type PlayerState } from './machine.js';
+import { isGone, limitMs, livesLeft, otherOf, outcomeFor, playerOf, rematchAvailable, rulesOf, type GameState, type PlayerState } from './machine.js';
+import { isDoubled } from '@quiz-duel/shared';
 
 /** Карточка игрока по id; нет данных - нейтральная заглушка (имя покажется инициалом «?»). */
 export type ProfileLookup = (userId: number) => PlayerProfile | undefined;
@@ -35,6 +36,7 @@ const playerView = (state: GameState, p: PlayerState, profileOf: ProfileLookup):
       : null,
   score: p.score,
   left: Boolean(p.left),
+  lives: livesLeft(state, p),
 });
 
 /** Цифры игрока за сыгранные (закрытые) вопросы. */
@@ -145,12 +147,14 @@ export function viewFor(
             text: source[lang].text,
             options: gq.order.map((o) => source[lang].options[o]!),
             startedAt: state.questionStartedAt!,
-            endsAt: state.questionStartedAt! + TIMINGS.questionMs,
+            endsAt: state.questionStartedAt! + limitMs(state),
+            doubled: isDoubled(rulesOf(state), i, state.questions.length),
           }
         : null,
     myAnswer: myCurrent ? { position: myCurrent.position } : null,
     opponentAnswered: state.phase === 'question' && Boolean(opp?.answers[i]),
     reveal,
+    rules: rulesOf(state),
     result: resultFor(state, me),
     cancelReason: state.cancelReason,
     rematchOf: state.rematchOf,

@@ -3,7 +3,7 @@
  * имя события или его данные нельзя поменять только с одной стороны.
  * Этап 1: приветствие и часы. Этап 4: лобби. Этап 5: ответы и сдача. Этап 7: реванш.
  */
-import type { GameView, PlayerProfile, Reaction } from './game.js';
+import type { GameRules, GameView, PlayerProfile, Reaction } from './game.js';
 import type { GameCategory } from './categories.js';
 import type { PlayerBrief } from './api.js';
 
@@ -78,6 +78,8 @@ export interface CreateGamePayload {
   /** Вызов другу: он получит сообщение от бота и баннер в приложении. */
   friendId?: number;
   category: GameCategory;
+  /** Режим и настройки (по умолчанию - Классика, 10 вопросов по 15 с). */
+  rules?: GameRules;
 }
 
 export interface GameIdPayload {
@@ -174,6 +176,7 @@ export interface FriendInviteEvent {
   gameId: string;
   from: PlayerBrief;
   category: GameCategory;
+  rules: GameRules;
   /** До какого времени действует вызов (лобби, мс). */
   expiresAt: number;
 }

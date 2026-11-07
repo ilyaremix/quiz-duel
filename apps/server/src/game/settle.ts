@@ -15,7 +15,7 @@ import {
 } from '@quiz-duel/shared';
 import type { QuestionBank } from '../questions/bank.js';
 import { duelFacts } from './facts.js';
-import { outcomeFor, participants, playerOf, type GameState, type Settlement } from './machine.js';
+import { changesRating, outcomeFor, participants, playerOf, type GameState, type Settlement } from './machine.js';
 
 export interface CategoryCounters {
   answered: number;
@@ -55,6 +55,8 @@ export interface PlayerGameInput {
 export interface SettleInput {
   gameId: string;
   players: [PlayerGameInput, PlayerGameInput];
+  /** Меняется ли рейтинг: только в «Классике» (остальные режимы - без рейтинга, статистика идёт). */
+  rated?: boolean;
 }
 
 /** Изменения одного игрока: новые значения колонок и прибавки по категориям. */
@@ -107,7 +109,7 @@ export function settleInput(state: GameState, bank: QuestionBank, lostPrevious: 
       correctTimeMs,
     };
   };
-  return { gameId: state.id, players: [one(a.userId), one(b.userId)] };
+  return { gameId: state.id, players: [one(a.userId), one(b.userId)], rated: changesRating(state) };
 }
 
 const totalsOf = (p: StoredPlayer): PlayerTotals => ({
@@ -133,7 +135,8 @@ export function computeSettlement(stored: [StoredPlayer, StoredPlayer], input: S
   const sb = stored.find((p) => p.userId === ib.userId);
   if (!sa || !sb) throw new Error('нет данных игрока для итогов');
 
-  const deltas = rateGame({ rating: sa.rating, games: sa.games }, { rating: sb.rating, games: sb.games }, ia.facts.outcome);
+  const deltas =
+    input.rated === false ? { a: 0, b: 0 } : rateGame({ rating: sa.rating, games: sa.games }, { rating: sb.rating, games: sb.games }, ia.facts.outcome);
 
   const one = (s: StoredPlayer, i: PlayerGameInput, delta: number): PlayerUpdate => {
     const totals = applyDuel(totalsOf(s), i.facts, delta);

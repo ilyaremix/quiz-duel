@@ -14,6 +14,7 @@ import {
   type ClientToServerEvents,
   type FriendInviteEvent,
   type GameCategory,
+  type GameRules,
   type GameErrorCode,
   type GameStateMeta,
   type GameView,
@@ -447,8 +448,8 @@ export const gameActions = {
     } else if (res.error === 'not_found') set({ game: null });
   },
 
-  async create(category: GameCategory, friendId?: number) {
-    const res = await request('game:create', friendId ? { category, friendId } : { category });
+  async create(category: GameCategory, friendId?: number, rules?: GameRules) {
+    const res = await request('game:create', { category, ...(friendId ? { friendId } : {}), ...(rules ? { rules } : {}) });
     if (res.ok) {
       set({ game: res.game, hidden: false, linkError: null, categorySheet: false, invite: null });
       void gameActions.prefetchInvite(res.game.id);

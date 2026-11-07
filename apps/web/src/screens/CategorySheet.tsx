@@ -7,6 +7,9 @@ import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { gameActions, useGame } from '../lib/game';
 import { friendsActions, useFriends } from '../lib/friends';
+import { setupActions, useSetup } from '../lib/setup';
+import { MODE_LOOK, useRulesText } from '../components/Modes';
+import type { CSSProperties } from 'react';
 
 /** Экран 4: нижняя шторка выбора категории перед дуэлью или тренировкой. */
 export function CategorySheet() {
@@ -18,6 +21,9 @@ export function CategorySheet() {
   // Вызов другу из вкладки «Друзья»: его имя в шапке, кнопка «Отправить вызов».
   const friend = useFriends((s) => s.target);
   const forFriend = !solo && friend !== null;
+  const rules = useSetup((s) => s.rules);
+  const summary = useRulesText();
+  const look = MODE_LOOK[rules.variant];
   const close = () => {
     gameActions.closeCategory();
     friendsActions.clearTarget();
@@ -29,7 +35,7 @@ export function CategorySheet() {
         <div className="flex min-w-0 flex-col gap-1">
           <h2 className="m-0 text-[22px] font-bold tracking-[-0.02em]">{forFriend ? t('s04.friendTitle') : t('s04.title')}</h2>
           <p className="m-0 text-[14px] font-medium text-hint">
-            {forFriend ? t('s04.friendSub', { name: friend.name }) : t(solo ? 's04.trainSub' : 's04.sub')}
+            {forFriend ? t('s04.friendSub', { name: friend.name }) : solo ? t('s04.trainSub') : summary(rules)}
           </p>
         </div>
         <button
@@ -47,6 +53,28 @@ export function CategorySheet() {
           <CategoryTile key={cat} cat={cat} selected={cat === selected} onPick={() => setSelected(cat)} />
         ))}
       </div>
+      {!solo && (
+        <button
+          type="button"
+          aria-label={t('s04.setupAria')}
+          onClick={setupActions.open}
+          className="qd-press flex w-full cursor-pointer items-center gap-3 rounded-[22px] border-0 py-2.5 pr-3 pl-2.5 text-left text-text"
+          style={{ background: 'var(--qd-sheen), var(--qd-glass)', boxShadow: 'var(--qd-glass-edge-flat)' }}
+        >
+          <span aria-hidden="true" className="qd-ball h-9 w-9" style={{ '--qd-ball': look.ball, '--qd-ball-glow': look.glow, color: look.ink } as CSSProperties}>
+            <Icon glyph={look.glyph} size={18} stroke={2.4} />
+          </span>
+          <span className="flex min-w-0 grow flex-col gap-px">
+            <span className="text-[14px] font-bold">{t('s04.setup')}</span>
+            <span className="truncate text-[12px] font-medium text-hint">
+              {summary(rules)} · {rules.variant === 'classic' ? t('s32.rated') : t('s12.unrated')}
+            </span>
+          </span>
+          <span className="text-hint">
+            <Icon glyph="chevron" size={18} stroke={2.4} />
+          </span>
+        </button>
+      )}
       <div className="mt-1">
         <Button
           disabled={!selected || creating}
@@ -56,7 +84,7 @@ export function CategorySheet() {
             if (solo) return void gameActions.startSolo(selected);
             const to = forFriend ? friend.id : undefined;
             friendsActions.clearTarget();
-            void gameActions.create(selected, to);
+            void gameActions.create(selected, to, rules);
           }}
         >
           {t(solo ? 's04.train' : forFriend ? 's04.friendSend' : 's04.create')}

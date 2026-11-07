@@ -48,15 +48,15 @@ export const POINTS = {
  * Неверный ответ - 0. Ответ в допуске после конца таймера - 500 (осталось 0 с).
  * elapsedMs - сколько прошло от старта вопроса до получения ответа сервером.
  */
-export function pointsFor(correct: boolean, elapsedMs: number): number {
+export function pointsFor(correct: boolean, elapsedMs: number, limitMs: number = TIMINGS.questionMs): number {
   if (!correct) return 0;
-  const remaining = Math.min(TIMINGS.questionMs, Math.max(0, TIMINGS.questionMs - elapsedMs));
-  return Math.round(POINTS.base + (POINTS.speedBonus * remaining) / TIMINGS.questionMs);
+  const remaining = Math.min(limitMs, Math.max(0, limitMs - elapsedMs));
+  return Math.round(POINTS.base + (POINTS.speedBonus * remaining) / limitMs);
 }
 
-/** Принимается ли ответ: до конца таймера плюс допуск на сеть. */
-export function isAnswerInTime(elapsedMs: number): boolean {
-  return elapsedMs >= 0 && elapsedMs <= TIMINGS.questionMs + TIMINGS.answerGraceMs;
+/** Принимается ли ответ: до конца таймера (limitMs - время на ответ в этой партии) плюс допуск на сеть. */
+export function isAnswerInTime(elapsedMs: number, limitMs: number = TIMINGS.questionMs): boolean {
+  return elapsedMs >= 0 && elapsedMs <= limitMs + TIMINGS.answerGraceMs;
 }
 
 /** Максимум за партию из 10 вопросов. */

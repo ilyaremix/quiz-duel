@@ -8,6 +8,7 @@ import { DisconnectBanner, OfflineStrip } from '../components/Banner';
 import { CategoryChip } from '../components/CategoryTile';
 import { Icon, type IconGlyph } from '../components/Icon';
 import { Reactions, useLiveReaction } from '../components/Reactions';
+import { RulesStrip } from '../components/Modes';
 import { ScoreBar } from '../components/ScoreBar';
 import { Timer } from '../components/Timer';
 import { formatClock, useServerNow } from '../hooks/useServerNow';
@@ -73,9 +74,12 @@ export function QuestionScreen({ game }: { game: GameView }) {
   const answered = myPos !== null;
 
   // Таймер: по дедлайну сервера. Без анимаций - раз в секунду.
+  // Время на ответ - из настроек партии (5-20 с), по умолчанию 15 с.
+  const totalMs = Math.max(1000, q.endsAt - q.startedAt);
+  const totalSec = Math.round(totalMs / 1000);
   const leftMs = Math.max(0, q.endsAt - now);
-  const sec = Math.min(15, Math.ceil(leftMs / 1000));
-  const pct = reduced ? (sec / 15) * 100 : (leftMs / TIMINGS.questionMs) * 100;
+  const sec = Math.min(totalSec, Math.ceil(leftMs / 1000));
+  const pct = reduced ? (sec / totalSec) * 100 : (leftMs / totalMs) * 100;
 
   // Счёт пересчитывается за 300 мс на раскрытии.
   const meScore = useCountUp(game.me.score, 300, reduced);
@@ -162,7 +166,16 @@ export function QuestionScreen({ game }: { game: GameView }) {
         hideNote
       />
 
-      {!reveal && <Timer seconds={sec} pct={pct} live={!reduced} />}
+      <RulesStrip
+        rules={game.rules}
+        meName={t('common.you')}
+        oppName={opp ? oppName : null}
+        meLives={game.me.lives}
+        oppLives={opp?.lives ?? null}
+        doubled={q.doubled}
+      />
+
+      {!reveal && <Timer seconds={sec} total={totalSec} pct={pct} live={!reduced} />}
 
       {oppOffline && opp?.graceEndsAt != null && (
         <div className="qd-toast-in">

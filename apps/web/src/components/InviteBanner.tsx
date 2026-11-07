@@ -1,6 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
-import { QUESTIONS_PER_GAME } from '@quiz-duel/shared';
 import { friendsActions, useFriends } from '../lib/friends';
 import { serverNow } from '../lib/game';
 import { Avatar } from './Avatar';
@@ -34,9 +33,9 @@ export function InviteBanner() {
   const look = CATEGORY_LOOK[invite.category];
   const meta = t('s26.duelMeta', {
     cat: t(`cat.${invite.category}.title`),
-    mode: t('s32.modes.classic.t'),
-    n: QUESTIONS_PER_GAME,
-    questions: t('plural.question', { count: QUESTIONS_PER_GAME }),
+    mode: t(`s32.mode.${invite.rules.variant}.t`),
+    n: invite.rules.count,
+    questions: t('plural.question', { count: invite.rules.count }),
   });
 
   return (

@@ -43,7 +43,7 @@ function StatCard({ value, label, badge, muted = false }: { value: string; label
 }
 
 /** Рейтинг после партии: число досчитывает от прежнего значения за 900 мс, бейдж «+16» выпрыгивает. */
-function RatingCard({ rating }: { rating: RatingChange | null }) {
+function RatingCard({ rating, unrated = false }: { rating: RatingChange | null; unrated?: boolean }) {
   const { t, i18n } = useTranslation();
   const reduced = useReducedMotion();
   const [target, setTarget] = useState(rating?.before ?? 0);
@@ -51,6 +51,8 @@ function RatingCard({ rating }: { rating: RatingChange | null }) {
     if (rating) setTarget(rating.after);
   }, [rating]);
   const shown = useCountUp(target, 900, reduced, 200);
+  // Режимы, кроме «Классики», рейтинг не меняют.
+  if (unrated) return <StatCard value={formatNumber(rating?.after ?? target, i18n.language)} label={t('s12.unrated')} muted />;
   if (!rating) return <StatCard value="·" label={t('s12.ratingPending')} muted />;
   const d = rating.delta > 0 ? DELTA.up : rating.delta < 0 ? DELTA.down : DELTA.flat;
   return (
@@ -99,6 +101,13 @@ export function ResultScreen({ game }: { game: GameView }) {
         ? 'techWin'
         : 'techLoss'
       : result.outcome;
+
+  // Режимы с жизнями: партия кончилась досрочно - почему.
+  const meOut = game.me.lives === 0;
+  const oppOut = opp?.lives === 0;
+  const livesKind = game.rules.variant === 'sudden' ? 'sudden' : 'lives';
+  const livesReason =
+    result && !result.technical && meOut !== oppOut ? (meOut ? `${livesKind}Loss` : `${livesKind}Win`) : null;
 
   // Сильная вибрация на победу - один раз.
   const buzzed = useRef(false);
@@ -158,6 +167,12 @@ export function ResultScreen({ game }: { game: GameView }) {
             {t(`s12.${look}`)}
           </span>
         )}
+        {livesReason && (
+          <span className={`qd-in qd-d3 qd-chip mt-0.5 ${result.outcome === 'win' ? 'qd-chip-gold' : 'qd-chip-bad'}`}>
+            <Icon glyph={game.rules.variant === 'sudden' ? 'skull' : 'heart'} size={14} stroke={2.5} />
+            {t(`s12.reason.${livesReason}`)}
+          </span>
+        )}
         <p className="qd-in qd-d3 m-0 mt-0.5 text-[16px] font-medium text-hint">{sub}</p>
       </header>
 
@@ -211,7 +226,7 @@ export function ResultScreen({ game }: { game: GameView }) {
       </section>
 
       <section className="qd-in qd-d5 grid grid-cols-3 gap-2.5">
-        <RatingCard rating={result.rating ?? null} />
+        <RatingCard rating={result.rating ?? null} unrated={game.rules.variant !== 'classic'} />
         <StatCard value={`${stats.correct}/${stats.played}`} label={t('s12.correctLabel')} />
         <StatCard value={stats.avgMs === null ? '-' : formatSec(stats.avgMs, t, lang)} label={t('s12.avgLabel')} />
       </section>

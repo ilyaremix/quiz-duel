@@ -5,9 +5,8 @@
 import { z } from 'zod';
 import { CONSENT_DOCS, type ConsentDoc } from './api.js';
 import { GAME_ID_RE } from './links.js';
-import { QUESTIONS_PER_GAME } from './questions.js';
 import { GAME_CATEGORIES, type GameCategory } from './categories.js';
-import type { Reaction } from './game.js';
+import { COUNT_OPTIONS, MAX_QUESTIONS, TIME_OPTIONS, VARIANTS, type Reaction } from './game.js';
 import { ALL_REACTIONS, PREMIUM_TOPICS, STARS_PRODUCTS, type PremiumTopic, type StarsProduct } from './economy.js';
 
 type Tuple<T> = readonly [T, ...T[]];
@@ -16,9 +15,16 @@ const gameId = z.string().regex(GAME_ID_RE);
 
 const userId = z.number().int().positive().max(2 ** 52);
 
+export const RulesSchema = z.strictObject({
+  variant: z.enum(VARIANTS),
+  timeSec: z.union(TIME_OPTIONS.map((n) => z.literal(n)) as unknown as [z.ZodLiteral<5>, z.ZodLiteral<10>, z.ZodLiteral<15>, z.ZodLiteral<20>]),
+  count: z.union(COUNT_OPTIONS.map((n) => z.literal(n)) as unknown as [z.ZodLiteral<5>, z.ZodLiteral<10>, z.ZodLiteral<15>, z.ZodLiteral<20>]),
+});
+
 export const CreateGamePayloadSchema = z.strictObject({
   category: z.enum(GAME_CATEGORIES as unknown as Tuple<GameCategory>),
   friendId: userId.optional(),
+  rules: RulesSchema.optional(),
 });
 
 export const GameIdPayloadSchema = z.strictObject({ gameId });
@@ -27,7 +33,7 @@ export const SyncPayloadSchema = z.strictObject({ gameId: gameId.optional() });
 
 export const AnswerPayloadSchema = z.strictObject({
   gameId,
-  questionIndex: z.number().int().min(0).max(QUESTIONS_PER_GAME - 1),
+  questionIndex: z.number().int().min(0).max(MAX_QUESTIONS - 1),
   optionIndex: z.number().int().min(0).max(3),
 });
 
