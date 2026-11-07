@@ -3,10 +3,10 @@
  * (досрочный конец, у кого кончились жизни - тот проиграл), «Финал ×2», рейтинг только в «Классике».
  */
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_RULES, DRAFT, TIMINGS, pointsFor, type GameRules } from '@quiz-duel/shared';
+import { CATEGORIES, DEFAULT_RULES, DRAFT, TIMINGS, pointsFor, type GameRules } from '@quiz-duel/shared';
 import { loadQuestionBank } from '../src/questions/bank.js';
 import { pickQuestions, splitFor } from '../src/game/picker.js';
-import { seededRng } from '../src/game/rng.js';
+import { draftOffers, seededRng } from '../src/game/rng.js';
 import { answer, createGame, draftTopics, forfeit, livesLeft, pickTopic, setReady, tick, join, rulesOf, type GameState, type MachineDeps, type Step } from '../src/game/machine.js';
 import { computeSettlement, settleInput } from '../src/game/settle.js';
 import { memoryPlayer } from '../src/game/repo.js';
@@ -226,5 +226,23 @@ describe('«Микс»: выбор темы', () => {
     const s = ready();
     const left = ok(forfeit(s, A, T0 + 4000));
     expect(left.finish).toMatchObject({ reason: 'forfeit', winnerId: B });
+  });
+});
+
+describe('темы драфта «Микса»', () => {
+  it('у соперников разные наборы: из 5 тем по 3 - общая ровно одна, наборы никогда не совпадают', () => {
+    for (let seed = 1; seed <= 500; seed++) {
+      const [a, b] = draftOffers(CATEGORIES, 2, 3, seededRng(seed));
+      expect(a).toHaveLength(3);
+      expect(b).toHaveLength(3);
+      expect(new Set(a).size).toBe(3);
+      expect(new Set(b).size).toBe(3);
+      expect(a!.filter((c) => b!.includes(c))).toHaveLength(1);
+      expect(new Set([...a!, ...b!]).size).toBe(5);
+    }
+  });
+  it('тем хватает - наборы без пересечений', () => {
+    const [a, b] = draftOffers(['a', 'b', 'c', 'd', 'e', 'f', 'g'], 2, 3, seededRng(7));
+    expect(a!.filter((c) => b!.includes(c))).toEqual([]);
   });
 });

@@ -50,7 +50,7 @@ import type { GameError, GameEvent, GameState, MachineDeps, Step } from './machi
 import { pickQuestions } from './picker.js';
 import type { GamesRepo } from './repo.js';
 import { newGameId } from './ids.js';
-import { secureRng, shuffle, type Rng } from './rng.js';
+import { draftOffers, secureRng, type Rng } from './rng.js';
 import { viewFor } from './view.js';
 import { losersOf, settleInput } from './settle.js';
 
@@ -292,7 +292,7 @@ export class GameManager {
           count: machine.rulesOf(state).count,
           topics: machine.draftTopics(state) ?? undefined,
         }),
-      ...(d.draft ? { draftOffers: (state: GameState) => machine.participants(state).map(() => shuffle(CATEGORIES, rng).slice(0, DRAFT.offers)) } : {}),
+      ...(d.draft ? { draftOffers: (state: GameState) => draftOffers(CATEGORIES, machine.participants(state).length, DRAFT.offers, rng) } : {}),
     };
   }
 

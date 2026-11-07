@@ -27,3 +27,25 @@ export function shuffle<T>(items: readonly T[], rng: Rng): T[] {
   }
   return out;
 }
+
+/**
+ * Темы драфта «Микса»: каждому игроку по `per` тем, пересечение - минимально возможное.
+ * Хватает тем - наборы совсем разные; нет (5 тем, 3 + 3) - общих ровно столько, сколько не хватает
+ * (одна), остальные у каждого свои. Порядок внутри набора случайный, общая тема не стоит на одном месте.
+ */
+export function draftOffers<T>(items: readonly T[], players: number, per: number, rng: Rng): T[][] {
+  const pool = shuffle(items, rng);
+  const n = Math.min(per, pool.length);
+  if (players <= 1) return [pool.slice(0, n)];
+  const shared = Math.max(0, Math.ceil((players * n - pool.length) / (players - 1)));
+  const common = pool.slice(0, Math.min(shared, n));
+  let next = common.length;
+  return Array.from({ length: players }, () => {
+    const own = pool.slice(next, next + n - common.length);
+    next += own.length;
+    const set = [...common, ...own];
+    // Если тем совсем мало, добираем из общего пула без повторов внутри набора.
+    for (const c of pool) if (set.length < n && !set.includes(c)) set.push(c);
+    return shuffle(set, rng);
+  });
+}
