@@ -16,6 +16,7 @@ export function optimistic(me: MeResponse, patch: SettingsRequest): MeResponse {
     next.language = patch.language;
     next.lang = patch.language === 'auto' ? me.autoLang : patch.language;
   }
+  if (patch.reducedMotion !== undefined) next.reducedMotion = patch.reducedMotion;
   return next;
 }
 
@@ -48,5 +49,6 @@ export function pick(me: MeResponse, patch: SettingsRequest): Partial<MeResponse
     out.language = me.language;
     out.lang = me.lang;
   }
+  if (patch.reducedMotion !== undefined) out.reducedMotion = me.reducedMotion;
   return out;
 }

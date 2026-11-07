@@ -1,22 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-const QUERY = '(prefers-reduced-motion: reduce)';
-
-/**
- * Системное «Уменьшить движение». Полный режим без анимаций с настройкой
- * «Авто / Вкл / Выкл» в профиле - этап 9; там этот хук начнёт читать и её.
- */
-export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(() => window.matchMedia?.(QUERY).matches ?? false);
-  useEffect(() => {
-    const mq = window.matchMedia?.(QUERY);
-    if (!mq) return;
-    const on = () => setReduced(mq.matches);
-    mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, []);
-  return reduced;
-}
+/** Включён ли режим без анимаций (настройка игрока + система + слабое устройство) - см. lib/motion.ts. */
+export { useReducedMotion } from '../lib/motion';
 
 /**
  * Число, которое плавно «досчитывает» до нового значения (счёт на раскрытии - 300 мс,

@@ -264,6 +264,8 @@ export interface SettingsRequest {
   writeAccess?: true;
   /** Язык интерфейса и вопросов: «Авто» (по Telegram) или явный выбор. */
   language?: LangSetting;
+  /** Режим без анимаций: «Авто» (система или слабое устройство), «Вкл», «Выкл». */
+  reducedMotion?: MotionSetting;
 }
 
 export interface SettingsResponse {
@@ -273,4 +275,5 @@ export interface SettingsResponse {
   /** Итоговый язык после сохранения. */
   lang: Lang;
   autoLang: Lang;
+  reducedMotion: MotionSetting;
 }

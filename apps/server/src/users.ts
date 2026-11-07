@@ -53,16 +53,24 @@ export interface SettingsPatch {
   notifications?: boolean;
   writeAccess?: boolean;
   language?: LangSetting;
+  reducedMotion?: MotionSetting;
 }
 
 /** Настройки из строки игрока в том виде, в каком их отдаёт API. */
-export function settingsOf(row: { notifications: boolean; writeAccess: boolean; language: LangSetting; tgLanguage: string | null }): SettingsResponse {
+export function settingsOf(row: {
+  notifications: boolean;
+  writeAccess: boolean;
+  language: LangSetting;
+  tgLanguage: string | null;
+  reducedMotion: MotionSetting;
+}): SettingsResponse {
   return {
     notifications: row.notifications,
     writeAccess: row.writeAccess,
     language: row.language,
     lang: resolveLang(row.language, row.tgLanguage),
     autoLang: langFromTelegram(row.tgLanguage),
+    reducedMotion: row.reducedMotion,
   };
 }
 
@@ -182,7 +190,7 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
       if (done.count === 0) return null;
       const row = await prisma.user.findUniqueOrThrow({
         where: { id: BigInt(id) },
-        select: { notifications: true, writeAccess: true, language: true, tgLanguage: true },
+        select: { notifications: true, writeAccess: true, language: true, tgLanguage: true, reducedMotion: true },
       });
       return settingsOf(row);
     },

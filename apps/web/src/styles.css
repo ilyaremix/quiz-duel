@@ -624,57 +624,80 @@ body {
   touch-action: none;
 }
 
-/* Системное «Уменьшить движение»: меньше движения, а не ноль - остаются мягкие fade.
-   Полный режим без анимаций с настройкой в профиле - на этапе 9. */
-@media (prefers-reduced-motion: reduce) {
-  .qd-screen-in,
-  .qd-pop,
-  .qd-rise,
-  .qd-rise-2,
-  .qd-arrive,
-  .qd-toast-in,
-  .qd-strip-in,
-  .qd-sheet-in,
-  .qd-backdrop-in,
-  .qd-slide-l,
-  .qd-slide-r,
-  .qd-pop-late,
-  .qd-count,
-  .qd-cascade,
-  .qd-pts,
-  .qd-pts-2,
-  .qd-ach-in {
-    animation: qd-fade-in 160ms var(--qd-ease-ui) both;
-    animation-delay: 0ms !important;
+/*
+ * Режим без анимаций (класс qd-rm на <html>, его ставит lib/motion.ts по настройке
+ * «Авто / Вкл / Выкл»; «Авто» = системное «Уменьшить движение» или слабый Android).
+ * Меньше движения, а не ноль: остаются мягкие fade по прозрачности (вход 160 мс, выход 120 мс),
+ * убираются сдвиги, масштаб, частицы и пульсация. Цвета и вибрация остаются, тайминги игры не меняются.
+ */
+.qd-rm .qd-screen-in,
+.qd-rm .qd-fade-in,
+.qd-rm .qd-pop,
+.qd-rm .qd-rise,
+.qd-rm .qd-rise-2,
+.qd-rm .qd-arrive,
+.qd-rm .qd-toast-in,
+.qd-rm .qd-strip-in,
+.qd-rm .qd-sheet-in,
+.qd-rm .qd-backdrop-in,
+.qd-rm .qd-slide-l,
+.qd-rm .qd-slide-r,
+.qd-rm .qd-pop-late,
+.qd-rm .qd-count,
+.qd-rm .qd-cascade,
+.qd-rm .qd-pts,
+.qd-rm .qd-pts-2,
+.qd-rm .qd-ach-in {
+  animation: qd-rm-in 160ms var(--qd-ease-ui) both;
+  animation-delay: 0ms !important;
+}
+.qd-rm .qd-toast-out,
+.qd-rm .qd-sheet-out,
+.qd-rm .qd-backdrop-out,
+.qd-rm .qd-pop-out {
+  animation: qd-rm-out 120ms var(--qd-ease-ui) both;
+}
+.qd-rm .qd-pulse,
+.qd-rm .qd-dots,
+.qd-rm .qd-tick,
+.qd-rm .qd-flash,
+.qd-rm .qd-shake,
+.qd-rm .qd-skel {
+  animation: none;
+}
+.qd-rm .qd-confetti,
+.qd-rm .qd-shine::after {
+  display: none;
+}
+/* Реакция появляется и исчезает без подъёма. */
+.qd-rm .qd-bubble {
+  animation: qd-bubble-fade 1800ms linear both;
+}
+/* Нажатие: без сжатия и утапливания, только отклик прозрачностью. */
+.qd-rm .qd-press:active:not(:disabled) {
+  transform: none;
+  box-shadow: var(--qd-shadow, none);
+  opacity: 0.7;
+}
+.qd-rm .qd-press {
+  transition: opacity var(--qd-dur-press) ease;
+}
+/* Шторка возвращается на место без «доезда», индикатор загрузки крутится медленнее. */
+.qd-rm .qd-sheet-drag {
+  transition: none !important;
+}
+.qd-rm .qd-spin {
+  animation-duration: 2.4s;
+}
+
+@keyframes qd-rm-in {
+  from {
+    opacity: 0;
   }
-  .qd-toast-out,
-  .qd-sheet-out,
-  .qd-backdrop-out,
-  .qd-pop-out {
-    animation: qd-fade-out 120ms var(--qd-ease-ui) both;
-  }
-  .qd-pulse,
-  .qd-dots,
-  .qd-tick,
-  .qd-flash,
-  .qd-shake,
-  .qd-skel {
-    animation: none;
-  }
-  .qd-confetti,
-  .qd-shine::after {
-    display: none;
-  }
-  /* Реакция появляется и исчезает без подъёма. */
-  .qd-bubble {
-    animation: qd-bubble-fade 1800ms linear both;
-  }
-  .qd-press:active:not(:disabled) {
-    transform: none;
-    opacity: 0.7;
-  }
-  .qd-spin {
-    animation-duration: 2.4s;
+}
+@keyframes qd-rm-out {
+  to {
+    opacity: 0;
   }
 }
 

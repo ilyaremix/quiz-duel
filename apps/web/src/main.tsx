@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { langFromTelegram } from '@quiz-duel/shared';
 import { setupTelegram } from './lib/telegram';
+// Режим без анимаций ставится до первой отрисовки (настройка с прошлого входа, система, слабое устройство).
+import './lib/motion';
 import { cachedLang, initI18n } from './i18n';
 import { App } from './App';
 import './styles.css';

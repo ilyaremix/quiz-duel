@@ -5,6 +5,7 @@ import { api, ApiRequestError, queryKeys, setSessionAuth } from './lib/api';
 import { askWriteAccess, closeMiniApp, onBack, setGameGuards, type TelegramSession } from './lib/telegram';
 import { gameActions, useGame } from './lib/game';
 import { setLang } from './i18n';
+import { setMotionSetting } from './lib/motion';
 import { useTranslation } from 'react-i18next';
 import { OfflineStrip } from './components/Banner';
 import { ToastHost } from './components/ToastHost';
@@ -169,7 +170,9 @@ function InTelegram({ session }: { session: TelegramSession }) {
   useWriteAccessAsk(game, me.data);
 
   useEffect(() => {
-    if (me.data) setLang(me.data.lang);
+    if (!me.data) return;
+    setLang(me.data.lang);
+    setMotionSetting(me.data.reducedMotion);
   }, [me.data]);
 
   const gameOnScreen = Boolean(game && !hidden && !linkError && conn !== 'replaced');

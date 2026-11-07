@@ -46,6 +46,7 @@ export const SettingsRequestSchema = z
     notifications: z.boolean().optional(),
     writeAccess: z.literal(true).optional(),
     language: z.enum(['auto', 'ru', 'en']).optional(),
+    reducedMotion: z.enum(['auto', 'on', 'off']).optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), 'empty');
 

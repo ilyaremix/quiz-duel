@@ -569,6 +569,16 @@
     "native": {
       "ru": "Русский",
       "en": "English"
+    },
+    "motion": "Reduced motion",
+    "on": "On",
+    "off": "Off",
+    "motionAuto": "Auto turns it on if “Reduce motion” is set on your device or the device is slow. Now: {{state}}",
+    "motionOn": "Less movement: screens simply fade in, with no slides, particles or pulsing",
+    "motionOff": "All animations are on",
+    "states": {
+      "on": "on",
+      "off": "off"
     }
   }
 }

@@ -105,3 +105,23 @@ describe('этап 9: язык посреди партии', () => {
     expect(a.states).toEqual([]);
   });
 });
+
+describe('этап 9: режим без анимаций - POST /api/settings { reducedMotion }', () => {
+  it('по умолчанию «Авто»; «Вкл» / «Выкл» сохраняются на сервере и видны в /api/me', async () => {
+    const { app, users } = await makeApp();
+    expect(await me(app)).toMatchObject({ reducedMotion: 'auto' });
+    expect((await post(app, { reducedMotion: 'on' })).json()).toMatchObject({ reducedMotion: 'on' });
+    expect(users.rows.get(ilya.id)!.reducedMotion).toBe('on');
+    expect(await me(app)).toMatchObject({ reducedMotion: 'on' });
+    expect((await post(app, { reducedMotion: 'off' })).json()).toMatchObject({ reducedMotion: 'off' });
+  });
+
+  it('неизвестное значение - 400; на партию не влияет (onSettingsChanged не зовётся)', async () => {
+    const calls: number[] = [];
+    const { app } = await makeApp((id) => void calls.push(id));
+    expect((await post(app, { reducedMotion: 'maybe' })).statusCode).toBe(400);
+    expect((await post(app, { reducedMotion: true })).statusCode).toBe(400);
+    await post(app, { reducedMotion: 'on' });
+    expect(calls).toEqual([]);
+  });
+});
