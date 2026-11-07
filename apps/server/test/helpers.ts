@@ -51,6 +51,7 @@ export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord>; cons
         losses: 0,
         draws: 0,
         docsVersion: null,
+        banned: false,
         notifications: true,
         writeAccess: false,
         onboarded: false,

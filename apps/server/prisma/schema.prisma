@@ -414,6 +414,9 @@ model TaskConfig {
   freq      String
   on        Boolean  @default(true)
   sort      Int      @default(0)
+  /// Свой заголовок из админки (пусто - стандартный текст приложения)
+  titleRu   String?  @map("title_ru")
+  titleEn   String?  @map("title_en")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -515,6 +518,7 @@ model Event {
 
   @@index([createdAt])
   @@index([name, createdAt])
+  @@index([userId, createdAt])
   @@map("events")
 }
 

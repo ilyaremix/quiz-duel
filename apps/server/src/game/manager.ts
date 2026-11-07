@@ -405,6 +405,18 @@ export class GameManager {
     return this.current.get(userId) ?? null;
   }
 
+  /** Для админки: сколько игроков в сети и сколько из них в партии. */
+  liveCounts(): { online: number; inGame: number } {
+    let online = 0;
+    let inGame = 0;
+    for (const [userId, n] of this.online) {
+      if (n <= 0) continue;
+      online += 1;
+      if (this.presenceOf(userId) === 'ingame') inGame += 1;
+    }
+    return { online, inGame };
+  }
+
   /** Для экрана друзей: в сети, в партии или не в сети. */
   presenceOf(userId: number): 'online' | 'ingame' | 'offline' {
     if (!this.isOnline(userId)) return 'offline';
@@ -438,6 +450,7 @@ export class GameManager {
     if (!this.allowCreate(userId)) return fail('rate_limited');
     const card = await this.card(userId);
     if (!card) return fail('internal');
+    if (card.banned) return fail('banned');
     if (card.docsVersion !== this.d.docsVersion) return fail('consent_required');
     if (!(await this.topicOpen(userId, category))) return fail('locked');
 
@@ -476,6 +489,7 @@ export class GameManager {
   async inlineChallenge(userId: number): Promise<Result<{ gameId: string; link: string; category: GameCategory; reused: boolean }>> {
     const card = await this.card(userId);
     if (!card) return fail('internal');
+    if (card.banned) return fail('banned');
     if (card.docsVersion !== this.d.docsVersion) return fail('consent_required');
 
     const currentId = this.current.get(userId);
@@ -519,6 +533,7 @@ export class GameManager {
 
     const card = await this.card(userId);
     if (!card) return fail('internal');
+    if (card.banned) return fail('banned');
     if (card.docsVersion !== this.d.docsVersion) {
       const inviter = this.cardCache.get(peek.creator.userId);
       return fail('consent_required', inviter ? { inviter: { userId: inviter.id, ...this.profile(inviter) } } : {});
@@ -627,6 +642,7 @@ export class GameManager {
     if (!this.allowCreate(userId)) return fail('rate_limited');
     const card = await this.card(userId);
     if (!card) return fail('internal');
+    if (card.banned) return fail('banned');
     if (card.docsVersion !== this.d.docsVersion) return fail('consent_required');
     if (!(await this.topicOpen(userId, category))) return fail('locked');
 
@@ -721,6 +737,7 @@ export class GameManager {
   async queueJoin(userId: number): Promise<Result<QueueJoined>> {
     const card = await this.card(userId);
     if (!card) return fail('internal');
+    if (card.banned) return fail('banned');
     if (card.docsVersion !== this.d.docsVersion) return fail('consent_required');
     const currentId = this.current.get(userId);
     const cur = currentId ? this.games.get(currentId) : undefined;
@@ -944,6 +961,7 @@ export class GameManager {
     for (const p of players) {
       const card = await this.card(p.userId);
       if (!card) return fail('internal');
+      if (card.banned) return fail('banned');
       if (card.docsVersion !== this.d.docsVersion) return fail('consent_required');
     }
 

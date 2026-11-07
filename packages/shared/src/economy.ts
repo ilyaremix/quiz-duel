@@ -141,15 +141,18 @@ export interface TaskConfigView {
   freq: TaskFreq;
   on: boolean;
   sort: number;
+  /** Свой заголовок из админки; null - стандартный. */
+  titleRu?: string | null;
+  titleEn?: string | null;
 }
 
 /** Задания при первом запуске: дальше их меняет админка. */
 export const DEFAULT_TASKS: readonly TaskConfigView[] = [
-  { id: 'play', type: 'play', channel: null, goal: 3, reward: 30, freq: 'daily', on: true, sort: 10 },
-  { id: 'ads', type: 'ads', channel: null, goal: 5, reward: 15, freq: 'daily', on: true, sort: 20 },
-  { id: 'channel', type: 'channel', channel: '@aid_crypto', goal: 1, reward: 100, freq: 'once', on: true, sort: 30 },
-  { id: 'story', type: 'story', channel: null, goal: 1, reward: 150, freq: 'once', on: true, sort: 40 },
-  { id: 'invite', type: 'invite', channel: null, goal: 1, reward: REFERRAL.inviter, freq: 'perFriend', on: true, sort: 50 },
+  { id: 'play', type: 'play', channel: null, goal: 3, reward: 30, freq: 'daily', on: true, sort: 10, titleRu: null, titleEn: null },
+  { id: 'ads', type: 'ads', channel: null, goal: 5, reward: 15, freq: 'daily', on: true, sort: 20, titleRu: null, titleEn: null },
+  { id: 'channel', type: 'channel', channel: '@aid_crypto', goal: 1, reward: 100, freq: 'once', on: true, sort: 30, titleRu: null, titleEn: null },
+  { id: 'story', type: 'story', channel: null, goal: 1, reward: 150, freq: 'once', on: true, sort: 40, titleRu: null, titleEn: null },
+  { id: 'invite', type: 'invite', channel: null, goal: 1, reward: REFERRAL.inviter, freq: 'perFriend', on: true, sort: 50, titleRu: null, titleEn: null },
 ];
 
 /** Задание у игрока: прогресс за сегодня (ежедневные) или вообще (разовые). */
@@ -166,6 +169,8 @@ export interface TaskView {
   claimed: boolean;
   /** Можно нажать «Забрать». */
   ready: boolean;
+  /** Свой заголовок из админки (по языкам); null - стандартный текст. */
+  title: { ru: string; en: string } | null;
 }
 
 // ---------------------------------------------------------------------------

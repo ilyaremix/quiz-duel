@@ -35,7 +35,19 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+  /** Обновление 2.0: кто видит админку - Telegram id через запятую. Пусто - владелец из автодеплоя. */
+  ADMIN_IDS: z.string().default(''),
+  DEPLOY_NOTIFY_CHAT_ID: z.string().default(''),
 });
+
+/** Админы: ADMIN_IDS, а если пусто - DEPLOY_NOTIFY_CHAT_ID (первый игрок базы - создатель). */
+export function adminIdsOf(env: { ADMIN_IDS: string; DEPLOY_NOTIFY_CHAT_ID: string }): Set<number> {
+  const list = (env.ADMIN_IDS.trim() || env.DEPLOY_NOTIFY_CHAT_ID.trim())
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => /^[1-9]\d{0,15}$/.test(s));
+  return new Set(list.map(Number));
+}
 
 export type Env = z.infer<typeof EnvSchema>;
 

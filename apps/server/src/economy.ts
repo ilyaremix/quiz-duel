@@ -46,6 +46,8 @@ export type EcoResult<T = object> = ({ ok: true } & T) | EcoFailure;
 /** Проверка подписки на канал: true/false, null - проверить нельзя (бот не админ канала). */
 export interface ChannelChecker {
   isMember(channel: string, userId: number): Promise<boolean | null>;
+  /** Для админки: бот - админ канала (только тогда Telegram отвечает о подписке). */
+  botIsAdmin(channel: string): Promise<boolean>;
 }
 
 /** Что приложению нужно знать об оформлении игроков (лобби, партия, рейтинг). */
@@ -105,9 +107,38 @@ function refuse(code: EconomyErrorCode): never {
 const isUniqueViolation = (error: unknown) =>
   error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 
-function asTask(row: { id: string; type: string; channel: string | null; goal: number; reward: number; freq: string; on: boolean; sort: number }): TaskConfigView {
+function asTask(row: {
+  id: string;
+  type: string;
+  channel: string | null;
+  goal: number;
+  reward: number;
+  freq: string;
+  on: boolean;
+  sort: number;
+  titleRu: string | null;
+  titleEn: string | null;
+}): TaskConfigView {
   const type = row.type as TaskType;
-  return { id: row.id, type, channel: row.channel, goal: row.goal, reward: row.reward, freq: (FREQ_OF[type] ?? row.freq) as TaskFreq, on: row.on, sort: row.sort };
+  return {
+    id: row.id,
+    type,
+    channel: row.channel,
+    goal: row.goal,
+    reward: row.reward,
+    freq: (FREQ_OF[type] ?? row.freq) as TaskFreq,
+    on: row.on,
+    sort: row.sort,
+    titleRu: row.titleRu,
+    titleEn: row.titleEn,
+  };
+}
+
+/** Свой заголовок из админки: если задан только на одном языке - он же на другом. */
+function titleOf(t: TaskConfigView): TaskView['title'] {
+  const ru = t.titleRu ?? t.titleEn ?? null;
+  const en = t.titleEn ?? t.titleRu ?? null;
+  return ru && en ? { ru, en } : null;
 }
 
 /** День серии для экрана: что забрано сегодня или что можно забрать. */
@@ -182,7 +213,7 @@ export function createPrismaEconomyRepo(prisma: PrismaClient, checker?: ChannelC
     for (const t of tasks) {
       // История в Telegram с виджетом-ссылкой - только у Premium: остальным задание не показываем.
       if (t.type === 'story' && !user.isPremium) continue;
-      const base = { id: t.id, type: t.type, freq: t.freq, channel: t.channel, goal: t.goal, reward: t.reward };
+      const base = { id: t.id, type: t.type, freq: t.freq, channel: t.channel, goal: t.goal, reward: t.reward, title: titleOf(t) };
       if (t.type === 'play') {
         const p = prog(t.id, today);
         const count = p?.count ?? 0;

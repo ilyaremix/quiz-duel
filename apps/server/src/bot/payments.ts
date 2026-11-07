@@ -61,7 +61,17 @@ export function botInvoices(api: Api): InvoiceMaker {
 
 /** Подписан ли игрок на канал. Бот должен быть админом канала, иначе Telegram не скажет - null. */
 export function botChannels(api: Api, log: () => FastifyBaseLogger | null): ChannelChecker {
+  let botId: number | null = null;
   return {
+    async botIsAdmin(channel) {
+      try {
+        botId ??= (await api.getMe()).id;
+        const member = await api.getChatMember(channel, botId);
+        return member.status === 'administrator' || member.status === 'creator';
+      } catch {
+        return false;
+      }
+    },
     async isMember(channel, userId) {
       try {
         const member = await api.getChatMember(channel, userId);

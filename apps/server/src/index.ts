@@ -1,5 +1,5 @@
 import type { FastifyBaseLogger } from 'fastify';
-import { loadEnv, webOrigin } from './env.js';
+import { adminIdsOf, loadEnv, webOrigin } from './env.js';
 import { createPrisma } from './db.js';
 import { createPrismaUsersRepo } from './users.js';
 import { createPrismaStatsRepo } from './stats.js';
@@ -14,6 +14,8 @@ import { createPrismaEconomyRepo } from './economy.js';
 import { attachPayments, botChannels, botInvoices } from './bot/payments.js';
 import { participants } from './game/machine.js';
 import { createPrismaFriendsRepo } from './friends.js';
+import { createAdminRepo } from './admin.js';
+import { InlineKeyboard } from 'grammy';
 import { TIMINGS, packOf } from '@quiz-duel/shared';
 import { syncQuestions } from './questions/sync.js';
 
@@ -41,6 +43,16 @@ async function main() {
   const economy = createPrismaEconomyRepo(prisma, bot ? botChannels(bot.api, () => logRef) : undefined);
   await economy.ensureTasks();
   const friends = createPrismaFriendsRepo(prisma);
+  const adminIds = adminIdsOf(env);
+  const channels = bot ? botChannels(bot.api, () => logRef) : undefined;
+  const admin = createAdminRepo({
+    prisma,
+    economy,
+    channels,
+    live: () => gamesRef?.liveCounts() ?? { online: 0, inGame: 0 },
+    botUsername,
+    appUrl: `https://t.me/${botUsername}/${env.APP_SHORT_NAME}`,
+  });
   let io: IoServer | null = null;
   const push = socketPush(() => io);
   const app = await buildApp({
@@ -50,6 +62,9 @@ async function main() {
     economy,
     invoices: bot ? botInvoices(bot.api) : undefined,
     friends,
+    admin,
+    adminIds,
+    onWalletChanged: (userId) => push.wallet(userId),
     presence: (userId) => gamesRef?.presenceOf(userId) ?? 'offline',
     onFriendChanged: (userId, kind, fromId) => {
       void friends.brief(fromId).then((from) => from && push.friendChanged(userId, { kind, from }));
@@ -121,6 +136,14 @@ async function main() {
 
   if (bot) {
     attachInline(bot, games, users, env.WEB_APP_URL, app.log);
+    // /admin - кнопка, открывающая админку (только админам; остальным бот молчит про неё).
+    bot.command('admin', async (ctx) => {
+      if (!ctx.from || !adminIds.has(ctx.from.id)) return;
+      const ru = (ctx.from.language_code ?? '').startsWith('ru');
+      await ctx.reply(ru ? 'Админка Quiz Duel: статистика, источники, задания и игроки.' : 'Quiz Duel admin: stats, sources, tasks and players.', {
+        reply_markup: new InlineKeyboard().url(ru ? 'Открыть админку' : 'Open admin', `${appUrl}?startapp=admin`),
+      });
+    });
     attachPayments(
       bot,
       economy,

@@ -1,4 +1,4 @@
-import Fastify, { type FastifyReply, type FastifyServerOptions } from 'fastify';
+import Fastify, { type FastifyReply, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import {
@@ -7,6 +7,12 @@ import {
   BuyRequestSchema,
   CONSENT_DOCS,
   ConsentRequestSchema,
+  AdminBanSchema,
+  AdminCoinsSchema,
+  AdminLinkSchema,
+  AdminTaskSaveSchema,
+  TrackRequestSchema,
+  type AdminPeriod,
   EquipRequestSchema,
   FriendIdSchema,
   FriendRespondSchema,
@@ -32,6 +38,7 @@ import { toMeResponse, type UsersRepo } from '../users.js';
 import type { StatsRepo } from '../stats.js';
 import type { EcoFailure, EconomyRepo } from '../economy.js';
 import type { FriendsRepo, Presence } from '../friends.js';
+import type { AdminRepo } from '../admin.js';
 
 /** Счёт на оплату звёздами (createInvoiceLink у бота). */
 export interface InvoiceMaker {
@@ -70,6 +77,11 @@ export interface AppDeps {
   presence?: Presence;
   /** Пуши в приложение: заявка в друзья, принятие. */
   onFriendChanged?: (userId: number, kind: 'request' | 'accepted', fromId: number) => void;
+  /** Админка и аналитика (дни активности, события). */
+  admin?: AdminRepo;
+  adminIds?: ReadonlySet<number>;
+  /** Баланс игрока изменили в админке - его кошелёк обновится. */
+  onWalletChanged?: (userId: number) => void;
   /** Часы (тесты подставляют свои). */
   now?: () => number;
   /** false - без логов (тесты). */
@@ -97,6 +109,9 @@ export async function buildApp({
   friends,
   presence = () => 'offline',
   onFriendChanged,
+  admin,
+  adminIds = new Set<number>(),
+  onWalletChanged,
   botUsername,
   onSettingsChanged,
   logger,
@@ -170,6 +185,8 @@ export async function buildApp({
   app.get('/api/me', { onRequest: auth }, async (request) => {
     // request.tg гарантированно заполнен: без него хук auth отклонил бы запрос.
     const user = await users.upsertFromTelegram(request.tg!.user);
+    // День активности для DAU/MAU и удержания (раз в сутки на игрока).
+    if (admin) await admin.touchDay(user.id, now()).catch((error: unknown) => request.log.warn({ err: error }, 'day touch failed'));
     // Первый вход после обновления: откуда пришёл и кто пригласил (startapp=r_<id>).
     if (friends) {
       try {
@@ -179,7 +196,7 @@ export async function buildApp({
         request.log.warn({ err: error }, 'attribution failed');
       }
     }
-    return toMeResponse(user, env.DOCS_VERSION);
+    return toMeResponse(user, env.DOCS_VERSION, Date.now(), adminIds.has(user.id));
   });
 
   // Принятие документов. userId - только из проверенного initData, тело запроса его не задаёт.
@@ -261,6 +278,89 @@ export async function buildApp({
     });
   }
 
+  if (admin) {
+    const bad = { error: 'bad_request' } satisfies ApiError;
+    const forbidden = { error: 'forbidden' } satisfies ApiError;
+    const periodOf = (q: unknown): AdminPeriod => {
+      const d = Number((q as { days?: string } | undefined)?.days);
+      return d === 7 || d === 90 ? d : 30;
+    };
+    const onlyAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.tg || !adminIds.has(request.tg.user.id)) return reply.code(403).send(forbidden);
+    };
+    const guard = { onRequest: auth, preHandler: onlyAdmin };
+
+    // Аналитика: экраны и кнопки из приложения (пачкой, только известные имена).
+    app.post('/api/events', { onRequest: auth }, async (request, reply) => {
+      const parsed = TrackRequestSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      await admin.track(request.tg!.user.id, parsed.data.events, now());
+      return { ok: true };
+    });
+
+    app.get('/api/admin/overview', guard, async (request) => admin.overview(periodOf(request.query), now()));
+    app.get('/api/admin/retention', guard, async () => admin.retention(now()));
+    app.get('/api/admin/events', guard, async (request) => admin.events(periodOf(request.query), now()));
+    app.get('/api/admin/sources', guard, async (request) => admin.sources(periodOf(request.query), now()));
+    app.get('/api/admin/money', guard, async (request) => admin.money(periodOf(request.query), now()));
+    app.get('/api/admin/tasks', guard, async () => admin.tasks());
+
+    app.post('/api/admin/links', guard, async (request, reply) => {
+      const parsed = AdminLinkSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      return { url: await admin.createLink(parsed.data.code, parsed.data.title) };
+    });
+
+    app.post('/api/admin/tasks', guard, async (request, reply) => {
+      const parsed = AdminTaskSaveSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      if (parsed.data.type === 'channel' && !parsed.data.channel) return reply.code(400).send(bad);
+      return admin.saveTask(parsed.data);
+    });
+
+    app.post('/api/admin/tasks/remove', guard, async (request, reply) => {
+      const parsed = TaskClaimSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      await admin.removeTask(parsed.data.id);
+      return { ok: true };
+    });
+
+    app.get<{ Querystring: { q?: string; filter?: string } }>('/api/admin/players', guard, async (request) => {
+      const f = request.query.filter;
+      const filter = f === 'new' || f === 'paying' || f === 'banned' ? f : 'all';
+      return admin.players(String(request.query.q ?? '').slice(0, 64), filter, now());
+    });
+
+    const playerId = (v: string) => (/^[1-9]\d{0,15}$/.test(v) ? Number(v) : null);
+
+    app.get<{ Params: { id: string } }>('/api/admin/players/:id', guard, async (request, reply) => {
+      const id = playerId(request.params.id);
+      if (id === null) return reply.code(400).send(bad);
+      return (await admin.player(id)) ?? reply.code(404).send({ error: 'not_found' } satisfies ApiError);
+    });
+
+    app.post<{ Params: { id: string } }>('/api/admin/players/:id/coins', guard, async (request, reply) => {
+      const id = playerId(request.params.id);
+      const parsed = AdminCoinsSchema.safeParse(request.body);
+      if (id === null || !parsed.success) return reply.code(400).send(bad);
+      const coins = await admin.adjustCoins(id, parsed.data.delta, request.tg!.user.id, now());
+      if (coins === null) return reply.code(404).send({ error: 'not_found' } satisfies ApiError);
+      onWalletChanged?.(id);
+      return { coins };
+    });
+
+    app.post<{ Params: { id: string } }>('/api/admin/players/:id/ban', guard, async (request, reply) => {
+      const id = playerId(request.params.id);
+      const parsed = AdminBanSchema.safeParse(request.body);
+      if (id === null || !parsed.success) return reply.code(400).send(bad);
+      if (adminIds.has(id)) return reply.code(409).send({ error: 'conflict', reason: 'admin' } satisfies ApiError);
+      if (!(await admin.setBanned(id, parsed.data.banned))) return reply.code(404).send({ error: 'not_found' } satisfies ApiError);
+      // Карточка игрока в менеджере партий обновится: заблокированный не начнёт новую партию.
+      await Promise.resolve(onSettingsChanged?.(id)).catch(() => undefined);
+      return { ok: true };
+    });
+  }
+
   if (friends) {
     const bad = { error: 'bad_request' } satisfies ApiError;
     app.get('/api/friends', { onRequest: auth }, async (request) => friends.list(request.tg!.user.id, presence));
@@ -296,6 +396,15 @@ export async function buildApp({
   }
 
   if (economy) {
+    // Заблокированный в админке не получает награды и не покупает.
+    const notBanned = async (request: FastifyRequest, reply: FastifyReply) => {
+      if (request.tg && admin && (await admin.isBanned(request.tg.user.id))) {
+        return reply.code(403).send({ error: 'forbidden', reason: 'banned' } satisfies ApiError);
+      }
+    };
+    app.addHook('preHandler', async (request, reply) => {
+      if (request.method === 'POST' && /^\/api\/(daily|tasks|shop|ads|stars)\//.test(request.url + '/')) return notBanned(request, reply);
+    });
     const refused = (reply: FastifyReply, failure: EcoFailure) =>
       reply.code(ecoStatus(failure.error)).send({ error: failure.error === 'not_found' ? 'not_found' : 'conflict', reason: failure.error } satisfies ApiError);
     const bad = { error: 'bad_request' } satisfies ApiError;

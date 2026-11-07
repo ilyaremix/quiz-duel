@@ -35,7 +35,7 @@ describe('серия входа (без базы)', () => {
 describe.skipIf(!url)('экономика на Postgres', () => {
   const prisma = createPrisma(url ?? 'postgresql://localhost/none');
   let member: boolean | null = true;
-  const checker: ChannelChecker = { isMember: async () => member };
+  const checker: ChannelChecker = { isMember: async () => member, botIsAdmin: async () => member === true };
   const eco = createPrismaEconomyRepo(prisma, checker);
   let unlock: (() => Promise<void>) | null = null;
 

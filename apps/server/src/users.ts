@@ -33,6 +33,8 @@ export interface UserRecord {
   draws: number;
   /** Последняя принятая версия документов; null - ещё не принимал. */
   docsVersion: string | null;
+  /** Заблокирован в админке. */
+  banned: boolean;
   notifications: boolean;
   writeAccess: boolean;
   onboarded: boolean;
@@ -51,6 +53,8 @@ export interface UserCard extends PlayerProfile {
   id: number;
   lang: Lang;
   docsVersion: string | null;
+  /** Заблокирован в админке - играть нельзя. */
+  banned?: boolean;
 }
 
 /** Что меняет POST /api/settings (только переданные поля). */
@@ -158,6 +162,7 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
         losses: row.losses,
         draws: row.draws,
         docsVersion: row.docsVersion,
+        banned: row.banned,
         notifications: row.notifications,
         writeAccess: row.writeAccess,
         onboarded: row.onboarded,
@@ -178,6 +183,7 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
             glow: isGlow(row.glow) ? row.glow : 'none',
             lang: resolveLang(row.language, row.tgLanguage),
             docsVersion: row.docsVersion,
+            banned: row.banned,
           };
           return [id, card];
         }),
@@ -223,7 +229,7 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
   };
 }
 
-export function toMeResponse(user: UserRecord, docsVersion: string, serverNow = Date.now()): MeResponse {
+export function toMeResponse(user: UserRecord, docsVersion: string, serverNow = Date.now(), admin = false): MeResponse {
   return {
     id: user.id,
     firstName: user.firstName,
@@ -242,6 +248,8 @@ export function toMeResponse(user: UserRecord, docsVersion: string, serverNow = 
     losses: user.losses,
     draws: user.draws,
     docsAccepted: user.docsVersion === docsVersion,
+    admin,
+    banned: Boolean(user.banned),
     onboarded: user.onboarded,
     notifications: user.notifications,
     writeAccess: user.writeAccess,

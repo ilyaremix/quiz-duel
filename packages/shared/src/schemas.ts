@@ -8,6 +8,7 @@ import { GAME_ID_RE } from './links.js';
 import { CATEGORIES, GAME_CATEGORIES, type GameCategory } from './categories.js';
 import { COUNT_OPTIONS, MAX_QUESTIONS, TIME_OPTIONS, VARIANTS, type Reaction } from './game.js';
 import { ALL_REACTIONS, PREMIUM_TOPICS, STARS_PRODUCTS, type PremiumTopic, type StarsProduct } from './economy.js';
+import { ALL_EVENT_NAMES } from './admin.js';
 
 type Tuple<T> = readonly [T, ...T[]];
 
@@ -90,3 +91,31 @@ export const InvoiceRequestSchema = z.strictObject({ product: z.enum(STARS_PRODU
 export const FriendIdSchema = z.strictObject({ id: userId });
 
 export const FriendRespondSchema = z.strictObject({ id: userId, accept: z.boolean() });
+
+// ---------------------------------------------------------------------------
+// Обновление 2.0: аналитика и админка
+
+export const TrackRequestSchema = z.strictObject({
+  events: z.array(z.enum(ALL_EVENT_NAMES as unknown as Tuple<string>)).min(1).max(50),
+});
+
+export const AdminTaskSaveSchema = z.strictObject({
+  id: z.string().min(1).max(32).regex(/^[a-z0-9_-]+$/).optional(),
+  type: z.enum(['channel', 'play', 'ads', 'story', 'invite']),
+  channel: z.string().regex(/^@[A-Za-z0-9_]{4,32}$/).nullable(),
+  goal: z.number().int().min(1).max(50),
+  reward: z.number().int().min(1).max(10_000),
+  on: z.boolean(),
+  sort: z.number().int().min(0).max(1000).optional(),
+  titleRu: z.string().trim().min(1).max(60).nullable(),
+  titleEn: z.string().trim().min(1).max(60).nullable(),
+});
+
+export const AdminLinkSchema = z.strictObject({
+  code: z.string().regex(/^[a-z0-9_]{2,24}$/),
+  title: z.string().trim().min(1).max(60),
+});
+
+export const AdminCoinsSchema = z.strictObject({ delta: z.number().int().min(-1_000_000).max(1_000_000).refine((n) => n !== 0) });
+
+export const AdminBanSchema = z.strictObject({ banned: z.boolean() });

@@ -10,4 +10,5 @@ export * from './game.js';
 export * from './links.js';
 export * from './clock.js';
 export * from './economy.js';
+export * from './admin.js';
 export * from './schemas.js';

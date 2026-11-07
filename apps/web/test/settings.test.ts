@@ -10,7 +10,7 @@ const me: MeResponse = {
   id: 1, firstName: 'Илья', lastName: null, username: null, photoUrl: null,
   language: 'auto', lang: 'ru', autoLang: 'ru', reducedMotion: 'auto', theme: 'auto',
   rating: 1000, games: 0, wins: 0, losses: 0, draws: 0,
-  docsAccepted: true, notifications: true, writeAccess: false, serverNow: 0, haptics: true, onboarded: true,
+  docsAccepted: true, notifications: true, writeAccess: false, serverNow: 0, haptics: true, onboarded: true, admin: false, banned: false,
 };
 
 describe('настройки: экран меняется сразу, до ответа сервера', () => {
