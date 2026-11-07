@@ -200,9 +200,21 @@ let socket: GameSocket | null = null;
 let pendingJoin: string | null = null;
 let helloSeen = false;
 let consentSender: (() => Promise<void>) | null = null;
+/**
+ * Профиль загружен (/api/me ответил). Сокет открывается параллельно с этим запросом, а новичка,
+ * пришедшего по приглашению, в базу записывает именно /api/me - вход по ссылке ждёт его.
+ */
+let profileReady = false;
 /** Смещение часов уже измерено по time:sync (до этого - грубая оценка по приветствию). */
 let clockMeasured = false;
 let retryTimer: number | null = null;
+
+/** Вход в партию по ссылке startapp=g_<id> (один раз). */
+function joinPending() {
+  const id = pendingJoin;
+  pendingJoin = null;
+  if (id) void gameActions.join(id);
+}
 
 /** Повторное подключение после отказа сервера: 4-7 с, чтобы клиенты не стучались разом. */
 function retryLater() {
@@ -381,9 +393,7 @@ export const gameActions = {
       helloSeen = true;
       const cur = get().game;
       if (first && pendingJoin) {
-        const id = pendingJoin;
-        pendingJoin = null;
-        void gameActions.join(id);
+        if (profileReady) joinPending();
       } else if (cur && (!isFinal(cur) || cur.phase === 'finished')) {
         // Итоги тоже: за время обрыва соперник мог предложить реванш или уйти.
         void gameActions.resync(cur.id);
@@ -443,6 +453,22 @@ export const gameActions = {
       // Сеть вернулась: проверяем сокет (живой - свежий снимок, мёртвый - переподключение).
       void wake();
     });
+  },
+
+  /** /api/me ответил: если сокет уже поздоровался, входим в партию по ссылке. */
+  profileReady() {
+    if (profileReady) return;
+    profileReady = true;
+    if (helloSeen && pendingJoin) joinPending();
+  },
+
+  /** Заблокированный игрок: сокет закрывается насовсем (без переподключений). */
+  stop() {
+    if (retryTimer !== null) window.clearTimeout(retryTimer);
+    retryTimer = null;
+    const s = socket;
+    socket = null;
+    s?.disconnect();
   },
 
   /** «Играть здесь» после session:replaced. */

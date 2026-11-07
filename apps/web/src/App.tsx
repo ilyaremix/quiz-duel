@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ACTIVE_PHASES, FINAL_PHASES, gameIdFromStartParam, TIMINGS, type GameView, type MeResponse } from '@quiz-duel/shared';
+import { ACTIVE_PHASES, FINAL_PHASES, gameIdFromStartParam, TIMINGS, type ConfigResponse, type GameView, type MeResponse } from '@quiz-duel/shared';
 import { api, ApiRequestError, queryKeys, setSessionAuth } from './lib/api';
 import { askWriteAccess, closeMiniApp, onBack, setGameGuards, setHapticsEnabled, setThemeSetting, type TelegramSession } from './lib/telegram';
 import { gameActions, useGame } from './lib/game';
@@ -277,16 +277,23 @@ function InTelegram({ session }: { session: TelegramSession }) {
   const gameOnScreen = Boolean(game && !hidden && !linkError && conn !== 'replaced');
   useGameChrome(game, gameOnScreen);
 
-  // Один сокет на всё время жизни приложения; по ссылке startapp=g_<id> сразу входим в игру.
-  // Заблокированному играть нельзя - сокет не нужен.
+  // Один сокет на всё время жизни приложения. Открывается сразу, вместе с запросом профиля, а не
+  // после него: главная появляется на круг до сервера раньше. По ссылке startapp=g_<id> входим в игру,
+  // когда ответил и /api/me (см. profileReady в lib/game.ts).
   useEffect(() => {
-    if (!me.data || me.data.banned) return;
     gameActions.start(session.initDataRaw, gameIdFromStartParam(session.startParam), async () => {
-      const docs = config.data?.docs ?? (await queryClient.fetchQuery({ queryKey: ['config'], queryFn: api.config })).docs;
+      const docs = queryClient.getQueryData<ConfigResponse>(['config'])?.docs ?? (await queryClient.fetchQuery({ queryKey: ['config'], queryFn: api.config })).docs;
       await api.consents(session.initDataRaw, { docs: ['terms', 'privacy'], version: docs.version });
       queryClient.setQueryData<MeResponse>(['me'], (prev) => (prev ? { ...prev, docsAccepted: true } : prev));
     });
-  }, [me.data, session, config.data, queryClient]);
+  }, [session, queryClient]);
+
+  // Заблокированному играть нельзя - сокет закрывается.
+  useEffect(() => {
+    if (!me.data) return;
+    if (me.data.banned) gameActions.stop();
+    else gameActions.profileReady();
+  }, [me.data]);
 
   if (me.isPending || (me.isFetching && me.isError)) return <LoadingScreen />;
   if (me.isError) {
