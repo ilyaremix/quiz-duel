@@ -4,7 +4,7 @@
  * Вызов другу - обычная дуэль по ссылке, только друг получает сообщение от бота и баннер в приложении.
  */
 import { create } from 'zustand';
-import { shareURL } from '@tma.js/sdk-react';
+import { shareMessage, shareURL } from '@tma.js/sdk-react';
 import type { TFunction } from 'i18next';
 import type { ConfigResponse, FriendInviteEvent, MeResponse, PlayerBrief } from '@quiz-duel/shared';
 import { api, ApiRequestError, queryKeys } from './api';
@@ -40,8 +40,26 @@ function linkOf() {
 
 export const friendsActions = {
   /** «Пригласить»: системное «Поделиться» Telegram со ссылкой-приглашением; вне Telegram - копия в буфер. */
+  /**
+   * «Пригласить»: анимированная карточка бота с кнопкой «Играть» (shareMessage - выбор чата
+   * в Telegram). Без бота, вне Telegram или при сбое - ссылка с текстом, в крайнем случае копия.
+   */
   async shareInvite(t: TFunction) {
     track('invite');
+    try {
+      const res = await api.friendInviteMessage();
+      if (res.preparedMessageId && shareMessage.isAvailable()) {
+        try {
+          await shareMessage(res.preparedMessageId);
+          showToast('success', 'toast.inviteShared');
+        } catch {
+          // Закрыл окно выбора чата - не ошибка.
+        }
+        return;
+      }
+    } catch {
+      // ниже - ссылкой
+    }
     const link = linkOf();
     if (!link) return showToast('error', 'toast.connection');
     try {
@@ -97,6 +115,12 @@ export const friendsActions = {
   /** «Вызвать»: шторка категорий с именем друга, по «Отправить вызов» - дуэль и уведомление ему. */
   challenge(player: PlayerBrief, docsAccepted: boolean) {
     track('challenge');
+    // Друг уже вызвал меня - встречный вызов не шлём, показываем его вызов.
+    const inv = get().invite;
+    if (inv && inv.from.id === player.id) {
+      showToast('info', 'toast.alreadyChallenged', { name: player.name });
+      return;
+    }
     set({ target: player });
     gameActions.openCreate(docsAccepted);
   },
@@ -130,4 +154,15 @@ export const friendsActions = {
   },
 };
 
-setFriendHooks({ invite: friendsActions.incoming, changed: friendsActions.changed });
+setFriendHooks({
+  invite: friendsActions.incoming,
+  changed: friendsActions.changed,
+  challenged: (c) => {
+    const from = get().target;
+    set({ target: null });
+    if (!from) return showToast('info', 'toast.alreadyChallenged', { name: '' });
+    showToast('info', 'toast.alreadyChallenged', { name: from.name });
+    haptic.select();
+    set({ invite: { gameId: c.gameId, from, category: c.category, rules: c.rules, expiresAt: c.expiresAt } });
+  },
+});

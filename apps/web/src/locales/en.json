@@ -137,7 +137,9 @@
     "payFailed": "Payment failed - please try again",
     "friendNotPlayed": "You can only add players you have played with",
     "friendRequest": "{{name}} wants to be friends",
-    "topicLocked": "This topic is locked - unlock it for 1 game with an ad or buy it"
+    "topicLocked": "This topic is locked - unlock it for 1 game with an ad or buy it",
+    "alreadyChallenged": "{{name}} already challenged you - accept it",
+    "inviteShared": "Invite sent"
   },
   "banner": {
     "resume": {

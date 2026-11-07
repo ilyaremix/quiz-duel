@@ -20,7 +20,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 OUT = os.path.join(ROOT, 'apps', 'web', 'public', 'bot')
-KINDS = ['invite', 'friend', 'waiting', 'rematch', 'win', 'loss', 'draw', 'daily']
+KINDS = ['invite', 'friend', 'waiting', 'rematch', 'win', 'loss', 'draw', 'daily', 'join']
 LANGS = ['ru', 'en']
 FPS = 30
 SECONDS = 6

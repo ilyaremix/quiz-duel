@@ -1,6 +1,7 @@
 import {
   AUTH_SCHEME,
   type AdDoneResponse,
+  type FriendInviteMessageResponse,
   type AdPurpose,
   type AdStartResponse,
   type AdminEvents,
@@ -109,6 +110,7 @@ export const api = {
   friends: () => request<FriendsResponse>('/api/friends', sessionAuth),
   friendRequest: (id: number) => request<{ result: 'sent' | 'accepted' | 'already' }>('/api/friends/request', sessionAuth, { id }),
   friendRespond: (id: number, accept: boolean) => request<{ ok: true }>('/api/friends/respond', sessionAuth, { id, accept }),
+  friendInviteMessage: () => request<FriendInviteMessageResponse>('/api/friends/invite', sessionAuth, {}),
   friendRemove: (id: number) => request<{ ok: true }>('/api/friends/remove', sessionAuth, { id }),
   // Админка
   admin: {

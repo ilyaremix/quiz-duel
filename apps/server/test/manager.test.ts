@@ -609,28 +609,27 @@ describe('партия: сдача и уход', () => {
 });
 
 describe('встречные вызовы друзей', () => {
-  it('оба вызвали друг друга одновременно - одна игра, оба в одном лобби', async () => {
+  it('оба вызвали друг друга одновременно - одна игра, второму «друг уже вызвал вас», матч сам не стартует', async () => {
     const { games } = await setup();
     await games.connect(A);
     await games.connect(B);
     const [ra, rb] = await Promise.all([games.challenge(A, B, 'science'), games.challenge(B, A, 'sport')]);
-    if (!ra.ok || !rb.ok) throw new Error('вызов не прошёл');
-    expect(ra.game.id).toBe(rb.game.id);
-    expect([ra.joined, rb.joined].sort()).toEqual([false, true]);
-    // Тема - того, кто вызвал первым; второй сразу в его лобби.
-    expect(ra.game.category).toBe('science');
-    expect((await games.sync(A, ra.game.id)).ok && (await games.sync(A, ra.game.id))).toMatchObject({ game: { phase: 'lobby' } });
+    expect(ra).toMatchObject({ ok: true, game: { phase: 'waiting', category: 'science' } });
+    expect(rb).toMatchObject({ ok: false, error: 'challenged', challenge: { category: 'science' } });
+    if (!ra.ok || rb.ok) throw new Error('unreachable');
+    expect(rb.challenge!.gameId).toBe(ra.game.id);
+    // Второй принимает вызов сам - обычный вход в лобби, «Готов» ещё не нажат.
+    expect(await games.join(B, ra.game.id)).toMatchObject({ ok: true, game: { phase: 'lobby' } });
   });
 
-  it('друг уже вызвал меня и ждёт - мой вызов заводит в его лобби; вызов третьему - новая игра', async () => {
+  it('вызов третьему и повторный свой вызов - как обычно; после отмены вызова можно вызвать в ответ', async () => {
     const { games } = await setup();
     for (const id of [A, B, C]) await games.connect(id);
     const first = await games.challenge(A, B, 'history');
     if (!first.ok) throw new Error(first.error);
-    const back = await games.challenge(B, A, 'sport');
-    expect(back).toMatchObject({ ok: true, joined: true, game: { id: first.game.id, phase: 'lobby', category: 'history' } });
-    // A вызвал C, а C - не A: у C своя новая игра.
-    const other = await games.challenge(C, B, 'sport');
-    expect(other.ok && other.joined).toBe(false);
+    expect(await games.challenge(B, A, 'sport')).toMatchObject({ ok: false, error: 'challenged' });
+    expect(await games.challenge(C, B, 'sport')).toMatchObject({ ok: true });
+    await games.cancel(A, first.game.id);
+    expect(await games.challenge(B, A, 'sport')).toMatchObject({ ok: true, game: { phase: 'waiting' } });
   });
 });

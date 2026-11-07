@@ -1,4 +1,4 @@
-import type { GameCategory, GameRules, Lang, Variant } from '@quiz-duel/shared';
+import { REFERRAL, type GameCategory, type GameRules, type Lang, type Variant } from '@quiz-duel/shared';
 import type { GameAlert } from '../game/manager.js';
 
 /** Тексты бота. Язык - по language_code получателя. */
@@ -242,5 +242,23 @@ export const profileTexts: Record<Lang, { description: (bot: string) => string; 
       '• Leaderboard, friends, achievements and solo practice\n\n' +
       'Tap “Start” and play your first duel.',
     shortDescription: 'A 1v1 quiz: challenge a friend from any chat and see who knows more ⚔️',
+  },
+};
+
+/** «Пригласить друга» (вкладка «Друзья»): анимированная карточка с кнопкой «Играть» по реферальной ссылке. */
+export const referralTexts: Record<Lang, { title: string; body: (name: string) => string; play: string }> = {
+  ru: {
+    title: 'Сыграем в Quiz Duel?',
+    body: (name) =>
+      `<b>${name}</b> зовёт вас в Quiz Duel - викторину 1 на 1 в реальном времени.\n\n` +
+      `🎁 +${REFERRAL.friend} монет после первой партии по этой ссылке.`,
+    play: 'Играть',
+  },
+  en: {
+    title: 'Play Quiz Duel?',
+    body: (name) =>
+      `<b>${name}</b> invites you to Quiz Duel - a real-time 1v1 quiz.\n\n` +
+      `🎁 +${REFERRAL.friend} coins after your first game via this link.`,
+    play: 'Play',
   },
 };

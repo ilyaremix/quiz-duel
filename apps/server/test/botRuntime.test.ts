@@ -3,7 +3,7 @@
  * inline-запросы не держат общую очередь, Telegram не принял ролик - карточка уходит текстом.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { attachInline, botCommands, botHealth, inlineAnswer, syncChatCommands, startBot, type QuizBot } from '../src/bot/index.js';
+import { attachInline, botCommands, botHealth, referralCard, inlineAnswer, syncChatCommands, startBot, type QuizBot } from '../src/bot/index.js';
 import { ilya, mark, silentLog, world } from './socketWorld.js';
 
 const WEB = 'https://quiz.example.sslip.io';
@@ -136,5 +136,15 @@ describe('меню команд по языку игрока', () => {
     // Ошибка Telegram (игрок не запускал бота) не роняет сохранение настроек.
     const failing = { setMyCommands: async () => { throw new Error('chat not found'); } };
     await expect(syncChatCommands({ api: failing } as never, 1, 'ru')).resolves.toBeUndefined();
+  });
+});
+
+describe('«Пригласить друга» - анимированная карточка', () => {
+  it('ролик join, имя экранировано, бонус и кнопка «Играть» по реферальной ссылке', () => {
+    const card = referralCard({ lang: 'ru', name: 'Илья <b>', link: 'https://t.me/q_bot/play?startapp=r_1', webAppUrl: 'https://quiz.example.sslip.io' });
+    expect(card).toMatchObject({ type: 'mpeg4_gif', mpeg4_url: 'https://quiz.example.sslip.io/bot/join-ru.mp4', parse_mode: 'HTML' });
+    expect(card.caption).toContain('<b>Илья &lt;b&gt;</b>');
+    expect(card.caption).toContain('+50 монет');
+    expect(card.reply_markup.inline_keyboard[0]![0]).toMatchObject({ text: 'Играть', url: 'https://t.me/q_bot/play?startapp=r_1' });
   });
 });

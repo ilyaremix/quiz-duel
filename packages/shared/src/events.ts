@@ -61,6 +61,8 @@ export type GameErrorCode =
   | 'locked'
   /** Игрок заблокирован в админке. */
   | 'banned'
+  /** Вызов другу, который уже вызвал тебя и ждёт (challenge - его вызов): принять его, а не слать встречный. */
+  | 'challenged'
   /** Данные события не прошли проверку схемой. */
   | 'invalid'
   | 'rate_limited'
@@ -71,6 +73,8 @@ export interface GameFailure {
   error: GameErrorCode;
   /** Для busy: партия, в которую можно вернуться. */
   busyGameId?: string;
+  /** Для challenged: вызов друга, который ждёт ответа. */
+  challenge?: { gameId: string; category: GameCategory; rules: GameRules; expiresAt: number };
   /** Для consent_required при входе по ссылке: кто зовёт (для шторки с документами). */
   inviter?: PlayerProfile & { userId: number };
 }

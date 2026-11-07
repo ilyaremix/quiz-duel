@@ -6,7 +6,7 @@
 import type { Lang } from '@quiz-duel/shared';
 import type { GameAlert } from '../game/manager.js';
 
-export const CARD_KINDS = ['invite', 'friend', 'waiting', 'rematch', 'win', 'loss', 'draw', 'daily'] as const;
+export const CARD_KINDS = ['invite', 'friend', 'waiting', 'rematch', 'win', 'loss', 'draw', 'daily', 'join'] as const;
 export type CardKind = (typeof CARD_KINDS)[number];
 
 /** Размер и длина роликов - для inline-выдачи. */

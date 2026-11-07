@@ -171,10 +171,8 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
         }
         if (friendId === undefined) return games.create(userId, p.category as GameCategory, p.rules);
         const res = await games.challenge(userId, friendId, p.category as GameCategory, p.rules);
-        if (!res.ok) return res;
-        // Встречный вызов: зашли в лобби друга - ему придёт обычное «соперник в лобби», не второй вызов.
-        if (!res.joined) deps.onChallenge?.(userId, friendId, res.game);
-        return { ok: true, game: res.game } as const;
+        if (res.ok) deps.onChallenge?.(userId, friendId, res.game);
+        return res;
       });
       on('solo:start', CreateGamePayloadSchema, (p) => games.soloStart(userId, p.category as GameCategory));
       on('game:join', GameIdPayloadSchema, (p) => games.join(userId, p.gameId));

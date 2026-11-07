@@ -17,6 +17,7 @@
 import {
   ACTIVE_PHASES,
   CATEGORIES,
+  TIMINGS,
   isPremiumCategory,
   type PremiumCategory,
   DRAFT,
@@ -500,14 +501,14 @@ export class GameManager {
   }
 
   /**
-   * Вызов другу из вкладки «Друзья». Если друг уже вызвал меня и ждёт в своём лобби - не создаём
-   * вторую игру, а заходим в его: иначе при встречных вызовах каждый сидел в своём лобби, а принятие
-   * чужого вызова отменяло своё - и оба «слетали». Вызовы одной пары идут строго по очереди.
+   * Вызов другу из вкладки «Друзья». Если друг уже вызвал меня и его вызов ждёт ответа -
+   * встречный вызов не создаём (challenged + его вызов): игрок принимает чужой, а не плодит второе
+   * лобби. Вызовы одной пары идут строго по очереди, чтобы одновременные нажатия не разминулись.
    */
-  async challenge(userId: number, friendId: number, category: GameCategory, rules?: GameRules): Promise<Result<{ game: GameView; joined: boolean }>> {
+  async challenge(userId: number, friendId: number, category: GameCategory, rules?: GameRules): Promise<Result<{ game: GameView }>> {
     const key = userId < friendId ? `${userId}:${friendId}` : `${friendId}:${userId}`;
     const prev = this.pairLocks.get(key) ?? Promise.resolve();
-    const run = prev.then(async (): Promise<Result<{ game: GameView; joined: boolean }>> => {
+    const run = prev.then(async (): Promise<Result<{ game: GameView }>> => {
       const theirsId = this.current.get(friendId);
       const theirs = theirsId ? this.games.get(theirsId) : undefined;
       if (
@@ -518,13 +519,14 @@ export class GameManager {
         theirs.state.phase === 'waiting' &&
         !theirs.state.opponent
       ) {
-        const joined = await this.join(userId, theirsId);
-        if (joined.ok) return { ok: true, game: joined.game, joined: true };
+        const s = theirs.state;
+        return fail('challenged', {
+          challenge: { gameId: s.id, category: s.category, rules: machine.rulesOf(s), expiresAt: s.lobbyExpiresAt ?? this.now() + TIMINGS.lobbyTtlMs },
+        });
       }
       const created = await this.create(userId, category, rules);
-      if (!created.ok) return created;
-      this.challenges.set(created.game.id, friendId);
-      return { ok: true, game: created.game, joined: false };
+      if (created.ok) this.challenges.set(created.game.id, friendId);
+      return created;
     });
     const tail = run.then(
       () => undefined,

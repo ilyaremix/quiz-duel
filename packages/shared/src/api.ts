@@ -337,6 +337,12 @@ export interface FriendsResponse {
   ref: { invited: number; earned: number };
 }
 
+/** POST /api/friends/invite: карточка-приглашение для shareMessage (null - бота нет, делимся ссылкой). */
+export interface FriendInviteMessageResponse {
+  link: string;
+  preparedMessageId: string | null;
+}
+
 export interface FriendIdRequest {
   id: number;
 }

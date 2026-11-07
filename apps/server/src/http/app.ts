@@ -30,6 +30,7 @@ import {
   type ConsentResponse,
   type HealthResponse,
   type SettingsResponse,
+  type FriendInviteMessageResponse,
 } from '@quiz-duel/shared';
 import { resolveLang } from '@quiz-duel/shared';
 import { docsInfo, webOrigin, type Env } from '../env.js';
@@ -39,6 +40,7 @@ import { toMeResponse, type UsersRepo } from '../users.js';
 import type { StatsRepo } from '../stats.js';
 import type { EcoFailure, EconomyRepo } from '../economy.js';
 import type { FriendsRepo, Presence } from '../friends.js';
+import type { ReferralMaker } from '../bot/index.js';
 import type { AdminRepo } from '../admin.js';
 
 /** Счёт на оплату звёздами (createInvoiceLink у бота). */
@@ -74,6 +76,8 @@ export interface AppDeps {
   invoices?: InvoiceMaker;
   /** Друзья, заявки, приглашения (без него маршруты не регистрируются). */
   friends?: FriendsRepo;
+  /** «Пригласить друга» - анимированная карточка бота для shareMessage (нужен бот). */
+  referrals?: ReferralMaker;
   /** В сети ли игрок и не в партии ли он (знает менеджер партий). */
   presence?: Presence;
   /** Пуши в приложение: заявка в друзья, принятие. */
@@ -106,6 +110,7 @@ function ecoStatus(error: EconomyErrorCode) {
 export async function buildApp({
   env,
   users,
+  referrals,
   stats,
   economy,
   invoices,
@@ -403,6 +408,22 @@ export async function buildApp({
       if (!ok) return reply.code(404).send({ error: 'not_found' } satisfies ApiError);
       if (parsed.data.accept) onFriendChanged?.(parsed.data.id, 'accepted', me);
       return { ok: true };
+    });
+
+    // Карточка-приглашение с кнопкой «Играть»; без бота или при сбое Telegram - только ссылка (клиент делится ей).
+    app.post('/api/friends/invite', { onRequest: auth }, async (request): Promise<FriendInviteMessageResponse> => {
+      const tg = request.tg!.user;
+      const link = `https://t.me/${botUsername}/${env.APP_SHORT_NAME}?startapp=r_${tg.id}`;
+      if (!referrals) return { link, preparedMessageId: null };
+      try {
+        const lang = (await users.alertTarget(tg.id))?.lang ?? 'en';
+        const name = [tg.first_name, tg.last_name].filter(Boolean).join(' ') || tg.username || 'Quiz Duel';
+        const prepared = await referrals.prepare({ userId: tg.id, lang, name, link });
+        return { link, preparedMessageId: prepared.id };
+      } catch (error) {
+        request.log.warn({ err: error }, 'referral message failed');
+        return { link, preparedMessageId: null };
+      }
     });
 
     app.post('/api/friends/remove', { onRequest: auth }, async (request, reply) => {

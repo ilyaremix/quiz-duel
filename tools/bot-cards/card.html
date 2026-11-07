@@ -71,12 +71,12 @@ const TEXT = {
   ru: {
     invite: ['Вызов на дуэль', 'Викторина 1 на 1'], friend: ['Друг зовёт!', 'Вызов на дуэль'], waiting: ['Соперник ждёт', 'Лобби открыто'],
     rematch: ['Реванш?', '30 секунд на ответ'], win: ['Победа!', 'Отличная игра'], loss: ['Почти!', 'Реванш за вами'],
-    draw: ['Ничья!', 'Силы равны'], daily: ['Награда ждёт', 'Серия продолжается'],
+    draw: ['Ничья!', 'Силы равны'], daily: ['Награда ждёт', 'Серия продолжается'], join: ['Сыграем?', '+50 монет за первую партию'],
   },
   en: {
     invite: ['Duel challenge', '1v1 quiz'], friend: ['A friend calls!', 'Duel challenge'], waiting: ['Opponent waiting', 'Lobby is open'],
     rematch: ['Rematch?', '30 seconds to reply'], win: ['Victory!', 'Great game'], loss: ['So close!', 'Time for a rematch'],
-    draw: ['Draw!', 'Evenly matched'], daily: ['Reward waiting', 'Keep your streak'],
+    draw: ['Draw!', 'Evenly matched'], daily: ['Reward waiting', 'Keep your streak'], join: ['Let’s play?', '+50 coins after your first game'],
   },
 };
 
@@ -92,6 +92,7 @@ const K = {
   win: { c: ['rgba(255,211,107,.6)', 'rgba(155,92,255,.55)', 'rgba(255,211,107,.45)'], glyph: 'rating', core: 'rgba(255,211,107,.85)', ink: '#FFE3A3', cls: 'pulse', ray: 'rgba(255,211,107,.42)', confetti: true, glow: 'rgba(255,211,107,.95)', tc: '#FFE7A8' },
   loss: { c: ['rgba(255,90,122,.55)', 'rgba(155,92,255,.55)', 'rgba(79,141,255,.4)'], glyph: 'rematch', core: 'rgba(255,90,122,.75)', ink: '#FFC2CF', icon: 'spin', glow: 'rgba(255,90,122,.85)', tc: '#FFFFFF' },
   draw: { c: ['rgba(79,141,255,.6)', 'rgba(255,138,61,.5)', 'rgba(155,92,255,.45)'], glyph: 'scale', core: 'rgba(79,141,255,.8)', ink: '#CFE0FF', cls: 'bob', glow: 'rgba(79,141,255,.9)', tc: '#FFFFFF' },
+  join: { duo: true, c: ['rgba(79,141,255,.75)', 'rgba(255,211,107,.55)', 'rgba(155,92,255,.5)'], right: 'friend', rBg: 'radial-gradient(circle at 32% 24%, rgba(255,255,255,.6), rgba(255,255,255,0) 48%), linear-gradient(160deg, #FFE08A, #F2B230)', rSh: 'inset 0 -5px 12px rgba(120,70,0,.25), 0 0 0 3px rgba(7,8,24,.9), 0 0 0 5px #FFD36B, 0 0 26px rgba(255,211,107,.75)', rFg: '#4A2E00', glow: 'rgba(255,211,107,.95)', tc: '#FFE7A8' },
   daily: { c: ['rgba(255,211,107,.6)', 'rgba(59,229,139,.4)', 'rgba(155,92,255,.45)'], glyph: 'gift', core: 'rgba(255,211,107,.85)', ink: '#FFE3A3', cls: 'bob', ray: 'rgba(255,211,107,.3)', glow: 'rgba(255,211,107,.95)', tc: '#FFE7A8' },
 };
 

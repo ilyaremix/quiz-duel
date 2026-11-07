@@ -17,6 +17,7 @@ import {
   type GameCategory,
   type GameRules,
   type GameErrorCode,
+  type GameFailure,
   type GameStateMeta,
   type GameView,
   type PlayerBrief,
@@ -146,7 +147,12 @@ export function setAdGate(gate: (then: () => void) => boolean) {
 }
 
 /** Пуши друзей: их обрабатывает lib/friends (он сам ставит себя сюда). */
-let friendHooks: { invite: (e: FriendInviteEvent) => void; changed: (kind: 'request' | 'accepted', from: PlayerBrief) => void } | null = null;
+let friendHooks: {
+  invite: (e: FriendInviteEvent) => void;
+  changed: (kind: 'request' | 'accepted', from: PlayerBrief) => void;
+  /** Встречный вызов не создан: друг уже вызвал - показать его вызов. */
+  challenged: (challenge: NonNullable<GameFailure['challenge']>) => void;
+} | null = null;
 export function setFriendHooks(hooks: NonNullable<typeof friendHooks>) {
   friendHooks = hooks;
 }
@@ -459,7 +465,10 @@ export const gameActions = {
       return;
     }
     if (res.error === 'consent_required') set({ consent: { inviter: null, gameId: null, category }, categorySheet: false });
-    else if (res.error === 'rate_limited') showToast('error', 'toast.connection');
+    else if (res.error === 'challenged' && res.challenge) {
+      set({ categorySheet: false });
+      friendHooks?.challenged(res.challenge);
+    } else if (res.error === 'rate_limited') showToast('error', 'toast.connection');
     else failure(res);
   },
 

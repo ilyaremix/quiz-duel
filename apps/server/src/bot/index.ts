@@ -2,7 +2,7 @@ import { Bot, InlineKeyboard } from 'grammy';
 import type { LanguageCode } from 'grammy/types';
 import type { FastifyBaseLogger } from 'fastify';
 import { RU_LANGUAGE_CODES, langFromTelegram, resolveLang, type GameCategory, type GameRules, type Lang } from '@quiz-duel/shared';
-import { botTexts, inviteTexts, profileTexts, shareTexts, supportTexts } from './texts.js';
+import { botTexts, inviteTexts, profileTexts, referralTexts, shareTexts, supportTexts } from './texts.js';
 import { CARD_VIDEO, cardMedia, type CardKind } from './cards.js';
 import type { GameManager, InviteMaker, ResultSharer } from '../game/manager.js';
 import type { UsersRepo } from '../users.js';
@@ -319,6 +319,34 @@ export function botInvites(bot: QuizBot, webAppUrl: string): InviteMaker {
         inviteCard({ gameId, link, category, rules, lang, creatorName, webAppUrl }),
         { allow_user_chats: true, allow_group_chats: true, allow_channel_chats: true },
       );
+      return { id: prepared.id, expiresAt: prepared.expiration_date * 1000 };
+    },
+  };
+}
+
+/** Карточка «Сыграем в Quiz Duel?» для «Пригласить друга»: ролик, кто зовёт, бонус и кнопка «Играть». */
+export function referralCard(input: { lang: Lang; name: string; link: string; webAppUrl: string }) {
+  const t = referralTexts[input.lang];
+  return animatedCard(input.webAppUrl, 'join', input.lang, {
+    id: 'ref',
+    title: t.title,
+    caption: t.body(escapeHtml(input.name)),
+    button: new InlineKeyboard().url(t.play, input.link),
+  });
+}
+
+export interface ReferralMaker {
+  prepare(input: { userId: number; lang: Lang; name: string; link: string }): Promise<{ id: string; expiresAt: number }>;
+}
+
+export function botReferrals(bot: QuizBot, webAppUrl: string): ReferralMaker {
+  return {
+    async prepare({ userId, ...rest }) {
+      const prepared = await bot.api.savePreparedInlineMessage(userId, referralCard({ ...rest, webAppUrl }), {
+        allow_user_chats: true,
+        allow_group_chats: true,
+        allow_channel_chats: true,
+      });
       return { id: prepared.id, expiresAt: prepared.expiration_date * 1000 };
     },
   };
