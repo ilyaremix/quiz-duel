@@ -36,7 +36,7 @@ export function ToastHost() {
         <Toast
           kind={visible.kind}
           glyph={visible.glyph}
-          // Ачивка: «Новая ачивка» подписью сверху, название - текстом.
+          // Достижение: «Новое достижение» подписью сверху, название - текстом.
           title={visible.kind === 'achievement' ? t(visible.key === 'toast.achMany' ? 'toast.achTitleMany' : 'toast.achTitle') : undefined}
           text={t(visible.key, visible.vars)}
         />
