@@ -37,12 +37,12 @@ describe('styles.css: у каждой анимации есть правило �
   it('каждый класс с animation перечислен в правилах .qd-rm', () => {
     const animated = new Set<string>();
     for (const m of css.matchAll(/([^{}]+)\{[^{}]*\banimation:\s*qd-(?!rm-|fade-in 160|bubble-fade)[^;]*;/g)) {
-      for (const sel of m[1].split(',')) {
+      for (const sel of (m[1] ?? '').split(',')) {
         const cls = sel.trim().match(/^\.(qd-[\w-]+)(::after)?$/);
-        if (cls) animated.add(cls[1]);
+        if (cls?.[1]) animated.add(cls[1]);
       }
     }
-    const rm = new Set([...css.matchAll(/\.qd-rm \.(qd-[\w-]+)/g)].map((m) => m[1]));
+    const rm = new Set([...css.matchAll(/\.qd-rm \.(qd-[\w-]+)/g)].map((m) => m[1] ?? ''));
     const missing = [...animated].filter((c) => !rm.has(c));
     expect(animated.size).toBeGreaterThan(20);
     expect(missing).toEqual([]);
