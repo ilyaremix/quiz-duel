@@ -2,8 +2,8 @@
 
 Telegram Mini App: викторина 1 на 1 в реальном времени - кинул ссылку в чат, кто первым открыл, тот и соперник.
 
-> **Проект в разработке.** Готова базовая версия: все 9 пунктов ТЗ работают, бот доступен.
-> Дальше - доработки и новый дизайн; GIF и скриншоты появятся, когда дизайн будет финальным.
+> **Проект в разработке.** Готовы все 9 пунктов ТЗ и «Обновление 2.0»: монеты и магазин, реклама, оплата звёздами,
+> режимы и настройки партии, друзья и рефералы, платные темы, админка с аналитикой, анимированные сообщения бота.
 
 **Играть: [@q_battle_bot](https://t.me/q_battle_bot)** · мини-апп сразу: [t.me/q_battle_bot/QuizDuel](https://t.me/q_battle_bot/QuizDuel)
 
@@ -41,6 +41,27 @@ Telegram Mini App: викторина 1 на 1 в реальном времен�
 - **Автодеплой**: сервер сам выкатывает каждый коммит в `main` с зелёным CI ([`deploy/autodeploy.sh`](deploy/autodeploy.sh)).
 
 Подробно, как устроена каждая часть: [docs/DETAILS.md](docs/DETAILS.md).
+
+## Обновление 2.0
+
+| # | Что | Где в коде | Тесты |
+|---|---|---|---|
+| 1 | Обязательный ролик после каждых 3 партий; засчитывается только досмотренный (сервер сверяет время) | `adStart` / `adDone` - [`economy.ts`](apps/server/src/economy.ts); экран - [`AdScreen.tsx`](apps/web/src/screens/AdScreen.tsx) | [`economy.db.test.ts`](apps/server/test/economy.db.test.ts) «обязательная реклама после 3 партий», «реклама за монеты» |
+| 2 | «Без рекламы» за 100 ⭐ и монеты за звёзды (Telegram Stars, `XTR`) | [`bot/payments.ts`](apps/server/src/bot/payments.ts): счёт, `pre_checkout_query`, `successful_payment`, возврат | `economy.db.test.ts` «звёзды: монеты зачисляются один раз на платёж» |
+| 3 | Платные темы (Видеоигры, Космос, Еда, Крипта - 80 вопросов): 1 игра за ролик или навсегда за 1 000 монет | `topicAccess` / `useTopic` - `economy.ts`; [`data/questions.json`](data/questions.json) (180 вопросов) | `economy.db.test.ts`, [`questions.test.ts`](packages/shared/test/questions.test.ts) |
+| 4 | «Микс»: каждому 3 случайные темы, выбирает одну; вопросы - половина из каждой | фаза `draft` - [`machine.ts`](apps/server/src/game/machine.ts); [`DraftScreen.tsx`](apps/web/src/screens/DraftScreen.tsx) | [`modes.test.ts`](apps/server/test/modes.test.ts) «„Микс“: выбор темы» |
+| 5 | Вкладка «Друзья»: заявки, вызов другу (бот пишет + баннер в приложении) | [`friends.ts`](apps/server/src/friends.ts); [`FriendsScreen.tsx`](apps/web/src/screens/FriendsScreen.tsx), [`InviteBanner.tsx`](apps/web/src/components/InviteBanner.tsx) | [`friends.db.test.ts`](apps/server/test/friends.db.test.ts) |
+| 6-7 | Режимы «Классика», «Три жизни», «Внезапная смерть», «Финал ×2»; время 5-20 с и 5-20 вопросов (по умолчанию 10 × 15 с); в рейтинг идёт только «Классика» | `rulesOf`, `livesLeft` - `machine.ts`; [`SetupSheet.tsx`](apps/web/src/screens/SetupSheet.tsx) | `modes.test.ts` |
+| 8, 12 | Монеты: серия входа, задания (партии, реклама, подписка на канал - проверяет бот, история для Premium, друг); магазин - свечение, реакции, темы | `economy.ts` (каждое изменение - строка в `coin_ledger` с уникальным ключом); [`ShopScreen.tsx`](apps/web/src/screens/ShopScreen.tsx) | `economy.db.test.ts`, [`economy.http.test.ts`](apps/server/test/economy.http.test.ts) |
+| 9 | Тап по своей аватарке - профиль | [`HomeScreen.tsx`](apps/web/src/screens/HomeScreen.tsx) | e2e-скриншоты |
+| 10 | Тема «Авто / Светлая / Тёмная» поверх темы Telegram | `setThemeSetting` - [`lib/telegram.ts`](apps/web/src/lib/telegram.ts) | [`settings.test.ts`](apps/server/test/settings.test.ts) |
+| 11 | Рефералы: ссылка `startapp=r_<id>`, +100 пригласившему и +50 другу после его первой партии | `attribute` - `friends.ts`, `gamePlayed` - `economy.ts` | `friends.db.test.ts` |
+| 13 | Анимированные сообщения бота: уведомления, вызовы (inline и `shareMessage`), результаты, напоминание о награде | ролики 6 с - [`tools/bot-cards`](tools/bot-cards) → `apps/web/public/bot`; [`bot/cards.ts`](apps/server/src/bot/cards.ts), [`bot/alerts.ts`](apps/server/src/bot/alerts.ts), [`bot/reminders.ts`](apps/server/src/bot/reminders.ts) | [`alerts.test.ts`](apps/server/test/alerts.test.ts), [`inline.test.ts`](apps/server/test/inline.test.ts), [`reminders.db.test.ts`](apps/server/test/reminders.db.test.ts) |
+| + | Админка (только `ADMIN_IDS`): обзор, удержание и когорты, события и воронка, источники и ссылки `startapp=src_…`, деньги, задания, игроки (баланс, бан) | [`admin.ts`](apps/server/src/admin.ts); [`AdminScreen.tsx`](apps/web/src/screens/AdminScreen.tsx) (грузится отдельным файлом) | [`admin.db.test.ts`](apps/server/test/admin.db.test.ts), [`admin.http.test.ts`](apps/server/test/admin.http.test.ts) |
+
+Что нужно один раз на сервере: сделать бота **админом канала @aid_crypto** (иначе подписку не проверить) и, если админка
+нужна не только создателю, перечислить ID в `ADMIN_IDS` (по умолчанию - `DEPLOY_NOTIFY_CHAT_ID`). Открыть админку:
+Настройки → «Админка» или `/admin` у бота. Ручная проверка 2.0 - раздел 6 в [docs/CHECKLIST.md](docs/CHECKLIST.md).
 
 ## Архитектура
 
@@ -313,7 +334,8 @@ npm test
   в базе вместо очереди в памяти), общая очередь быстрой игры в Redis.
 - **Больше вопросов**: редактор для модераторов, жалоба «вопрос с ошибкой» на разборе, вопросы с картинками.
 - **Турниры** на 8-16 игроков по сетке и еженедельный сезон рейтинга.
-- **Друзья**: список соперников, вызов друга из профиля, личный счёт встреч на главной.
+- **Настоящая рекламная сеть** вместо своего ролика: сейчас просмотр сверяет сервер, сеть заменит только источник ролика.
+- **Друзья**: личный счёт встреч на главной, вызов друга прямо из профиля соперника.
 - **Отдельное согласие на обработку персональных данных** (152-ФЗ) - если юрист скажет, что галочки «Политика
   конфиденциальности» мало: третья галочка и `doc = pd_consent` в той же таблице, код к этому готов.
 
