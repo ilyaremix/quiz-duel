@@ -119,7 +119,8 @@ export const inviteTexts: Record<
   },
 };
 
-const esc = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/** Имя игрока в подписи с parse_mode HTML: < > & из имени не должны стать разметкой. */
+export const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** 1 вопрос, 2 вопроса, 5 вопросов. */
 function ruPlural(n: number, one: string, few: string, many: string) {
@@ -142,7 +143,7 @@ const secondsLeft = (until: number | undefined) => (until === undefined ? 30 : M
 export const alertTexts: Record<Lang, { render: (a: GameAlert) => { text: string; button: string } }> = {
   ru: {
     render(a) {
-      const opp = a.opponent ? `<b>${esc(a.opponent)}</b>` : 'Соперник';
+      const opp = a.opponent ? `<b>${escapeHtml(a.opponent)}</b>` : 'Соперник';
       switch (a.kind) {
         case 'joined':
           return { text: `⚔️ ${opp} принял ваш вызов и ждёт в лобби. Нажмите «Готов», чтобы начать.`, button: 'Открыть лобби' };
@@ -183,7 +184,7 @@ export const alertTexts: Record<Lang, { render: (a: GameAlert) => { text: string
   },
   en: {
     render(a) {
-      const opp = a.opponent ? `<b>${esc(a.opponent)}</b>` : 'Your opponent';
+      const opp = a.opponent ? `<b>${escapeHtml(a.opponent)}</b>` : 'Your opponent';
       switch (a.kind) {
         case 'joined':
           return { text: `⚔️ ${opp} accepted your challenge and is waiting in the lobby. Tap “Ready” to start.`, button: 'Open lobby' };
@@ -233,13 +234,13 @@ export const shareTexts: Record<
     title: 'Мой результат в Quiz Duel',
     play: 'Сыграть со мной',
     body: (o, me, opp, name) =>
-      `${o === 'win' ? '🏆 Победа' : o === 'loss' ? '😤 Поражение' : '🤝 Ничья'} <b>${ru(me)} : ${ru(opp)}</b> в Quiz Duel${name ? `\nСоперник: ${esc(name)}` : ''}\n\nВикторина 1 на 1 прямо в Telegram. Сыграем?`,
+      `${o === 'win' ? '🏆 Победа' : o === 'loss' ? '😤 Поражение' : '🤝 Ничья'} <b>${ru(me)} : ${ru(opp)}</b> в Quiz Duel${name ? `\nСоперник: ${escapeHtml(name)}` : ''}\n\nВикторина 1 на 1 прямо в Telegram. Сыграем?`,
   },
   en: {
     title: 'My Quiz Duel result',
     play: 'Play with me',
     body: (o, me, opp, name) =>
-      `${o === 'win' ? '🏆 Victory' : o === 'loss' ? '😤 Defeat' : '🤝 Draw'} <b>${en(me)} : ${en(opp)}</b> in Quiz Duel${name ? `\nOpponent: ${esc(name)}` : ''}\n\nA 1v1 quiz right in Telegram. Up for a game?`,
+      `${o === 'win' ? '🏆 Victory' : o === 'loss' ? '😤 Defeat' : '🤝 Draw'} <b>${en(me)} : ${en(opp)}</b> in Quiz Duel${name ? `\nOpponent: ${escapeHtml(name)}` : ''}\n\nA 1v1 quiz right in Telegram. Up for a game?`,
   },
 };
 

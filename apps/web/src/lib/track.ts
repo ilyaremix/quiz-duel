@@ -3,7 +3,7 @@
  * (и когда приложение сворачивают). Ошибка отправки игре не мешает: события просто теряются.
  */
 import { useEffect } from 'react';
-import { AUTH_SCHEME, type EventName } from '@quiz-duel/shared';
+import { AUTH_SCHEME, type EventName, type TrackRequest } from '@quiz-duel/shared';
 
 let auth = '';
 let queue: EventName[] = [];
@@ -25,7 +25,7 @@ function flush(keepalive = false) {
   void fetch('/api/events', {
     method: 'POST',
     headers: { Authorization: `${AUTH_SCHEME} ${auth}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ events }),
+    body: JSON.stringify({ events } satisfies TrackRequest),
     keepalive,
   }).catch(() => undefined);
   if (queue.length) flush(keepalive);

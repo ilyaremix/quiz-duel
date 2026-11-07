@@ -1,7 +1,4 @@
-/**
- * Обновление 2.0: режимы партии - карточка режима (шторка настроек), жизни и «×2» в партии,
- * строка «Классика · 10 вопросов по 15 с».
- */
+/** Обновление 2.0: режимы партии - карточка режима (шторка настроек), жизни и «×2» в партии. */
 import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_RULES, VARIANT_LIVES, sameRules, type GameRules, type Variant } from '@quiz-duel/shared';
@@ -13,17 +10,6 @@ export const MODE_LOOK: Record<Variant, { glyph: IconGlyph; ball: string; glow: 
   sudden: { glyph: 'skull', ball: '#9B5CFF', glow: 'rgba(155,92,255,.55)', ink: '#FFFFFF' },
   final: { glyph: 'flame', ball: '#FFD36B', glow: 'rgba(255,211,107,.55)', ink: '#3A2600' },
 };
-
-export function useRulesText() {
-  const { t } = useTranslation();
-  return (rules: GameRules) =>
-    t('s32.summary', {
-      mode: t(`s32.mode.${rules.variant}.t`),
-      n: rules.count,
-      questions: t('plural.question', { count: rules.count }),
-      t: rules.timeSec,
-    });
-}
 
 export const isDefaultRules = (rules: GameRules) => sameRules(rules, DEFAULT_RULES);
 

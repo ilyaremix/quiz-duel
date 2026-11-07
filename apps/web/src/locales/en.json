@@ -1001,7 +1001,6 @@
         "d": "Last 3 questions score double"
       }
     },
-    "summary": "{{mode}} · {{n}} {{questions}}, {{t}} s each",
     "reset": "Reset",
     "rated": "This game counts for rating",
     "unrated": "Unrated - only Classic counts for rating"

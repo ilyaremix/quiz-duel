@@ -1,6 +1,14 @@
+// Тела запросов - типы из shared (… satisfies BuyRequest): поменяли контракт - клиент не соберётся.
 import {
   AUTH_SCHEME,
   type AdDoneResponse,
+  type AdminLinkRequest,
+  type AdStartRequest,
+  type BuyRequest,
+  type EquipRequest,
+  type FriendIdRequest,
+  type FriendRespondRequest,
+  type InvoiceRequest,
   type FriendInviteMessageResponse,
   type AdPurpose,
   type AdStartResponse,
@@ -100,17 +108,18 @@ export const api = {
   wallet: () => request<WalletResponse>('/api/wallet', sessionAuth),
   daily: () => request<ClaimResponse>('/api/daily', sessionAuth, {}),
   claimTask: (id: string) => request<ClaimResponse>('/api/tasks/claim', sessionAuth, { id }),
-  buy: (kind: ShopKind, item: string) => request<WalletResponse>('/api/shop/buy', sessionAuth, { kind, item }),
-  equip: (kind: 'glow' | 'pack', item: string) => request<WalletResponse>('/api/shop/equip', sessionAuth, { kind, item }),
-  adStart: (purpose: AdPurpose, topic?: PremiumTopic) => request<AdStartResponse>('/api/ads/start', sessionAuth, topic ? { purpose, topic } : { purpose }),
+  buy: (kind: ShopKind, item: string) => request<WalletResponse>('/api/shop/buy', sessionAuth, { kind, item } satisfies BuyRequest),
+  equip: (kind: EquipRequest['kind'], item: string) => request<WalletResponse>('/api/shop/equip', sessionAuth, { kind, item } satisfies EquipRequest),
+  adStart: (purpose: AdPurpose, topic?: PremiumTopic) =>
+    request<AdStartResponse>('/api/ads/start', sessionAuth, (topic ? { purpose, topic } : { purpose }) satisfies AdStartRequest),
   adDone: (id: string) => request<AdDoneResponse>('/api/ads/done', sessionAuth, { id }),
-  invoice: (product: StarsProduct) => request<{ url: string }>('/api/stars/invoice', sessionAuth, { product }),
+  invoice: (product: StarsProduct) => request<{ url: string }>('/api/stars/invoice', sessionAuth, { product } satisfies InvoiceRequest),
   // Друзья
   friends: () => request<FriendsResponse>('/api/friends', sessionAuth),
-  friendRequest: (id: number) => request<{ result: 'sent' | 'accepted' | 'already' }>('/api/friends/request', sessionAuth, { id }),
-  friendRespond: (id: number, accept: boolean) => request<{ ok: true }>('/api/friends/respond', sessionAuth, { id, accept }),
+  friendRequest: (id: number) => request<{ result: 'sent' | 'accepted' | 'already' }>('/api/friends/request', sessionAuth, { id } satisfies FriendIdRequest),
+  friendRespond: (id: number, accept: boolean) => request<{ ok: true }>('/api/friends/respond', sessionAuth, { id, accept } satisfies FriendRespondRequest),
   friendInviteMessage: () => request<FriendInviteMessageResponse>('/api/friends/invite', sessionAuth, {}),
-  friendRemove: (id: number) => request<{ ok: true }>('/api/friends/remove', sessionAuth, { id }),
+  friendRemove: (id: number) => request<{ ok: true }>('/api/friends/remove', sessionAuth, { id } satisfies FriendIdRequest),
   // Админка
   admin: {
     overview: (days: AdminPeriod) => request<AdminOverview>(`/api/admin/overview?days=${days}`, sessionAuth),
@@ -122,7 +131,7 @@ export const api = {
     saveTask: (body: AdminTaskSaveRequest) => request<TaskConfigView>('/api/admin/tasks', sessionAuth, body),
     removeTask: (id: string) => request<{ ok: true }>('/api/admin/tasks/remove', sessionAuth, { id }),
     checkChannel: (channel: string) => request<{ botAdmin: boolean | null }>('/api/admin/channel', sessionAuth, { channel }),
-    createLink: (code: string, title: string) => request<{ url: string }>('/api/admin/links', sessionAuth, { code, title }),
+    createLink: (code: string, title: string) => request<{ url: string }>('/api/admin/links', sessionAuth, { code, title } satisfies AdminLinkRequest),
     players: (q: string, filter: string) =>
       request<AdminPlayerRow[]>(`/api/admin/players?q=${encodeURIComponent(q)}&filter=${encodeURIComponent(filter)}`, sessionAuth),
     player: (id: number) => request<AdminPlayer>(`/api/admin/players/${id}`, sessionAuth),

@@ -83,7 +83,6 @@ export function socketPush(getIo: () => IoServer | null) {
     },
   };
 }
-export type SocketPush = ReturnType<typeof socketPush>;
 
 /** Снимки партии и реакции уходят в комнату игрока. */
 export function socketNotifier(getIo: () => IoServer | null): GameNotifier {

@@ -5,7 +5,6 @@
 
 /** 5 тематических категорий. «Микс» - не категория вопроса, а режим подбора (только из этих пяти). */
 export const CATEGORIES = ['science', 'history', 'culture', 'sport', 'tech'] as const;
-export type BaseCategory = (typeof CATEGORIES)[number];
 
 /** Обновление 2.0: платные темы - на 1 игру за рекламу или навсегда за монеты. В «Микс» не входят. */
 export const PREMIUM_CATEGORIES = ['games', 'space', 'food', 'crypto'] as const;

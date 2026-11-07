@@ -3,7 +3,7 @@ import type { LanguageCode } from 'grammy/types';
 import { autoRetry } from '@grammyjs/auto-retry';
 import type { FastifyBaseLogger } from 'fastify';
 import { RU_LANGUAGE_CODES, langFromTelegram, resolveLang, type GameCategory, type GameRules, type Lang } from '@quiz-duel/shared';
-import { botTexts, inviteTexts, profileTexts, referralTexts, shareTexts, supportTexts } from './texts.js';
+import { botTexts, escapeHtml, inviteTexts, profileTexts, referralTexts, shareTexts, supportTexts } from './texts.js';
 import { CARD_VIDEO, cardMedia, type CardKind } from './cards.js';
 import type { GameManager, InviteMaker, ResultSharer } from '../game/manager.js';
 import type { UsersRepo } from '../users.js';
@@ -232,8 +232,6 @@ export function startBot(bot: QuizBot, log: FastifyBaseLogger, trouble?: BotTrou
     },
   };
 }
-
-const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /**
  * Анимированная карточка для shareMessage и inline-режима: ролик с сайта (Telegram показывает его как GIF),

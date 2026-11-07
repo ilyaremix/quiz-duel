@@ -119,7 +119,6 @@ export function nextDayStart(ms: number): number {
 export type TaskType = 'channel' | 'play' | 'ads' | 'story' | 'invite';
 export type TaskFreq = 'once' | 'daily' | 'perFriend';
 export const TASK_TYPES: readonly TaskType[] = ['channel', 'play', 'ads', 'story', 'invite'];
-export const TASK_FREQS: readonly TaskFreq[] = ['once', 'daily', 'perFriend'];
 
 /** Частота задания определяется типом: так награду нельзя случайно сделать бесконечной. */
 export const FREQ_OF: Readonly<Record<TaskType, TaskFreq>> = {

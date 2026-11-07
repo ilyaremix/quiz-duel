@@ -821,12 +821,12 @@ export class GameManager {
     });
   }
 
-  /** «Выйти из партии»: сразу техническая победа сопернику, без 30 с ожидания. */
   /** «Микс»: выбор темы из трёх выпавших. */
   async draft(userId: number, gameId: string, category: Category): Promise<Result<{ game: GameView }>> {
     return this.mutate(userId, gameId, async (entry) => machine.pickTopic(entry.state, userId, category, this.now()));
   }
 
+  /** «Выйти из партии»: сразу техническая победа сопернику, без 30 с ожидания. */
   async forfeit(userId: number, gameId: string): Promise<Result<{ game: GameView }>> {
     return this.mutate(userId, gameId, async (entry) => machine.forfeit(entry.state, userId, this.now()));
   }
@@ -980,7 +980,7 @@ export class GameManager {
 
   /**
    * Реакция сопернику. Состояние партии не меняет и в базу не пишется: это мгновенное
-   * сообщение обоим участникам. Только в лобби, на раскрытии и на итогах; не чаще раза в 2 с.
+   * сообщение обоим участникам. В любой фазе партии на двоих (REACTION_PHASES), не чаще раза в 2 с.
    */
   async react(userId: number, gameId: string, emoji: Reaction): Promise<Result<object>> {
     const entry = await this.entry(gameId);
