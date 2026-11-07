@@ -159,6 +159,7 @@ function InTelegram({ session }: { session: TelegramSession }) {
   });
   const config = useQuery({ queryKey: ['config'], queryFn: api.config, retry: 2 });
   const conn = useGame((s) => s.conn);
+  const net = useGame((s) => s.net);
   const game = useGame((s) => s.game);
   const hidden = useGame((s) => s.hidden);
   const linkError = useGame((s) => s.linkError);
@@ -206,11 +207,12 @@ function InTelegram({ session }: { session: TelegramSession }) {
   if (conn === 'connecting' || (linkEntry && !linkError && !consent)) return <LoadingScreen />;
 
   // Первый вход (или новая версия документов): онбординг, на 3-м слайде - галочки.
-  // Пришедшие по ссылке принимают документы в шторке перед лобби; закрыли шторку - сюда же.
-  const onboarding = !me.data.docsAccepted && !game && !linkError && !consent;
+  // Пришедшие по ссылке принимают документы в шторке перед лобби (закрыли шторку - сюда же),
+  // а слайды видят после партии: когда с итогов ушли на главную.
+  const onboarding = (!me.data.docsAccepted || !me.data.onboarded) && !game && !linkError && !consent && !search;
 
   const screen = onboarding ? (
-    <OnboardingScreen me={me.data} docs={config.data?.docs} />
+    <OnboardingScreen me={me.data} docs={config.data?.docs} docsFailed={config.isError} onRetryDocs={() => void config.refetch()} />
   ) : linkError ? (
     <LinkErrorScreen kind={linkError.kind} docsAccepted={me.data.docsAccepted} />
   ) : game && !hidden ? (
@@ -224,7 +226,7 @@ function InTelegram({ session }: { session: TelegramSession }) {
   return (
     <>
       {/* На экране вопроса полоса «Переподключаемся…» встроена в сам экран. */}
-      {conn === 'reconnecting' && !(gameOnScreen && (game?.phase === 'question' || game?.phase === 'reveal')) && (
+      {(conn === 'reconnecting' || !net) && !(gameOnScreen && (game?.phase === 'question' || game?.phase === 'reveal')) && (
         <div className="qd-strip-in fixed inset-x-0 top-0 z-50">
           <OfflineStrip title={t('banner.offline.title')} />
         </div>

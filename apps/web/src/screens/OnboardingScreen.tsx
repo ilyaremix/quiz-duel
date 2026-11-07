@@ -9,7 +9,9 @@ import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
 import { Timer } from '../components/Timer';
 import { formatNumber } from '../i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { gameActions, useGame } from '../lib/game';
+import { saveSettings } from '../lib/settings';
 
 type Slide = 1 | 2 | 3;
 
@@ -88,21 +90,48 @@ function RatingArt({ me }: { me: MeResponse }) {
 /**
  * Экран 2: онбординг при первом входе. 3 слайда; «Пропустить» ведёт на 3-й,
  * где две галочки с документами - «Начать играть» неактивна, пока не отмечены обе.
+ * Пришедший по ссылке уже принял документы в шторке перед лобби и видит онбординг
+ * после партии - галочки у него уже отмечены.
  */
-export function OnboardingScreen({ me, docs }: { me: MeResponse; docs: DocsInfo | undefined }) {
+export function OnboardingScreen({
+  me,
+  docs,
+  docsFailed,
+  onRetryDocs,
+}: {
+  me: MeResponse;
+  docs: DocsInfo | undefined;
+  /** Не удалось загрузить ссылки на документы - без них принять нельзя, нужен повтор. */
+  docsFailed?: boolean;
+  onRetryDocs?: () => void;
+}) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [slide, setSlide] = useState<Slide>(1);
-  const [terms, setTerms] = useState(false);
-  const [policy, setPolicy] = useState(false);
-  const sending = useGame((s) => Boolean(s.pending.consent));
+  const [terms, setTerms] = useState(me.docsAccepted);
+  const [policy, setPolicy] = useState(me.docsAccepted);
+  const [finishing, setFinishing] = useState(false);
+  const sending = useGame((s) => Boolean(s.pending.consent)) || finishing;
   const both = terms && policy;
   const slides = t('s02.slides', { returnObjects: true }) as { title: string; text: string }[];
   const copy = slides[slide - 1] ?? { title: '', text: '' };
 
+  const finish = async () => {
+    setFinishing(true);
+    try {
+      if (!me.docsAccepted && !(await gameActions.acceptDocs())) return;
+      // Онбординг пройден: больше не показываем (на сервере - для всех устройств).
+      await saveSettings(queryClient, { onboarded: true });
+    } finally {
+      setFinishing(false);
+    }
+  };
+
   const next = () => {
     if (slide < 3) setSlide((slide + 1) as Slide);
-    else if (both) void gameActions.acceptDocs();
+    else if (both) void finish();
   };
+  const needDocs = !me.docsAccepted && !docs;
 
   return (
     <main className="qd-screen flex flex-col pt-2!">
@@ -129,7 +158,16 @@ export function OnboardingScreen({ me, docs }: { me: MeResponse; docs: DocsInfo 
       {slide === 3 && (
         <div className="qd-rise-2 mt-[18px] flex flex-col gap-2">
           <ConsentChecks docs={docs} terms={terms} policy={policy} onTerms={() => setTerms((v) => !v)} onPolicy={() => setPolicy((v) => !v)} />
-          {!both && <span className="text-center text-[13px] font-semibold text-hint">{t('consent.hint')}</span>}
+          {needDocs && docsFailed ? (
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-[13px] font-semibold text-hint">{t('s02.docsFailed')}</span>
+              <Button variant="ghost" size="s" full={false} onClick={onRetryDocs}>
+                {t('common.retry')}
+              </Button>
+            </div>
+          ) : (
+            !both && <span className="text-center text-[13px] font-semibold text-hint">{t('consent.hint')}</span>
+          )}
         </div>
       )}
 
@@ -139,7 +177,7 @@ export function OnboardingScreen({ me, docs }: { me: MeResponse; docs: DocsInfo 
         ))}
       </div>
 
-      <Button disabled={slide === 3 && (!both || sending || !docs)} onClick={next}>
+      <Button disabled={slide === 3 && (!both || sending || needDocs)} onClick={next}>
         {slide === 3 ? t('s02.start') : t('common.next')}
       </Button>
     </main>

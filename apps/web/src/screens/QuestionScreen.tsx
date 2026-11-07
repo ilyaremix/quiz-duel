@@ -32,7 +32,7 @@ export function QuestionScreen({ game }: { game: GameView }) {
   const lang = i18n.language;
   const now = useServerNow(100);
   const reduced = useReducedMotion();
-  const offline = useGame((s) => s.conn !== 'online');
+  const offline = useGame((s) => s.conn !== 'online' || !s.net);
   const picked = useGame((s) => s.picked);
   const q = game.question!;
   const opp = game.opponent;

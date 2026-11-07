@@ -19,6 +19,7 @@ export function optimistic(me: MeResponse, patch: SettingsRequest): MeResponse {
   if (patch.reducedMotion !== undefined) next.reducedMotion = patch.reducedMotion;
   if (patch.haptics !== undefined) next.haptics = patch.haptics;
   if (patch.writeAccess) next.writeAccess = true;
+  if (patch.onboarded) next.onboarded = true;
   return next;
 }
 
@@ -54,5 +55,6 @@ export function pick(me: MeResponse, patch: SettingsRequest): Partial<MeResponse
   if (patch.reducedMotion !== undefined) out.reducedMotion = me.reducedMotion;
   if (patch.haptics !== undefined) out.haptics = me.haptics;
   if (patch.writeAccess) out.writeAccess = me.writeAccess;
+  if (patch.onboarded) out.onboarded = me.onboarded;
   return out;
 }

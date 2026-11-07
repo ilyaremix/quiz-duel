@@ -1,3 +1,5 @@
+import { haptic } from '../lib/telegram';
+
 interface SwitchProps {
   on: boolean;
   label: string;
@@ -14,7 +16,10 @@ export function Switch({ on, label, onToggle, disabled }: SwitchProps) {
       aria-checked={on}
       aria-label={label}
       disabled={disabled}
-      onClick={onToggle}
+      onClick={() => {
+        haptic.tick();
+        onToggle();
+      }}
       className="qd-press flex h-11 w-14 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 disabled:cursor-default disabled:opacity-50"
     >
       <span

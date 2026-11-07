@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { haptic } from '../lib/telegram';
 
 interface SegmentedProps<T extends string> {
   label: string;
@@ -22,7 +23,11 @@ export function Segmented<T extends string>({ label, options, value, onPick, dis
             role="radio"
             aria-checked={on}
             disabled={disabled}
-            onClick={() => !on && onPick(o.value)}
+            onClick={() => {
+              if (on) return;
+              haptic.tick();
+              onPick(o.value);
+            }}
             className="qd-press h-11 min-w-0 flex-1 basis-0 cursor-pointer truncate rounded-xl border-0 font-[inherit] font-extrabold disabled:cursor-default disabled:opacity-60"
             style={
               {

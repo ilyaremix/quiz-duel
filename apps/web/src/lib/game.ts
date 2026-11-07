@@ -51,6 +51,11 @@ interface GameStore {
    * auth - сервер не принял initData (устарел после суток с открытым приложением): «Откройте заново».
    */
   conn: 'connecting' | 'online' | 'reconnecting' | 'replaced' | 'auth';
+  /**
+   * Сеть у телефона есть (событие браузера online / offline). Пропала - полоса «Переподключаемся…»
+   * и неактивные кнопки сразу, не дожидаясь, пока сокет заметит обрыв по пингу.
+   */
+  net: boolean;
   clockOffset: number;
   game: GameView | null;
   /** Игрок ушёл на главную, а дуэль идёт: на главной плашка «Вернуться». */
@@ -95,6 +100,7 @@ export type Tab = 'home' | 'rating' | 'profile';
 
 export const useGame = create<GameStore>(() => ({
   conn: 'connecting',
+  net: typeof navigator === 'undefined' || navigator.onLine !== false,
   clockOffset: 0,
   game: null,
   hidden: false,
@@ -128,6 +134,8 @@ let toastSeq = 0;
 let bubbleSeq = 0;
 export function showToast(kind: ToastKind, key: string, vars?: Record<string, string>, glyph?: IconGlyph) {
   set({ toast: { id: ++toastSeq, kind, key, vars, glyph } });
+  // Ошибка ощущается и рукой, как в нативных приложениях.
+  if (kind === 'error') haptic.error();
 }
 
 const LINK_ERRORS: Partial<Record<GameErrorCode, LinkErrorKind>> = {
@@ -257,7 +265,7 @@ function reconcilePick(view: GameView) {
   const p = get().picked;
   if (!p || p.gameId !== view.id) return;
   if (view.phase !== 'question' || view.question?.index !== p.index) return set({ picked: null });
-  if (view.myAnswer || get().pending.answer || get().conn !== 'online') return;
+  if (view.myAnswer || get().pending.answer || get().conn !== 'online' || !get().net) return;
   if (serverNow() > view.question.endsAt + TIMINGS.answerGraceMs) return set({ picked: null });
   void sendAnswer(view.id, p.index, p.position);
 }
@@ -326,7 +334,7 @@ export const gameActions = {
     socket.on('session:hello', ({ currentGameId, resultsGameId, serverNow: helloNow }) => {
       // Грубая поправка сразу (точность - задержка сети), точная - тремя замерами ниже.
       if (!clockMeasured) set({ clockOffset: helloNow - Date.now() });
-      set({ conn: 'online' });
+      set({ conn: 'online', net: true });
       void syncClock();
 
       const first = !helloSeen;
@@ -349,7 +357,11 @@ export const gameActions = {
         void gameActions.resync(resultsGameId);
       }
     });
-    socket.on('game:state', (view, meta) => applyView(view, meta));
+    socket.on('game:state', (view, meta) => {
+      // Снимок дошёл - значит, связь есть, даже если браузер считает иначе (бывает в WebView).
+      if (!get().net) set({ net: true });
+      applyView(view, meta);
+    });
     socket.on('queue:matched', ({ gameId }) => {
       set({ search: null });
       haptic.success();
@@ -378,6 +390,12 @@ export const gameActions = {
       set({ conn: helloSeen ? 'reconnecting' : 'connecting' });
     });
     onResume(() => void wake());
+    window.addEventListener('offline', () => set({ net: false }));
+    window.addEventListener('online', () => {
+      set({ net: true });
+      // Сеть вернулась: проверяем сокет (живой - свежий снимок, мёртвый - переподключение).
+      void wake();
+    });
   },
 
   /** «Играть здесь» после session:replaced. */
@@ -720,7 +738,7 @@ export const gameActions = {
   async answer(position: number) {
     const g = get().game;
     const q = g?.question;
-    if (!g || !q || g.phase !== 'question' || g.myAnswer || get().conn !== 'online' || get().exitAsk) return;
+    if (!g || !q || g.phase !== 'question' || g.myAnswer || get().conn !== 'online' || !get().net || get().exitAsk) return;
     const picked = get().picked;
     if (picked && picked.gameId === g.id && picked.index === q.index) return;
     set({ picked: { gameId: g.id, index: q.index, position } });

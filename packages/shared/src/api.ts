@@ -63,6 +63,8 @@ export interface MeResponse {
   draws: number;
   /** Принял ли игрок текущую версию документов. Без этого создать игру или войти нельзя. */
   docsAccepted: boolean;
+  /** Смотрел ли слайды онбординга. Пришедший по ссылке принимает документы в шторке, а слайды видит после партии. */
+  onboarded: boolean;
   /** Уведомления от бота включены в настройках (по умолчанию да). */
   notifications: boolean;
   /** Бот может писать игроку (нажал /start или разрешил в мини-аппе). */
@@ -269,6 +271,8 @@ export interface SettingsRequest {
   /** Режим без анимаций: «Авто» (система или слабое устройство), «Вкл», «Выкл». */
   reducedMotion?: MotionSetting;
   haptics?: boolean;
+  /** Онбординг пройден (отменить нельзя). */
+  onboarded?: true;
 }
 
 export interface SettingsResponse {
@@ -280,4 +284,5 @@ export interface SettingsResponse {
   autoLang: Lang;
   reducedMotion: MotionSetting;
   haptics: boolean;
+  onboarded: boolean;
 }

@@ -132,7 +132,8 @@
     "recent": "Recent matches",
     "emptyTitle": "Your matches will show up here",
     "emptyText": "Play your first duel - a win earns the “First Blood” achievement",
-    "recentAll": "All matches"
+    "recentAll": "All matches",
+    "recentFailed": "Couldn’t load your matches - check your connection"
   },
   "s04": {
     "aria": "Choose a category",
@@ -277,7 +278,8 @@
         "text": "Win, collect achievements and break into the top 100"
       }
     ],
-    "start": "Let’s play"
+    "start": "Let’s play",
+    "docsFailed": "Couldn’t load the documents"
   },
   "timer": {
     "aria": "Time left"

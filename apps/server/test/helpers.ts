@@ -52,6 +52,7 @@ export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord>; cons
         docsVersion: null,
         notifications: true,
         writeAccess: false,
+        onboarded: false,
         ...existing,
         firstName: profile.firstName,
         lastName: profile.lastName,

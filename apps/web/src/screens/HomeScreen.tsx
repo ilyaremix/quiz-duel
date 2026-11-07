@@ -141,6 +141,19 @@ export function HomeScreen({ me }: { me: MeResponse }) {
           {recent.map((m) => (
             <MatchRow key={m.gameId} match={m} onPress={() => gameActions.openReview(m.gameId)} />
           ))}
+          {profile.isError && !profile.data && (
+            <div className="flex items-center gap-3 rounded-[20px] bg-section p-4">
+              <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-wrong-tint text-wrong-text">
+                <Icon glyph="alert" size={20} stroke={2.2} />
+              </span>
+              <span className="min-w-0 grow text-[14px] leading-[1.35] font-semibold text-hint">{t('s03.recentFailed')}</span>
+              <div className="shrink-0">
+                <Button variant="secondary" size="s" full={false} onClick={() => void profile.refetch()} disabled={profile.isFetching}>
+                  {t('common.retry')}
+                </Button>
+              </div>
+            </div>
+          )}
           {profile.data && recent.length === 0 && (
           <div className="flex flex-col items-center gap-2 rounded-[20px] bg-section p-5 text-center">
             <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-tint text-brand-text">

@@ -42,6 +42,8 @@ model User {
   writeAccess   Boolean       @default(false) @map("write_access")
   /// Последняя принятая версия документов (дополнение к ТЗ о согласии)
   docsVersion   String?       @map("docs_version")
+  /// Смотрел слайды онбординга (пришедший по ссылке видит их после партии)
+  onboarded     Boolean       @default(false)
 
   rating        Int           @default(1000)
   games         Int           @default(0)

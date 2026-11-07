@@ -32,6 +32,7 @@ export interface UserRecord {
   docsVersion: string | null;
   notifications: boolean;
   writeAccess: boolean;
+  onboarded: boolean;
 }
 
 /** Кому и на каком языке бот может написать. */
@@ -56,6 +57,7 @@ export interface SettingsPatch {
   language?: LangSetting;
   reducedMotion?: MotionSetting;
   haptics?: boolean;
+  onboarded?: boolean;
 }
 
 /** Настройки из строки игрока в том виде, в каком их отдаёт API. */
@@ -66,6 +68,7 @@ export function settingsOf(row: {
   tgLanguage: string | null;
   reducedMotion: MotionSetting;
   haptics: boolean;
+  onboarded: boolean;
 }): SettingsResponse {
   return {
     notifications: row.notifications,
@@ -75,6 +78,7 @@ export function settingsOf(row: {
     autoLang: langFromTelegram(row.tgLanguage),
     reducedMotion: row.reducedMotion,
     haptics: row.haptics,
+    onboarded: row.onboarded,
   };
 }
 
@@ -149,6 +153,7 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
         docsVersion: row.docsVersion,
         notifications: row.notifications,
         writeAccess: row.writeAccess,
+        onboarded: row.onboarded,
       };
     },
     async cards(ids) {
@@ -195,7 +200,7 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
       if (done.count === 0) return null;
       const row = await prisma.user.findUniqueOrThrow({
         where: { id: BigInt(id) },
-        select: { notifications: true, writeAccess: true, language: true, tgLanguage: true, reducedMotion: true, haptics: true },
+        select: { notifications: true, writeAccess: true, language: true, tgLanguage: true, reducedMotion: true, haptics: true, onboarded: true },
       });
       return settingsOf(row);
     },
@@ -228,6 +233,7 @@ export function toMeResponse(user: UserRecord, docsVersion: string, serverNow = 
     losses: user.losses,
     draws: user.draws,
     docsAccepted: user.docsVersion === docsVersion,
+    onboarded: user.onboarded,
     notifications: user.notifications,
     writeAccess: user.writeAccess,
     serverNow,

@@ -48,6 +48,7 @@ export const SettingsRequestSchema = z
     language: z.enum(['auto', 'ru', 'en']).optional(),
     reducedMotion: z.enum(['auto', 'on', 'off']).optional(),
     haptics: z.boolean().optional(),
+    onboarded: z.literal(true).optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), 'empty');
 

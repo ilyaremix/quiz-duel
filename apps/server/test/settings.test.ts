@@ -148,6 +148,28 @@ describe('этап 9: вибрация и уведомления - POST /api/set
       autoLang: 'ru',
       reducedMotion: 'auto',
       haptics: true,
+      onboarded: false,
     });
+  });
+});
+
+describe('этап 9: онбординг - POST /api/settings { onboarded: true }', () => {
+  it('новичок не прошёл онбординг; принятие документов (шторка по ссылке) его не отмечает; отметка - навсегда', async () => {
+    const { app, users } = await makeApp();
+    expect(await me(app)).toMatchObject({ onboarded: false, docsAccepted: false });
+    // Пришёл по ссылке: документы в шторке, онбординг - после партии.
+    const consent = await app.inject({
+      method: 'POST',
+      url: '/api/consents',
+      headers: { ...auth(), 'content-type': 'application/json' },
+      payload: JSON.stringify({ docs: ['terms', 'privacy'], version: testEnv().DOCS_VERSION }),
+    });
+    expect(consent.statusCode).toBe(200);
+    expect(await me(app)).toMatchObject({ onboarded: false, docsAccepted: true });
+    expect((await post(app, { onboarded: true })).json()).toMatchObject({ onboarded: true });
+    expect(users.rows.get(ilya.id)!.onboarded).toBe(true);
+    expect(await me(app)).toMatchObject({ onboarded: true });
+    // Снять отметку нельзя.
+    expect((await post(app, { onboarded: false })).statusCode).toBe(400);
   });
 });
