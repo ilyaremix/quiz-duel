@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { REACTION_PACKS, packOf, type Reaction } from '@quiz-duel/shared';
 import type { TFunction } from 'i18next';
 import { gameActions, useGame } from '../lib/game';
 import { useWallet } from '../lib/economy';
 import { ReactionGlyph } from './Art';
+import { Icon } from './Icon';
 
 /** Название реакции для чтения с экрана: «Класс», «Корона»… (неизвестная - сам эмодзи). */
 export function reactionName(t: TFunction, emoji: string): string {
@@ -92,6 +93,83 @@ export function ReactionBubble({ userId, side, className = '' }: { userId: numbe
       }}
     >
       <ReactionGlyph r={live.emoji} size={36} live />
+    </div>
+  );
+}
+
+/**
+ * Реакции во время партии: кнопка-смайлик над вопросом, по нажатию слева от неё плавно
+ * выезжает лента из 6 реакций (поверх, без сдвига вёрстки). Отправил - лента закрывается.
+ * Тап мимо или Escape - тоже закрывается.
+ */
+export function ReactionPicker() {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const until = useGame((s) => s.reactUntil);
+  const [, rerender] = useState(0);
+  const cooldown = until > Date.now();
+  const box = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!cooldown) return;
+    const timer = window.setTimeout(() => rerender((n) => n + 1), until - Date.now() + 20);
+    return () => window.clearTimeout(timer);
+  }, [cooldown, until]);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('pointerdown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('pointerdown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+
+  const pack = useWallet().data?.pack ?? 'base';
+  const emojis = REACTION_PACKS[pack];
+  const send = (emoji: Reaction) => {
+    void gameActions.react(emoji);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={box} className="relative flex h-10 w-full shrink-0 items-center justify-end">
+      <div role="group" aria-label={t('reactions.aria')} inert={!open} data-open={open} className="qd-react-tray absolute top-0 right-12 bottom-0 left-0 flex items-center justify-end gap-1.5 pr-1.5">
+        {emojis.map((emoji: Reaction, i) => (
+          <button
+            key={emoji}
+            type="button"
+            aria-label={`${t('reactions.prefix')}${reactionName(t, emoji)}`}
+            disabled={cooldown}
+            onClick={() => send(emoji)}
+            className="qd-press qd-react qd-emoji flex aspect-square min-w-0 cursor-pointer items-center justify-center rounded-full border-0 p-0 leading-none disabled:cursor-default"
+            style={{
+              flex: '0 1 40px',
+              background: 'var(--qd-sheen), var(--qd-glass)',
+              boxShadow: 'var(--qd-glass-edge-flat)',
+              opacity: cooldown ? 0.45 : undefined,
+              transitionDelay: open ? `${(emojis.length - 1 - i) * 25}ms` : '0ms',
+            }}
+          >
+            <ReactionGlyph r={emoji} size={26} />
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={open ? t('reactions.close') : t('reactions.open')}
+        onClick={() => setOpen((v) => !v)}
+        className="qd-press qd-icon-btn h-10! w-10!"
+        style={{ color: open ? 'var(--tg-theme-text-color)' : 'var(--tg-theme-hint-color)' }}
+      >
+        <span className="flex" style={{ transform: `rotate(${open ? 90 : 0}deg)`, transition: 'transform 220ms var(--qd-ease-ui)' }}>
+          <Icon glyph={open ? 'close' : 'smile'} size={20} stroke={2.3} />
+        </span>
+      </button>
     </div>
   );
 }

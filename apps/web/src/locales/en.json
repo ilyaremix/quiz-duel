@@ -659,7 +659,9 @@
       "Bullseye",
       "Genius",
       "Crown"
-    ]
+    ],
+    "open": "Send a reaction",
+    "close": "Hide reactions"
   },
   "s19": {
     "title": "Practice",

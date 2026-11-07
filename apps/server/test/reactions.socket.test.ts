@@ -30,14 +30,16 @@ describe('Этап 8: реакции', () => {
     expect(a.states.at(-1)!.rev).toBe(revBefore);
   });
 
-  it('во время вопроса нельзя, на раскрытии и на итогах - можно', async () => {
+  it('во время вопроса, на раскрытии и на итогах - можно', async () => {
     const w = await world();
     const a = await player(w, ilya);
     const b = await player(w, mark);
     const gameId = await lobby(a, b);
     await start(w, a, b, gameId);
 
-    expect(await a.socket.emitWithAck('game:react', { gameId, emoji: '😮' })).toMatchObject({ ok: false, error: 'wrong_phase' });
+    expect(await a.socket.emitWithAck('game:react', { gameId, emoji: '🔥' })).toEqual({ ok: true });
+    await until(() => b.reactions.some((r) => r.emoji === '🔥'), 'реакция во время вопроса');
+    await w.clock.advance(2_100);
     await a.socket.emitWithAck('game:answer', { gameId, questionIndex: 0, optionIndex: 0 });
     await b.socket.emitWithAck('game:answer', { gameId, questionIndex: 0, optionIndex: 1 });
     await stateWhere(a, 'раскрытие', (v) => v.phase === 'reveal');

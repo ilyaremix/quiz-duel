@@ -788,6 +788,27 @@ html {
   transition: none;
 }
 
+/* Лента реакций над вопросом: выезжает от кнопки-смайлика, кружки появляются волной справа налево. */
+.qd-react-tray > button {
+  transform: translateX(14px) scale(0.6);
+  opacity: 0;
+  transition:
+    transform 260ms var(--qd-ease-ui),
+    opacity 180ms ease,
+    filter 150ms ease;
+}
+.qd-react-tray[data-open='true'] > button {
+  transform: none;
+  opacity: 1;
+}
+.qd-react-tray[data-open='true'] > button:disabled {
+  opacity: 0.45;
+}
+.qd-rm .qd-react-tray > button {
+  transform: none;
+  transition: opacity 160ms ease;
+}
+
 /* Вариант ответа: при нажатии сразу окрашивается синим стеклом «моего выбора». */
 .qd-ans:not(:disabled):active {
   background: var(--qd-me-glass) !important;

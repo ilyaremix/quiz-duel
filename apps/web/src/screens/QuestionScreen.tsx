@@ -7,7 +7,7 @@ import { Ball, BALLS } from '../components/Ball';
 import { DisconnectBanner, OfflineStrip } from '../components/Banner';
 import { CategoryChip } from '../components/CategoryTile';
 import { Icon, type IconGlyph } from '../components/Icon';
-import { reactionName, Reactions, useLiveReaction } from '../components/Reactions';
+import { ReactionPicker, reactionName, useLiveReaction } from '../components/Reactions';
 import { ReactionGlyph } from '../components/Art';
 import { RulesStrip } from '../components/Modes';
 import { ScoreBar } from '../components/ScoreBar';
@@ -199,6 +199,9 @@ export function QuestionScreen({ game }: { game: GameView }) {
         {!solo && opp && <LiveReaction userId={opp.userId} side="opp" />}
       </div>
 
+      {/* Реакции - кнопкой над вопросом в любой момент партии; строка всегда на месте, вёрстка не прыгает. */}
+      {opp && !solo && <ReactionPicker />}
+
       <section className="qd-card flex flex-col items-center gap-3 rounded-[30px] px-5 pt-5 pb-6 text-center">
         <CategoryChip cat={q.category} />
         <h1 className="m-0 text-[22px] leading-[1.3] font-semibold tracking-[-0.01em]">{q.text}</h1>
@@ -221,12 +224,6 @@ export function QuestionScreen({ game }: { game: GameView }) {
         ))}
       </div>
 
-      {/* На раскрытии - строка реакций (во время вопроса реакций нет). */}
-      {reveal && opp && !solo && !offline && (
-        <div className="qd-rise-2">
-          <Reactions size="s" />
-        </div>
-      )}
     </main>
   );
 }
