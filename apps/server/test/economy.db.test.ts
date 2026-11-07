@@ -226,6 +226,8 @@ describe.skipIf(!url)('экономика на Postgres', () => {
     await give(A, 1000);
     await eco.buy(A, 'topic', 'games', T0);
     expect(await eco.topicAccess(A, 'games')).toBe('owned');
+    // Купленная навсегда тема - в «Миксе» игрока (билеты на 1 игру - нет).
+    expect(await eco.ownedTopics(A)).toEqual(['games']);
     expect(await eco.useTopic(A, 'games', 'g000000003', T0)).toBe(true);
   });
 

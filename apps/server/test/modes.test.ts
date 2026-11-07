@@ -232,7 +232,7 @@ describe('«Микс»: выбор темы', () => {
 describe('темы драфта «Микса»', () => {
   it('у соперников разные наборы: из 5 тем по 3 - общая ровно одна, наборы никогда не совпадают', () => {
     for (let seed = 1; seed <= 500; seed++) {
-      const [a, b] = draftOffers(CATEGORIES, 2, 3, seededRng(seed));
+      const [a, b] = draftOffers([CATEGORIES, CATEGORIES], 3, seededRng(seed));
       expect(a).toHaveLength(3);
       expect(b).toHaveLength(3);
       expect(new Set(a).size).toBe(3);
@@ -241,8 +241,16 @@ describe('темы драфта «Микса»', () => {
       expect(new Set([...a!, ...b!]).size).toBe(5);
     }
   });
-  it('тем хватает - наборы без пересечений', () => {
-    const [a, b] = draftOffers(['a', 'b', 'c', 'd', 'e', 'f', 'g'], 2, 3, seededRng(7));
-    expect(a!.filter((c) => b!.includes(c))).toEqual([]);
+  it('купленные темы выпадают только владельцу; тем хватает - наборы без пересечений', () => {
+    const mine = [...CATEGORIES, 'space', 'games'] as const;
+    let premium = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const [a, b] = draftOffers([mine, CATEGORIES], 3, seededRng(seed));
+      expect(a!.filter((c) => b!.includes(c))).toEqual([]);
+      expect(b!.every((c) => (CATEGORIES as readonly string[]).includes(c))).toBe(true);
+      if (a!.some((c) => c === 'space' || c === 'games')) premium++;
+    }
+    // Платная тема - одна из семи в пуле, но выпадает часто, а не изредка.
+    expect(premium).toBeGreaterThan(150);
   });
 });

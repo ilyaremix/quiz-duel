@@ -87,6 +87,8 @@ export interface EconomyRepo {
   ownsPack(userId: number, pack: PackId): Promise<boolean>;
   /** Платная тема: куплена навсегда, есть билет на 1 игру или закрыта. */
   topicAccess(userId: number, topic: PremiumTopic): Promise<'owned' | 'pass' | 'locked'>;
+  /** Платные темы, купленные навсегда (для «Микса»). */
+  ownedTopics(userId: number): Promise<PremiumTopic[]>;
   /** Партия в платной теме началась: билет на 1 игру использован (если тема не куплена). */
   useTopic(userId: number, topic: PremiumTopic, gameId: string, now: number): Promise<boolean>;
 }
@@ -505,6 +507,11 @@ export function createPrismaEconomyRepo(prisma: PrismaClient, checker?: ChannelC
       if (owned) return 'owned';
       const pass = await prisma.topicPass.findFirst({ where: { userId: id, topic, usedAt: null }, select: { id: true } });
       return pass ? 'pass' : 'locked';
+    },
+
+    async ownedTopics(userId) {
+      const rows = await prisma.owned.findMany({ where: { userId: BigInt(userId), kind: 'topic' }, select: { item: true } });
+      return rows.map((r) => r.item).filter(isPremiumTopic);
     },
 
     async useTopic(userId, topic, gameId, now) {

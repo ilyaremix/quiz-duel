@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { pointsFor, TIMINGS, type GameView } from '@quiz-duel/shared';
 import { memoryPlayer } from '../src/game/repo.js';
+import { seededRng } from '../src/game/rng.js';
 import { bank, ilya, lobby, mark, player, stateWhere, until, world, type Player, type World } from './socketWorld.js';
 
 /** Позиция верного варианта на экране игрока (Илья видит вопросы по-русски). */
@@ -147,4 +148,31 @@ describe('Этап 8: тренировка', () => {
     expect(fin.result!.solo).toMatchObject({ record: true });
     expect(w.repo.soloRuns.size).toBe(1);
   }, 20_000);
+
+  it('«Микс» в тренировке берёт и купленные навсегда темы, без покупок - только 5 базовых', async () => {
+    const premium = ['games', 'space', 'food', 'crypto'];
+    const w = await world({ ownedTopics: async (id) => (id === ilya.id ? ['games', 'space', 'food', 'crypto'] : []), rng: seededRng(5) });
+    const cats = async (p: Player) => {
+      const g = await startSolo(p, 'mix');
+      return w.repo.rows.get(g.id)!.state.questions.map((q) => bank.byId.get(q.id)!.category as string);
+    };
+    const mine = await cats(await player(w, ilya));
+    expect(mine.some((c) => premium.includes(c))).toBe(true);
+    const theirs = await cats(await player(w, mark));
+    expect(theirs.some((c) => premium.includes(c))).toBe(false);
+  });
+
+  it('драфт дуэли: купленные темы попадают в выбор только их владельцу', async () => {
+    const w = await world({ draft: true, ownedTopics: async (id) => (id === ilya.id ? ['games', 'space', 'food', 'crypto'] : []), rng: seededRng(2) });
+    const a = await player(w, ilya);
+    const b = await player(w, mark);
+    const gameId = await lobby(a, b, 'mix');
+    await a.socket.emitWithAck('game:ready', { gameId, ready: true });
+    await b.socket.emitWithAck('game:ready', { gameId, ready: true });
+    const va = await stateWhere(a, 'драфт у A', (v) => v.id === gameId && v.phase === 'draft');
+    const vb = await stateWhere(b, 'драфт у B', (v) => v.id === gameId && v.phase === 'draft');
+    expect(va.draft!.offers).toHaveLength(3);
+    expect(vb.draft!.offers.every((c) => !['games', 'space', 'food', 'crypto'].includes(c))).toBe(true);
+    expect(va.draft!.offers.filter((c) => vb.draft!.offers.includes(c))).toEqual([]);
+  });
 });

@@ -117,6 +117,7 @@ async function main() {
     clock: realClock,
     draft: true,
     topicAccess: async (userId, topic) => (await economy.topicAccess(userId, topic)) !== 'locked',
+    ownedTopics: (userId) => economy.ownedTopics(userId),
     useTopic: async (userId, topic, gameId) => {
       await economy.useTopic(userId, topic, gameId, Date.now());
       push.wallet(userId);

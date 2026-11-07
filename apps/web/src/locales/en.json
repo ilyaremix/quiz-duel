@@ -25,7 +25,7 @@
     "mix": {
       "title": "Mix",
       "duel": "Each of you gets 3 random topics and picks one. Questions come from both picks",
-      "solo": "Questions from all five topics, shuffled"
+      "solo": "Questions from all your topics, shuffled"
     },
     "science": {
       "title": "Science & Nature",
@@ -123,7 +123,7 @@
     "storyDone": "Story posted! +{{n}} {{coins}}",
     "refCopied": "Invite link copied",
     "topicPass": "“{{name}}” unlocked for 1 game",
-    "topicOwned": "“{{name}}” unlocked for good",
+    "topicOwned": "“{{name}}” unlocked for good - it now shows up in Mix",
     "coinsBought": "+{{n}} {{coins}} added",
     "channelOpen": "Channel opened - subscribe and tap “Check”",
     "refShared": "Invite sent: +{{n}} {{coins}} once your friend plays",
@@ -1043,7 +1043,7 @@
     },
     "forever": {
       "t": "Unlock for good",
-      "d": "{{n}} {{coins}}",
+      "d": "{{n}} {{coins}} - and it joins your Mix",
       "a": "Buy"
     },
     "have": "You have {{n}} {{coins}}",

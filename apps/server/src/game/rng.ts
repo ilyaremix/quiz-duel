@@ -29,23 +29,34 @@ export function shuffle<T>(items: readonly T[], rng: Rng): T[] {
 }
 
 /**
- * Темы драфта «Микса»: каждому игроку по `per` тем, пересечение - минимально возможное.
- * Хватает тем - наборы совсем разные; нет (5 тем, 3 + 3) - общих ровно столько, сколько не хватает
- * (одна), остальные у каждого свои. Порядок внутри набора случайный, общая тема не стоит на одном месте.
+ * Темы драфта «Микса»: у каждого игрока свой пул (5 базовых тем + купленные навсегда платные),
+ * каждому - по `per` тем, пересечение минимально возможное. Один расклад: игроки в случайном
+ * порядке берут по одной теме из своего перемешанного пула, сначала - ещё никому не выпавшие.
+ * Жадный расклад не всегда лучший (купивший мог занять базовые темы, нужные сопернику), поэтому
+ * пробуем несколько и берём тот, где общих тем меньше. Из 5 общих тем по 3: общая ровно одна.
  */
-export function draftOffers<T>(items: readonly T[], players: number, per: number, rng: Rng): T[][] {
-  const pool = shuffle(items, rng);
-  const n = Math.min(per, pool.length);
-  if (players <= 1) return [pool.slice(0, n)];
-  const shared = Math.max(0, Math.ceil((players * n - pool.length) / (players - 1)));
-  const common = pool.slice(0, Math.min(shared, n));
-  let next = common.length;
-  return Array.from({ length: players }, () => {
-    const own = pool.slice(next, next + n - common.length);
-    next += own.length;
-    const set = [...common, ...own];
-    // Если тем совсем мало, добираем из общего пула без повторов внутри набора.
-    for (const c of pool) if (set.length < n && !set.includes(c)) set.push(c);
-    return shuffle(set, rng);
-  });
+export function draftOffers<T>(pools: readonly (readonly T[])[], per: number, rng: Rng, attempts = 24): T[][] {
+  const deal = () => {
+    const orders = pools.map((pool) => shuffle([...new Set(pool)], rng));
+    const sets: T[][] = pools.map(() => []);
+    const used = new Set<T>();
+    for (let round = 0; round < per; round++) {
+      for (const i of shuffle(orders.map((_, k) => k), rng)) {
+        const own = sets[i]!;
+        const order = orders[i]!;
+        const pick = order.find((c) => !used.has(c) && !own.includes(c)) ?? order.find((c) => !own.includes(c));
+        if (pick === undefined) continue;
+        own.push(pick);
+        used.add(pick);
+      }
+    }
+    return sets;
+  };
+  const overlap = (sets: T[][]) => sets.reduce((n, set) => n + set.length, 0) - new Set(sets.flat()).size;
+  let best = deal();
+  for (let k = 1; k < attempts && overlap(best) > 0; k++) {
+    const next = deal();
+    if (overlap(next) < overlap(best)) best = next;
+  }
+  return best.map((set) => shuffle(set, rng));
 }

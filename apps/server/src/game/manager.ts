@@ -175,6 +175,8 @@ export interface ManagerDeps {
    */
   topicAccess?: (userId: number, topic: PremiumCategory) => Promise<boolean>;
   useTopic?: (userId: number, topic: PremiumCategory, gameId: string) => Promise<void>;
+  /** Платные темы, купленные навсегда: они тоже выпадают игроку в «Миксе». */
+  ownedTopics?: (userId: number) => Promise<PremiumCategory[]>;
   /** Обновление 2.0: в «Миксе» на двоих - выбор темы перед отсчётом (без флага - сразу отсчёт). */
   draft?: boolean;
   /** Можно ли игроку эту реакцию (наборы из магазина). Без проверки - только базовые. */
@@ -272,6 +274,8 @@ export class GameManager {
    * их не записываем, иначе после перезапуска у кого-то шёл бы отсчёт до техпоражения.
    */
   private shuttingDown = false;
+  /** Темы «Микса» по игрокам - загружаются перед стартом партии (deps машины синхронные). */
+  private readonly mixTopics = new Map<number, readonly Category[]>();
 
   constructor(private readonly d: ManagerDeps) {
     this.clock = d.clock ?? (d.now ? { ...realClock, now: d.now } : realClock);
@@ -290,9 +294,10 @@ export class GameManager {
           seen: this.games.get(state.id)?.seen ?? this.pendingSeen.get(state.id) ?? new Map(),
           rng,
           count: machine.rulesOf(state).count,
-          topics: machine.draftTopics(state) ?? undefined,
+          // Тренировка «Микс» - из всех тем игрока (базовые + купленные), дуэль - из выбранных в драфте.
+          topics: machine.draftTopics(state) ?? (state.category === 'mix' && state.mode === 'solo' ? this.mixPool(state.creator.userId) : undefined),
         }),
-      ...(d.draft ? { draftOffers: (state: GameState) => draftOffers(CATEGORIES, machine.participants(state).length, DRAFT.offers, rng) } : {}),
+      ...(d.draft ? { draftOffers: (state: GameState) => draftOffers(machine.participants(state).map((p) => this.mixPool(p.userId)), DRAFT.offers, rng) } : {}),
     };
   }
 
@@ -592,6 +597,7 @@ export class GameManager {
           this.d.log.warn({ err: error, gameId }, 'seen questions failed');
           return new Map<string, number>();
         });
+        if (s.category === 'mix') await this.loadMixTopics([s.creator.userId, other.userId]);
       }
       return machine.setReady(entry.state, userId, ready, this.now(), this.deps);
     });
@@ -663,6 +669,7 @@ export class GameManager {
     if (card.banned) return fail('banned');
     if (card.docsVersion !== this.d.docsVersion) return fail('consent_required');
     if (!(await this.topicOpen(userId, category))) return fail('locked');
+    if (category === 'mix') await this.loadMixTopics([userId]);
 
     const currentId = this.current.get(userId);
     const cur = currentId ? this.games.get(currentId) : undefined;
@@ -1291,6 +1298,26 @@ export class GameManager {
       this.d.log.error({ err: error, gameId: state.id }, 'game settle failed');
       return false;
     }
+  }
+
+  /** Темы «Микса» игрока перед стартом партии: 5 базовых + купленные навсегда (билет на 1 игру - нет). */
+  private async loadMixTopics(ids: readonly number[]) {
+    await Promise.all(
+      ids.map(async (id) => {
+        let owned: PremiumCategory[] = [];
+        if (this.d.ownedTopics) {
+          owned = await this.d.ownedTopics(id).catch((error: unknown) => {
+            this.d.log.warn({ err: error, userId: id }, 'owned topics failed');
+            return [];
+          });
+        }
+        this.mixTopics.set(id, [...CATEGORIES, ...owned.filter((c) => isPremiumCategory(c))]);
+      }),
+    );
+  }
+
+  private mixPool(userId: number): readonly Category[] {
+    return this.mixTopics.get(userId) ?? CATEGORIES;
   }
 
   /** Платная тема открыта игроку? Обычные темы и «Микс» открыты всем. */
