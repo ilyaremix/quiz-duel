@@ -11,6 +11,7 @@ import { setThemeSetting, telegramIsDark } from '../lib/telegram';
 import { Sheet } from '../components/Sheet';
 import { Switch } from '../components/Switch';
 import { gameActions } from '../lib/game';
+import { adminActions } from '../lib/admin';
 import { useAutoReduced } from '../lib/motion';
 import { saveSettings } from '../lib/settings';
 import { askWriteAccess, haptic, onBack, setHapticsEnabled } from '../lib/telegram';
@@ -219,6 +220,25 @@ export function SettingsScreen({ me }: { me: MeResponse }) {
             <Icon glyph="chevron" size={18} stroke={2.5} />
           </span>
         </button>
+
+        {me.admin && (
+          <button
+            type="button"
+            onClick={adminActions.open}
+            className="qd-press qd-card qd-in qd-d4 box-border flex min-h-[62px] w-full cursor-pointer items-center gap-3 rounded-[26px] border-0 py-[9px] pr-3.5 pl-2.5 text-left text-text"
+          >
+            <Ball size={42} {...BALLS.me}>
+              <Icon glyph="chart" size={20} stroke={2.4} />
+            </Ball>
+            <span className="flex min-w-0 grow flex-col gap-0.5">
+              <span className="text-[16px] font-semibold">{t('adm.open')}</span>
+              <span className="truncate text-[13px] font-medium text-hint">{t('adm.openHint')}</span>
+            </span>
+            <span aria-hidden="true" className="flex text-hint">
+              <Icon glyph="chevron" size={18} stroke={2.5} />
+            </span>
+          </button>
+        )}
       </main>
       <HowToSheet open={howTo} onClose={() => setHowTo(false)} />
     </div>

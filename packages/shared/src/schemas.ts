@@ -8,7 +8,7 @@ import { GAME_ID_RE } from './links.js';
 import { CATEGORIES, GAME_CATEGORIES, type GameCategory } from './categories.js';
 import { COUNT_OPTIONS, MAX_QUESTIONS, TIME_OPTIONS, VARIANTS, type Reaction } from './game.js';
 import { ALL_REACTIONS, PREMIUM_TOPICS, STARS_PRODUCTS, type PremiumTopic, type StarsProduct } from './economy.js';
-import { ALL_EVENT_NAMES } from './admin.js';
+import { ALL_EVENT_NAMES, RESERVED_SOURCES } from './admin.js';
 
 type Tuple<T> = readonly [T, ...T[]];
 
@@ -112,10 +112,16 @@ export const AdminTaskSaveSchema = z.strictObject({
 });
 
 export const AdminLinkSchema = z.strictObject({
-  code: z.string().regex(/^[a-z0-9_]{2,24}$/),
+  code: z
+    .string()
+    .regex(/^[a-z0-9_]{2,24}$/)
+    .refine((code) => !RESERVED_SOURCES.includes(code)),
   title: z.string().trim().min(1).max(60),
 });
 
 export const AdminCoinsSchema = z.strictObject({ delta: z.number().int().min(-1_000_000).max(1_000_000).refine((n) => n !== 0) });
 
 export const AdminBanSchema = z.strictObject({ banned: z.boolean() });
+
+/** «Проверить» в листе задания: бот - админ этого канала? */
+export const AdminChannelSchema = z.strictObject({ channel: z.string().regex(/^@[A-Za-z0-9_]{4,32}$/) });

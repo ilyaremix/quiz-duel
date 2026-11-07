@@ -27,6 +27,7 @@ import {
 import { createSocket, type GameSocket } from './socket';
 import { haptic, onResume, scrollToTop } from './telegram';
 import type { IconGlyph } from '../components/Icon';
+import { track } from './track';
 
 export type LinkErrorKind = 'taken' | 'notFound' | 'expired' | 'cancelled' | 'finished' | 'busy';
 export type ToastKind = 'success' | 'error' | 'info' | 'achievement';
@@ -179,7 +180,7 @@ const can = (fn: { isAvailable: () => boolean }) => {
 };
 
 /** Копирование: через Telegram, а вне его (или в старом клиенте) - через браузер. */
-async function copyText(text: string) {
+export async function copyText(text: string) {
   try {
     await copyTextToClipboard(text);
   } catch {
@@ -518,6 +519,7 @@ export const gameActions = {
   async shareResult(fallbackText: string) {
     const g = get().game;
     if (!g || g.phase !== 'finished') return;
+    track('share');
     const res = await request('game:share', { gameId: g.id }, 'share');
     if (!res.ok) return showToast('error', 'toast.connection');
     if (res.preparedMessageId && can(shareMessage)) {
@@ -546,6 +548,7 @@ export const gameActions = {
   async shareInvite(shareText: string) {
     const g = get().game;
     if (!g) return;
+    track('invite');
     const invite = get().invite?.gameId === g.id ? get().invite : await gameActions.prefetchInvite(g.id);
     if (!invite) return showToast('error', 'toast.error');
     if (invite.preparedMessageId && can(shareMessage)) {
@@ -634,6 +637,7 @@ export const gameActions = {
   async rematchOffer() {
     const g = get().game;
     if (!g || g.phase !== 'finished') return;
+    track('rematch');
     const res = await request('rematch:offer', { gameId: g.id }, 'rematch');
     if (res.ok) applyView(res.game);
     else rematchFailed(res.error, g.id);

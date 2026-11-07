@@ -328,6 +328,11 @@
       "title": "Game open on another device",
       "text": "The game continues there. You can move it to this device",
       "action": "Play here"
+    },
+    "banned": {
+      "title": "Account blocked",
+      "text": "This account can’t play or get rewards right now.",
+      "action": "Close"
     }
   },
   "s02": {
@@ -1081,7 +1086,8 @@
       "title": "Users by day",
       "weekly": "By week, daily average",
       "aria": "{{name}}: from {{min}} to {{max}}, latest {{last}}",
-      "tip": "{{v}} · {{d}}"
+      "tip": "{{v}} · {{d}}",
+      "weeklySum": "By week"
     },
     "modes": "Games by mode",
     "modesSub": "Only Classic counts for rating",
@@ -1132,7 +1138,22 @@
         "question": "Question",
         "results": "Results",
         "rating": "Ranking",
-        "profile": "Profile"
+        "profile": "Profile",
+        "solo": "“Training”",
+        "invite": "“Invite”",
+        "challenge": "“Challenge” a friend",
+        "daily": "Daily reward",
+        "adWatch": "Ad opened",
+        "adSkip": "Ad closed early",
+        "taskStory": "Task: story",
+        "buyPack": "Reaction pack purchase",
+        "buyTopic": "Topic purchase",
+        "buyCoins": "Coin purchase",
+        "buyAdFree": "“No ads” purchase",
+        "settings": "Settings",
+        "lobby": "Lobby",
+        "review": "Game review",
+        "admin": "Admin"
       }
     },
     "src": {
@@ -1156,7 +1177,8 @@
       "auto": "automatic",
       "refTop": "Top inviters",
       "invited": "Friends via link: {{n}}",
-      "copyAria": "Copy link: {{name}}"
+      "copyAria": "Copy link: {{name}}",
+      "copyHint": "Tap your own link to copy it"
     },
     "link": {
       "title": "New link",
@@ -1168,7 +1190,11 @@
       "copy": "Copy",
       "done": "Done",
       "copied": "Link copied",
-      "hint": "Everyone who opens the app with this link goes to the “{{name}}” source. Duel links, referrals and inline challenges are tracked automatically."
+      "hint": "Everyone who opens the app with this link goes to the “{{name}}” source. Duel links, referrals and inline challenges are tracked automatically.",
+      "codeHint": "Latin letters, digits and _ (2 to 24). The link gets src_ plus the tag.",
+      "reserved": "This tag is taken - choose another",
+      "bad": "Tag: Latin letters, digits and _, 2 to 24 characters",
+      "noName": "Enter a name"
     },
     "money": {
       "stars": "Stars by day",
@@ -1244,7 +1270,13 @@
       "removed": "Task deleted",
       "newCh": "@new_channel",
       "newTitleRu": "Подпишитесь на канал",
-      "newTitleEn": "Subscribe to the channel"
+      "newTitleEn": "Subscribe to the channel",
+      "botUnknown": "No bot connected - can’t check",
+      "checking": "Checking…",
+      "titleHint": "Empty - the standard Shop text",
+      "channelBad": "Channel: @ and 4 to 32 characters (Latin letters, digits, _)",
+      "saveError": "Couldn’t save",
+      "freqFixed": "Set by the task type"
     },
     "pl": {
       "search": "Name, @username or ID",
@@ -1259,7 +1291,8 @@
       },
       "banned": "Banned",
       "payer": "Paying",
-      "fresh": "New"
+      "fresh": "New",
+      "none": "No one found"
     },
     "player": {
       "id": "ID",
@@ -1277,7 +1310,15 @@
       "ban": "Block",
       "banHint": "Cannot play or get rewards",
       "close": "Close",
-      "saved": "Saved"
-    }
+      "saved": "Saved",
+      "banAdmin": "An admin can’t be blocked",
+      "change": "Was {{was}} · {{d}}",
+      "never": "hasn’t played yet",
+      "online": "online"
+    },
+    "thousand": "K",
+    "empty": "No data yet",
+    "loadError": "Couldn’t load",
+    "retry": "Retry"
   }
 }

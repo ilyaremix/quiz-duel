@@ -15,6 +15,7 @@ import { shop, useWallet } from '../lib/economy';
 import { api, queryKeys } from '../lib/api';
 import { formatSec, percent } from '../lib/format';
 import { gameActions } from '../lib/game';
+import { track } from '../lib/track';
 
 /** Восемь плиток статистики: игры, победы, поражения, ничьи, винрейт, точность, ср. время, лучшая серия. */
 export function statTiles(s: PlayerStats | null, t: (k: string) => string, lang: string) {
@@ -120,7 +121,7 @@ export function ProfileScreen({ me }: { me: MeResponse }) {
             <span className="text-[17px] font-bold">{t('s16.newbieTitle')}</span>
             <span className="max-w-[280px] text-[13px] leading-[1.4] font-medium text-hint">{t('s16.newbieText')}</span>
             <div className="mt-1.5 w-full">
-              <Button icon={<Icon glyph="duel" size={22} stroke={2.4} />} onClick={() => gameActions.openCreate(me.docsAccepted)}>
+              <Button icon={<Icon glyph="duel" size={22} stroke={2.4} />} onClick={() => (track('create'), gameActions.openCreate(me.docsAccepted))}>
                 {t('s16.create')}
               </Button>
             </div>

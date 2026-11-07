@@ -9,6 +9,7 @@ import { formatClock, useServerNow } from '../hooks/useServerNow';
 import { formatNumber } from '../i18n';
 import { gameActions, useGame } from '../lib/game';
 import { onBack } from '../lib/telegram';
+import { track } from '../lib/track';
 
 /** Экран 7: поиск соперника - секундомер, окно рейтинга (шире каждые 5 с), «Отмена»; через 60 с - «Никого не нашли». */
 export function SearchScreen({ me }: { me: MeResponse }) {
@@ -104,18 +105,18 @@ export function SearchScreen({ me }: { me: MeResponse }) {
 
       {notFound ? (
         <div className="qd-in qd-d1 flex flex-col gap-3">
-          <Button icon={<Icon glyph="duel" size={22} stroke={2.4} />} onClick={() => (gameActions.quickLeave(), gameActions.openCreate(me.docsAccepted))}>
+          <Button icon={<Icon glyph="duel" size={22} stroke={2.4} />} onClick={() => (track('create'), gameActions.quickLeave(), gameActions.openCreate(me.docsAccepted))}>
             {t('s07.create')}
           </Button>
           <Button
             variant="secondary"
             size="m"
             icon={<Icon glyph="target" size={20} stroke={2.4} />}
-            onClick={() => (gameActions.quickLeave(), gameActions.openSolo(me.docsAccepted))}
+            onClick={() => (track('solo'), gameActions.quickLeave(), gameActions.openSolo(me.docsAccepted))}
           >
             {t('s07.training')}
           </Button>
-          <Button variant="ghost" size="s" onClick={() => void gameActions.quickJoin(me.docsAccepted)}>
+          <Button variant="ghost" size="s" onClick={() => (track('quick'), void gameActions.quickJoin(me.docsAccepted))}>
             {t('s07.retry')}
           </Button>
         </div>

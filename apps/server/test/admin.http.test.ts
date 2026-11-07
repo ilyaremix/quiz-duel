@@ -19,6 +19,8 @@ async function makeApp() {
     track: async (_id: number, names: readonly string[]) => void tracked.push([...names]),
     overview: async (days: number) => ({ days }),
     isBanned: async () => false,
+    checkChannel: async (ch: string) => ch === '@aid_crypto',
+    createLink: async (code: string) => `https://t.me/quizduel_test_bot/app?startapp=src_${code}`,
   } as unknown as AdminRepo;
   const app = await buildApp({ env: testEnv(), users: memoryUsers(), admin, adminIds: new Set([ilya.id]), botUsername: 'quizduel_test_bot', logger: false });
   apps.push(app);
@@ -35,6 +37,22 @@ describe('админка', () => {
     expect((await app.inject({ method: 'GET', url: '/api/admin/overview', headers: auth(mark) })).statusCode).toBe(403);
     expect((await app.inject({ method: 'GET', url: '/api/admin/overview?days=7', headers: auth() })).json()).toEqual({ days: 7 });
     expect((await app.inject({ method: 'GET', url: '/api/admin/overview?days=5', headers: auth() })).json()).toEqual({ days: 30 });
+  });
+
+  it('проверка канала: имя канала по правилам Telegram', async () => {
+    const { app } = await makeApp();
+    const check = (channel: string) => app.inject({ method: 'POST', url: '/api/admin/channel', headers: auth(), payload: JSON.stringify({ channel }) });
+    expect((await check('@aid_crypto')).json()).toEqual({ botAdmin: true });
+    expect((await check('@other_channel')).json()).toEqual({ botAdmin: false });
+    expect((await check('aid crypto')).statusCode).toBe(400);
+  });
+
+  it('ссылки: своя метка - да, занятая сервером (ref, duel…) - 400', async () => {
+    const { app } = await makeApp();
+    const link = (code: string) => app.inject({ method: 'POST', url: '/api/admin/links', headers: auth(), payload: JSON.stringify({ code, title: 'Пост' }) });
+    expect((await link('aid1107')).json()).toEqual({ url: 'https://t.me/quizduel_test_bot/app?startapp=src_aid1107' });
+    expect((await link('ref')).statusCode).toBe(400);
+    expect((await link('Bad-Code')).statusCode).toBe(400);
   });
 
   it('/api/me: admin только у админа', async () => {

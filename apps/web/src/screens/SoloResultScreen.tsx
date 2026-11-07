@@ -13,6 +13,7 @@ import { formatNumber } from '../i18n';
 import { formatSec } from '../lib/format';
 import { gameActions, showToast, useGame } from '../lib/game';
 import { haptic } from '../lib/telegram';
+import { track } from '../lib/track';
 
 /** Капсулы цифр тренировки. */
 const CHIP = { height: 34, padding: '0 14px', borderRadius: 17, fontSize: 14 } as const;
@@ -45,7 +46,7 @@ export function SoloResultScreen({ game }: { game: GameView }) {
       <Button disabled={busy} icon={<Icon glyph="rematch" size={22} stroke={2.4} />} onClick={() => void gameActions.startSolo(game.category)}>
         {t('s19.again')}
       </Button>
-      <Button variant="secondary" size="m" onClick={() => gameActions.openSolo(true)}>
+      <Button variant="secondary" size="m" onClick={() => (track('solo'), gameActions.openSolo(true))}>
         {t('s19.other')}
       </Button>
       <Button variant="ghost" size="s" onClick={gameActions.goHome}>

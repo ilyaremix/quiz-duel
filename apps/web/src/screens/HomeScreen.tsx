@@ -12,6 +12,7 @@ import { formatNumber } from '../i18n';
 import { api, queryKeys } from '../lib/api';
 import { gameActions, useGame } from '../lib/game';
 import { pw, shop, useShop, useWallet } from '../lib/economy';
+import { track } from '../lib/track';
 
 function ModeCard({ glyph, tone, title, hint, onPress }: { glyph: IconGlyph; tone: 'brand' | 'gold'; title: string; hint: string; onPress: () => void }) {
   return (
@@ -176,15 +177,15 @@ export function HomeScreen({ me }: { me: MeResponse }) {
               <h2 className="m-0 text-[30px] leading-[1.05] font-bold tracking-[-0.03em] whitespace-nowrap">{t('s03.heroTitle')}</h2>
               <p className="m-0 text-[15px] leading-[1.4] font-medium text-hint">{t('s03.heroText')}</p>
             </div>
-            <Button icon={<Icon glyph="duel" size={22} stroke={2.4} />} onClick={() => gameActions.openCreate(me.docsAccepted)}>
+            <Button icon={<Icon glyph="duel" size={22} stroke={2.4} />} onClick={() => (track('create'), gameActions.openCreate(me.docsAccepted))}>
               {t('s03.create')}
             </Button>
           </div>
         </section>
 
         <section className="qd-in qd-d2 grid grid-cols-2 gap-3">
-          <ModeCard glyph="bolt" tone="brand" title={t('s03.quick')} hint={t('s03.quickHint')} onPress={() => void gameActions.quickJoin(me.docsAccepted)} />
-          <ModeCard glyph="target" tone="gold" title={t('s03.training')} hint={t('s03.trainingHint')} onPress={() => gameActions.openSolo(me.docsAccepted)} />
+          <ModeCard glyph="bolt" tone="brand" title={t('s03.quick')} hint={t('s03.quickHint')} onPress={() => (track('quick'), void gameActions.quickJoin(me.docsAccepted))} />
+          <ModeCard glyph="target" tone="gold" title={t('s03.training')} hint={t('s03.trainingHint')} onPress={() => (track('solo'), gameActions.openSolo(me.docsAccepted))} />
         </section>
 
         <section className="qd-in qd-d3 mt-1 flex flex-col gap-2.5">

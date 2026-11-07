@@ -11,6 +11,7 @@ import { api, ApiRequestError, queryKeys } from './api';
 import { queryClient } from './queryClient';
 import { gameActions, setFriendHooks, showToast, useGame } from './game';
 import { haptic } from './telegram';
+import { track } from './track';
 
 export function inviteLink(appUrl: string, userId: number) {
   return `${appUrl}?startapp=r_${userId}`;
@@ -40,6 +41,7 @@ function linkOf() {
 export const friendsActions = {
   /** «Пригласить»: системное «Поделиться» Telegram со ссылкой-приглашением; вне Telegram - копия в буфер. */
   async shareInvite(t: TFunction) {
+    track('invite');
     const link = linkOf();
     if (!link) return showToast('error', 'toast.connection');
     try {
@@ -94,6 +96,7 @@ export const friendsActions = {
 
   /** «Вызвать»: шторка категорий с именем друга, по «Отправить вызов» - дуэль и уведомление ему. */
   challenge(player: PlayerBrief, docsAccepted: boolean) {
+    track('challenge');
     set({ target: player });
     gameActions.openCreate(docsAccepted);
   },

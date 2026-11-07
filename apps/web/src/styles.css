@@ -142,6 +142,15 @@
   --qd-inverse-bg: #ffffff;
   --qd-inverse-text: #0b0d24;
   --qd-inverse-hint: #5a5f80;
+  /* Графики админки: один тон, светлая ступень - подложка полос, волосяная сетка */
+  --qd-chart: #4f8dff;
+  --qd-chart-rgb: 79, 141, 255;
+  --qd-chart-hot: #9dbeff;
+  --qd-chart-track: rgba(79, 141, 255, 0.16);
+  --qd-chart-grid: rgba(140, 150, 200, 0.18);
+  --qd-chart-cross: rgba(232, 236, 255, 0.45);
+  --qd-chart-ring: #191b38;
+  --qd-chart-muted: rgba(140, 150, 200, 0.3);
 }
 
 .qd-light {
@@ -239,6 +248,14 @@
   --qd-inverse-bg: #0b0d24;
   --qd-inverse-text: #ffffff;
   --qd-inverse-hint: #a9aecb;
+  --qd-chart: #2f6feb;
+  --qd-chart-rgb: 47, 111, 235;
+  --qd-chart-hot: #6a98f2;
+  --qd-chart-track: rgba(47, 111, 235, 0.14);
+  --qd-chart-grid: rgba(60, 70, 120, 0.14);
+  --qd-chart-cross: rgba(20, 24, 60, 0.35);
+  --qd-chart-ring: #f6f7fc;
+  --qd-chart-muted: rgba(60, 70, 120, 0.22);
 }
 
 /* Кривые и длительности - токены из дизайна. ease-in не используем. */
@@ -330,6 +347,23 @@ body {
 button,
 input {
   font-family: inherit;
+}
+input::placeholder {
+  color: var(--tg-theme-hint-color);
+  opacity: 1;
+}
+input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+/* Поля админки: стекло, при фокусе - кольцо бренда поверх кромки */
+.qd-field {
+  outline: none;
+}
+.qd-field:focus,
+.qd-field-wrap:focus-within {
+  box-shadow:
+    var(--qd-glass-edge-flat),
+    0 0 0 2px var(--qd-brand);
 }
 button:focus {
   outline: none;

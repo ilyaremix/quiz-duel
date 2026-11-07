@@ -4,13 +4,14 @@ import { Notice } from '../components/Notice';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 
-export type FallbackKind = 'outside' | 'error' | 'session' | 'otherDevice';
+export type FallbackKind = 'outside' | 'error' | 'session' | 'otherDevice' | 'banned';
 
 const LOOK = {
   outside: { glyph: undefined, tone: 'brand', action: 'send' },
   error: { glyph: 'alert', tone: 'wrong', action: 'retry' },
   session: { glyph: 'clock', tone: 'gold', action: undefined },
   otherDevice: { glyph: 'chip', tone: 'brand', action: undefined },
+  banned: { glyph: 'ban', tone: 'wrong', action: undefined },
 } as const;
 
 interface FallbackScreenProps {

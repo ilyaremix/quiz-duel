@@ -411,6 +411,11 @@ export function createAdminRepo({ prisma, economy, channels, live, botUsername, 
       return (await economy.taskConfigs()).find((t) => t.id === row.id)!;
     },
 
+    /** «Проверить» в листе задания. null - бота нет (локальный стенд без токена). */
+    async checkChannel(channel: string): Promise<boolean | null> {
+      return channels ? channels.botIsAdmin(channel) : null;
+    },
+
     async removeTask(id: string) {
       await prisma.taskConfig.deleteMany({ where: { id } });
     },

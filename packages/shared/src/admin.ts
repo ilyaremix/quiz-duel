@@ -41,6 +41,9 @@ export interface TrackRequest {
 
 export type AdminPeriod = 7 | 30 | 90;
 
+/** Источники, которые сервер считает сам: своей ссылке такую метку не дать. */
+export const RESERVED_SOURCES: readonly string[] = ['organic', 'legacy', 'ref', 'duel', 'inline', 'admin'];
+
 export interface SeriesPoint {
   /** Подпись дня или недели: «06.11». */
   d: string;

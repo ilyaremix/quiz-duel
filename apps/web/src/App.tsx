@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ACTIVE_PHASES, gameIdFromStartParam, TIMINGS, type GameView, type MeResponse } from '@quiz-duel/shared';
 import { api, ApiRequestError, queryKeys, setSessionAuth } from './lib/api';
@@ -41,6 +41,12 @@ import { InviteBanner } from './components/InviteBanner';
 import { SetupSheet } from './screens/SetupSheet';
 import { DraftScreen } from './screens/DraftScreen';
 import { shop, useShop, useWallet } from './lib/economy';
+import { adminActions, useAdmin } from './lib/admin';
+import { useTrack } from './lib/track';
+import type { EventName } from '@quiz-duel/shared';
+
+/** Админка - отдельным файлом: игрокам, которые не админы, она не скачивается. */
+const AdminScreen = lazy(() => import('./screens/AdminScreen').then((m) => ({ default: m.AdminScreen })));
 
 /** Вне Telegram: заглушка с кнопкой, ведущей в мини-апп (адрес отдаёт сервер). */
 function OutsideTelegram() {
@@ -66,8 +72,17 @@ function CountdownRoute({ game }: { game: GameView }) {
 }
 
 /** Какой экран показать - решает только снимок партии с сервера. */
+function screenOfGame(game: GameView, review: string | null): EventName | null {
+  if (game.phase === 'waiting' || game.phase === 'lobby') return 'lobby';
+  if (game.phase === 'question' || game.phase === 'reveal') return 'question';
+  if (game.phase === 'finished') return review ? 'review' : 'results';
+  return null;
+}
+
 function GameRoute({ game, me, review }: { game: GameView; me: MeResponse; review: string | null }) {
   const iAmCreator = game.creatorId === game.me.userId;
+  // Аналитика: экран партии - один раз на партию (вопросы внутри неё не считаются отдельно).
+  useTrack(screenOfGame(game, review), game.id);
   switch (game.phase) {
     case 'waiting':
       return <LobbyWaitScreen game={game} />;
@@ -128,10 +143,18 @@ function TabsRoute({ me }: { me: MeResponse }) {
   const review = useGame((s) => s.review);
   const achievements = useGame((s) => s.achievements);
   const settings = useGame((s) => s.settings);
+  const admin = useAdmin((s) => s.open) && me.admin;
   useForcedAd(me);
+  useTrack(admin ? null : review ? 'review' : settings && tab === 'home' ? 'settings' : achievements && tab === 'profile' ? 'profile' : tab);
   let screen;
   let dock = false;
-  if (review) screen = <ReviewScreen gameId={review} />;
+  if (admin)
+    screen = (
+      <Suspense fallback={<LoadingScreen />}>
+        <AdminScreen me={me} />
+      </Suspense>
+    );
+  else if (review) screen = <ReviewScreen gameId={review} />;
   else if (settings && tab === 'home') screen = <SettingsScreen me={me} />;
   else if (achievements && tab === 'profile') screen = <AchievementsScreen />;
   else {
@@ -158,7 +181,8 @@ function useForcedAd(me: MeResponse) {
   const wallet = useWallet();
   const ad = useShop((s) => s.ad);
   const skipped = useShop((s) => s.adSkipped);
-  const due = Boolean(wallet.data?.adDue && !wallet.data.adFree && me.docsAccepted);
+  const admin = useAdmin((s) => s.open);
+  const due = Boolean(wallet.data?.adDue && !wallet.data.adFree && me.docsAccepted && !admin);
   useEffect(() => {
     if (!due || ad || skipped) return;
     const id = window.setTimeout(() => void shop.watchAd('forced'), 700);
@@ -185,6 +209,7 @@ function useRefreshAfterGame(game: GameView | null) {
  * бот позовёт, когда соперник зайдёт, будет ждать или предложит реванш. Уже разрешил - не спрашиваем.
  */
 let writeAccessAsked = false;
+let adminOpenedFromLink = false;
 function useWriteAccessAsk(game: GameView | null, me: MeResponse | undefined) {
   const queryClient = useQueryClient();
   const inLobby = Boolean(game && (game.phase === 'waiting' || game.phase === 'lobby'));
@@ -222,6 +247,14 @@ function InTelegram({ session }: { session: TelegramSession }) {
   useRefreshAfterGame(game);
   useWriteAccessAsk(game, me.data);
 
+  // Кнопка «Открыть админку» из /admin у бота: startapp=admin.
+  useEffect(() => {
+    if (me.data?.admin && session.startParam === 'admin' && !adminOpenedFromLink) {
+      adminOpenedFromLink = true;
+      adminActions.open();
+    }
+  }, [me.data, session.startParam]);
+
   useEffect(() => {
     if (!me.data) return;
     setLang(me.data.lang);
@@ -234,8 +267,9 @@ function InTelegram({ session }: { session: TelegramSession }) {
   useGameChrome(game, gameOnScreen);
 
   // Один сокет на всё время жизни приложения; по ссылке startapp=g_<id> сразу входим в игру.
+  // Заблокированному играть нельзя - сокет не нужен.
   useEffect(() => {
-    if (!me.data) return;
+    if (!me.data || me.data.banned) return;
     gameActions.start(session.initDataRaw, gameIdFromStartParam(session.startParam), async () => {
       const docs = config.data?.docs ?? (await queryClient.fetchQuery({ queryKey: ['config'], queryFn: api.config })).docs;
       await api.consents(session.initDataRaw, { docs: ['terms', 'privacy'], version: docs.version });
@@ -252,6 +286,7 @@ function InTelegram({ session }: { session: TelegramSession }) {
       <FallbackScreen kind="error" onAction={() => void me.refetch()} />
     );
   }
+  if (me.data.banned) return <FallbackScreen kind="banned" onAction={closeMiniApp} />;
   if (conn === 'replaced') return <FallbackScreen kind="otherDevice" onAction={gameActions.takeOver} />;
   // Сокет не принял initData (приложение открыто больше суток) - как и с REST, нужен новый вход.
   if (conn === 'auth') return <FallbackScreen kind="session" onAction={closeMiniApp} />;

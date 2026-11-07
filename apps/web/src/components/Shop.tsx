@@ -202,7 +202,7 @@ export function PackRow({ id, state, onPress }: { id: PackId; state: ItemState; 
 // ---------------------------------------------------------------------------
 // Задание
 
-const TASK_LOOK: Record<TaskView['type'], { glyph: IconGlyph; ball: string; glow: string; ink: string; act: string }> = {
+export const TASK_LOOK: Record<TaskView['type'], { glyph: IconGlyph; ball: string; glow: string; ink: string; act: string }> = {
   play: { glyph: 'duel', ball: '#4F8DFF', glow: 'rgba(79,141,255,.55)', ink: '#FFFFFF', act: 'go' },
   ads: { glyph: 'ad', ball: '#FF6A88', glow: 'rgba(255,106,136,.5)', ink: '#FFFFFF', act: 'watch' },
   channel: { glyph: 'megaphone', ball: '#19C2DB', glow: 'rgba(25,194,219,.5)', ink: '#032A30', act: 'sub' },
@@ -216,7 +216,8 @@ export function TaskRow({ task, state, onAction, busy }: { task: TaskView; state
   const { t, i18n } = useTranslation();
   const look = TASK_LOOK[task.type];
   const n = Math.min(task.count, task.goal);
-  const title = t(`s27.task.${task.type}.t`, { g: task.goal, games: pw(t, task.goal, 'game') });
+  const custom = task.title ? (i18n.language.startsWith('en') ? task.title.en : task.title.ru) : null;
+  const title = custom || t(`s27.task.${task.type}.t`, { g: task.goal, games: pw(t, task.goal, 'game') });
   const sub =
     task.type === 'channel'
       ? t('s27.task.channel.dTemplate', { ch: task.channel ?? '' })

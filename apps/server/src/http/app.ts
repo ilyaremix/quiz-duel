@@ -9,6 +9,7 @@ import {
   ConsentRequestSchema,
   AdminBanSchema,
   AdminCoinsSchema,
+  AdminChannelSchema,
   AdminLinkSchema,
   AdminTaskSaveSchema,
   TrackRequestSchema,
@@ -316,6 +317,12 @@ export async function buildApp({
       if (!parsed.success) return reply.code(400).send(bad);
       if (parsed.data.type === 'channel' && !parsed.data.channel) return reply.code(400).send(bad);
       return admin.saveTask(parsed.data);
+    });
+
+    app.post('/api/admin/channel', guard, async (request, reply) => {
+      const parsed = AdminChannelSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      return { botAdmin: await admin.checkChannel(parsed.data.channel) };
     });
 
     app.post('/api/admin/tasks/remove', guard, async (request, reply) => {

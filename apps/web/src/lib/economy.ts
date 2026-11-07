@@ -20,6 +20,7 @@ import { api, ApiRequestError, queryKeys } from './api';
 import { queryClient } from './queryClient';
 import { setAdGate, showToast } from './game';
 import { haptic } from './telegram';
+import { track } from './track';
 
 /** Слово по числу: «1 монета», «5 монет» (формы - plural.* в словаре). */
 export function pw(t: TFunction, n: number, word: string): string {
@@ -121,6 +122,7 @@ export const shop = {
   },
 
   async claimDaily(t: TFunction) {
+    track('daily');
     await guarded('daily', async () => {
       try {
         const res = await api.daily();
@@ -156,6 +158,7 @@ export const shop = {
     const name = (task.channel ?? '').replace(/^@/, '');
     if (!name) return;
     const url = `https://t.me/${name}`;
+    track('taskCh');
     try {
       if (openTelegramLink.isAvailable()) openTelegramLink(url);
       else window.open(url, '_blank');
@@ -168,6 +171,7 @@ export const shop = {
 
   /** История в Telegram (только Premium): фон и ссылка на игру; награда - по возвращении. */
   async postStory(task: TaskView, appUrl: string, t: TFunction) {
+    track('taskStory');
     try {
       if (!shareStory.isAvailable()) {
         showToast('error', 'toast.storyUnavailable');
@@ -186,6 +190,7 @@ export const shop = {
   },
 
   async buy(kind: ShopKind, item: string, price: number, t: TFunction) {
+    track(kind === 'glow' ? 'buyGlow' : kind === 'pack' ? 'buyPack' : 'buyTopic');
     await guarded(`buy:${kind}:${item}`, async () => {
       try {
         const res = await api.buy(kind, item);
@@ -217,6 +222,7 @@ export const shop = {
 
   /** Оплата звёздами: окно Telegram; монеты зачисляет сервер, когда придёт successful_payment. */
   async pay(product: StarsProduct, t: TFunction) {
+    track(product === 'adfree' ? 'buyAdFree' : 'buyCoins');
     await guarded(`pay:${product}`, async () => {
       let url: string;
       try {
@@ -252,6 +258,7 @@ export const shop = {
   /** Открыть ролик: просмотр начинается на сервере, засчитывается только досмотренный до конца. */
   async watchAd(purpose: AdPurpose, opts: { topic?: PremiumTopic; then?: () => void } = {}) {
     if (get().ad) return;
+    track('adWatch');
     set({ ad: { purpose, topic: opts.topic, then: opts.then, phase: 'loading', id: null, sec: 15, src: '/ads/ad1.mp4', reward: 0 }, item: null });
     try {
       const res = await api.adStart(purpose, opts.topic);
@@ -278,6 +285,7 @@ export const shop = {
       const res = await api.adDone(cur.id);
       setWallet(res.wallet);
       haptic.success();
+      track('adDone');
       set({ ad: { ...cur, phase: 'done', reward: res.reward }, adSkipped: false });
     } catch (error) {
       const reason = error instanceof ApiRequestError ? error.reason : null;
@@ -322,6 +330,7 @@ export const shop = {
       return;
     }
     if (cur.purpose === 'forced') set({ adSkipped: true });
+    track('adSkip');
     showToast('info', 'toast.adNotCounted');
   },
 

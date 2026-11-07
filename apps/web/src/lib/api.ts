@@ -3,6 +3,17 @@ import {
   type AdDoneResponse,
   type AdPurpose,
   type AdStartResponse,
+  type AdminEvents,
+  type AdminMoney,
+  type AdminOverview,
+  type AdminPeriod,
+  type AdminPlayer,
+  type AdminPlayerRow,
+  type AdminRetention,
+  type AdminSources,
+  type AdminTask,
+  type AdminTaskSaveRequest,
+  type TaskConfigView,
   type ClaimResponse,
   type FriendsResponse,
   type PremiumTopic,
@@ -22,6 +33,7 @@ import {
   type SettingsRequest,
   type SettingsResponse,
 } from '@quiz-duel/shared';
+import { setTrackAuth } from './track';
 
 export class ApiRequestError extends Error {
   constructor(
@@ -70,6 +82,7 @@ async function request<T>(path: string, initDataRaw?: string, body?: unknown): P
 let sessionAuth = '';
 export function setSessionAuth(initDataRaw: string) {
   sessionAuth = initDataRaw;
+  setTrackAuth(initDataRaw);
 }
 
 export const api = {
@@ -97,6 +110,24 @@ export const api = {
   friendRequest: (id: number) => request<{ result: 'sent' | 'accepted' | 'already' }>('/api/friends/request', sessionAuth, { id }),
   friendRespond: (id: number, accept: boolean) => request<{ ok: true }>('/api/friends/respond', sessionAuth, { id, accept }),
   friendRemove: (id: number) => request<{ ok: true }>('/api/friends/remove', sessionAuth, { id }),
+  // Админка
+  admin: {
+    overview: (days: AdminPeriod) => request<AdminOverview>(`/api/admin/overview?days=${days}`, sessionAuth),
+    retention: () => request<AdminRetention>('/api/admin/retention', sessionAuth),
+    events: (days: AdminPeriod) => request<AdminEvents>(`/api/admin/events?days=${days}`, sessionAuth),
+    sources: (days: AdminPeriod) => request<AdminSources>(`/api/admin/sources?days=${days}`, sessionAuth),
+    money: (days: AdminPeriod) => request<AdminMoney>(`/api/admin/money?days=${days}`, sessionAuth),
+    tasks: () => request<AdminTask[]>('/api/admin/tasks', sessionAuth),
+    saveTask: (body: AdminTaskSaveRequest) => request<TaskConfigView>('/api/admin/tasks', sessionAuth, body),
+    removeTask: (id: string) => request<{ ok: true }>('/api/admin/tasks/remove', sessionAuth, { id }),
+    checkChannel: (channel: string) => request<{ botAdmin: boolean | null }>('/api/admin/channel', sessionAuth, { channel }),
+    createLink: (code: string, title: string) => request<{ url: string }>('/api/admin/links', sessionAuth, { code, title }),
+    players: (q: string, filter: string) =>
+      request<AdminPlayerRow[]>(`/api/admin/players?q=${encodeURIComponent(q)}&filter=${encodeURIComponent(filter)}`, sessionAuth),
+    player: (id: number) => request<AdminPlayer>(`/api/admin/players/${id}`, sessionAuth),
+    coins: (id: number, delta: number) => request<{ coins: number }>(`/api/admin/players/${id}/coins`, sessionAuth, { delta }),
+    ban: (id: number, banned: boolean) => request<{ ok: true }>(`/api/admin/players/${id}/ban`, sessionAuth, { banned }),
+  },
 };
 
 /** Ключи кэша TanStack Query: после партии профиль и рейтинг сбрасываются. */
