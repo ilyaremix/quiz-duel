@@ -1,5 +1,6 @@
-import { Bot, InlineKeyboard } from 'grammy';
+import { Bot, InlineKeyboard, type Transformer } from 'grammy';
 import type { LanguageCode } from 'grammy/types';
+import { autoRetry } from '@grammyjs/auto-retry';
 import type { FastifyBaseLogger } from 'fastify';
 import { RU_LANGUAGE_CODES, langFromTelegram, resolveLang, type GameCategory, type GameRules, type Lang } from '@quiz-duel/shared';
 import { botTexts, inviteTexts, profileTexts, referralTexts, shareTexts, supportTexts } from './texts.js';
@@ -22,11 +23,23 @@ const pollState: BotHealth = { state: 'starting', restarts: 0, lastUpdateAt: nul
 export const botHealth = (): BotHealth => ({ ...pollState });
 
 /**
+ * Повтор запросов к Telegram: «слишком часто» (429) - после retry_after (если он не больше 15 с),
+ * сбой на стороне Telegram (5xx) - через 3, 6, 12 с; не больше 3 повторов. Сетевые ошибки не
+ * повторяем (иначе при долгом обрыве запрос висел бы часами), getUpdates - тоже: у опроса свой
+ * перезапуск (startBot), и остановка сервера не должна ждать повторов.
+ */
+export function telegramRetry(): Transformer {
+  const retry = autoRetry({ maxRetryAttempts: 3, maxDelaySeconds: 15, rethrowHttpErrors: true });
+  return (prev, method, payload, signal) => (method === 'getUpdates' ? prev(method, payload, signal) : retry(prev, method, payload, signal));
+}
+
+/**
  * Создаёт бота и проверяет токен (getMe). Сам опрос Telegram
  * запускается отдельно через startBot, чтобы сервер успел подняться.
  */
 export async function createBot(token: string, webAppUrl: string, users?: UsersRepo, docs?: { termsUrl: string; privacyUrl: string }) {
   const bot = new Bot(token);
+  bot.api.config.use(telegramRetry());
   await bot.init();
 
   // Первым - отметка «бот жив»: время последнего обновления от Telegram видно в /api/health.

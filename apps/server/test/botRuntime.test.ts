@@ -3,7 +3,7 @@
  * inline-запросы не держат общую очередь, Telegram не принял ролик - карточка уходит текстом.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { attachInline, botCommands, botHealth, referralCard, inlineAnswer, syncChatCommands, startBot, type QuizBot } from '../src/bot/index.js';
+import { attachInline, botCommands, botHealth, referralCard, inlineAnswer, syncChatCommands, startBot, telegramRetry, type QuizBot } from '../src/bot/index.js';
 import { ilya, mark, silentLog, world } from './socketWorld.js';
 
 const WEB = 'https://quiz.example.sslip.io';
@@ -146,5 +146,40 @@ describe('«Пригласить друга» - анимированная ка�
     expect(card.caption).toContain('<b>Илья &lt;b&gt;</b>');
     expect(card.caption).toContain('+50 монет');
     expect(card.reply_markup.inline_keyboard[0]![0]).toMatchObject({ text: 'Играть', url: 'https://t.me/q_bot/play?startapp=r_1' });
+  });
+});
+
+describe('повтор запросов к Telegram', () => {
+  type Res = { ok: boolean; error_code?: number; description?: string; parameters?: { retry_after?: number }; result?: unknown };
+  /** Ответы Telegram по очереди; сколько раз запрос ушёл. */
+  function telegram(...answers: Res[]) {
+    const calls: string[] = [];
+    const prev = async (method: string) => {
+      calls.push(method);
+      return (answers.shift() ?? { ok: true, result: true }) as never;
+    };
+    return { calls, prev: prev as never };
+  }
+
+  it('429 «слишком часто» - повтор после retry_after, сообщение уходит', async () => {
+    vi.useFakeTimers();
+    try {
+      const t = telegram({ ok: false, error_code: 429, description: 'Too Many Requests: retry after 2', parameters: { retry_after: 2 } });
+      const sent = telegramRetry()(t.prev, 'sendMessage' as never, {} as never);
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(await sent).toEqual({ ok: true, result: true });
+      expect(t.calls).toEqual(['sendMessage', 'sendMessage']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('ждать дольше 15 с не будем; getUpdates не повторяем (у опроса свой перезапуск)', async () => {
+    const long = telegram({ ok: false, error_code: 429, parameters: { retry_after: 60 } });
+    expect(await telegramRetry()(long.prev, 'sendMessage' as never, {} as never)).toMatchObject({ ok: false, error_code: 429 });
+    expect(long.calls).toHaveLength(1);
+    const poll = telegram({ ok: false, error_code: 502, description: 'Bad Gateway' });
+    expect(await telegramRetry()(poll.prev, 'getUpdates' as never, {} as never)).toMatchObject({ ok: false, error_code: 502 });
+    expect(poll.calls).toEqual(['getUpdates']);
   });
 });
