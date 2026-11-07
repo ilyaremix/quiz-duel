@@ -339,6 +339,7 @@ function rematchFailed(error: GameErrorCode, gameId: string) {
 function failure(result: { ok: false; error: GameErrorCode; busyGameId?: string }) {
   const kind = LINK_ERRORS[result.error];
   if (kind) set({ linkError: { kind, busyGameId: result.busyGameId } });
+  else if (result.error === 'locked') showToast('info', 'toast.topicLocked');
   else showToast('error', 'toast.connection');
 }
 
@@ -715,6 +716,7 @@ export const gameActions = {
     }
     if (res.error === 'consent_required') set({ consent: { inviter: null, gameId: null, category, solo: true }, categorySheet: false });
     else if (res.error === 'busy') set({ linkError: { kind: 'busy', busyGameId: res.busyGameId }, categorySheet: false });
+    else if (res.error === 'locked') showToast('info', 'toast.topicLocked');
     else showToast('error', 'toast.connection');
   },
 

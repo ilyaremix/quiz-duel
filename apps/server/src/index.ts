@@ -79,6 +79,11 @@ async function main() {
     sharer: bot ? botResults(bot) : undefined,
     clock: realClock,
     draft: true,
+    topicAccess: async (userId, topic) => (await economy.topicAccess(userId, topic)) !== 'locked',
+    useTopic: async (userId, topic, gameId) => {
+      await economy.useTopic(userId, topic, gameId, Date.now());
+      push.wallet(userId);
+    },
     canReact: async (userId, emoji) => {
       const pack = packOf(emoji);
       return pack !== null && (await economy.ownsPack(userId, pack));

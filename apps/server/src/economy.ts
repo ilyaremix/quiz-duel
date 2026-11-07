@@ -83,6 +83,10 @@ export interface EconomyRepo {
   looks(ids: readonly number[]): Promise<Map<number, Looks>>;
   /** Набор реакций у игрока (купленные): для проверки реакции в партии. */
   ownsPack(userId: number, pack: PackId): Promise<boolean>;
+  /** Платная тема: куплена навсегда, есть билет на 1 игру или закрыта. */
+  topicAccess(userId: number, topic: PremiumTopic): Promise<'owned' | 'pass' | 'locked'>;
+  /** Партия в платной теме началась: билет на 1 игру использован (если тема не куплена). */
+  useTopic(userId: number, topic: PremiumTopic, gameId: string, now: number): Promise<boolean>;
 }
 
 export const AD_SRC = '/ads/ad1.mp4';
@@ -462,6 +466,26 @@ export function createPrismaEconomyRepo(prisma: PrismaClient, checker?: ChannelC
       return new Map(
         rows.map((r) => [Number(r.id), { glow: isGlow(r.glow) ? r.glow : 'none', pack: isPack(r.reactionPack) ? r.reactionPack : 'base' }]),
       );
+    },
+
+    async topicAccess(userId, topic) {
+      const id = BigInt(userId);
+      const owned = await prisma.owned.findUnique({ where: { userId_kind_item: { userId: id, kind: 'topic', item: topic } } });
+      if (owned) return 'owned';
+      const pass = await prisma.topicPass.findFirst({ where: { userId: id, topic, usedAt: null }, select: { id: true } });
+      return pass ? 'pass' : 'locked';
+    },
+
+    async useTopic(userId, topic, gameId, now) {
+      const id = BigInt(userId);
+      const owned = await prisma.owned.findUnique({ where: { userId_kind_item: { userId: id, kind: 'topic', item: topic } } });
+      if (owned) return true;
+      // Повтор (рестарт, повторное событие) того же gameId билет второй раз не тратит.
+      if (await prisma.topicPass.findFirst({ where: { userId: id, gameId }, select: { id: true } })) return true;
+      const pass = await prisma.topicPass.findFirst({ where: { userId: id, topic, usedAt: null }, orderBy: { id: 'asc' } });
+      if (!pass) return false;
+      const done = await prisma.topicPass.updateMany({ where: { id: pass.id, usedAt: null }, data: { usedAt: new Date(now), gameId } });
+      return done.count === 1;
     },
 
     async ownsPack(userId, pack) {

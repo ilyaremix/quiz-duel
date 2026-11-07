@@ -2,6 +2,7 @@
  * Обновление 2.0: монеты, магазин, задания, реклама и оплата звёздами.
  * Цены и награды - одни на сервер и приложение (сервер проверяет всё сам).
  */
+import { PREMIUM_CATEGORIES, type PremiumCategory } from './categories.js';
 
 // ---------------------------------------------------------------------------
 // Товары за монеты
@@ -33,8 +34,8 @@ export function packOf(emoji: string): PackId | null {
 }
 
 /** Платные темы: на 1 игру за рекламу или навсегда за монеты. */
-export const PREMIUM_TOPICS = ['games', 'space', 'food', 'crypto'] as const;
-export type PremiumTopic = (typeof PREMIUM_TOPICS)[number];
+export const PREMIUM_TOPICS = PREMIUM_CATEGORIES;
+export type PremiumTopic = PremiumCategory;
 export const TOPIC_PRICE = 1000;
 
 export type ShopKind = 'glow' | 'pack' | 'topic';

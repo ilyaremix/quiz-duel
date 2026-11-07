@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { LANGS, type Lang } from './lang.js';
 
-import { CATEGORIES, DIFFICULTIES, type Category, type Difficulty, type GameCategory } from './categories.js';
+import { ALL_CATEGORIES, DIFFICULTIES, type Category, type Difficulty, type GameCategory } from './categories.js';
 
 /** Префикс id вопроса по категории: sci-01 … tec-20. */
 export const CATEGORY_ID_PREFIX: Record<Category, string> = {
@@ -10,11 +10,16 @@ export const CATEGORY_ID_PREFIX: Record<Category, string> = {
   culture: 'cul',
   sport: 'spo',
   tech: 'tec',
+  games: 'gam',
+  space: 'spa',
+  food: 'foo',
+  crypto: 'cry',
 };
 
 /** Правила базы вопросов из ТЗ. */
 export const BANK_RULES = {
-  total: 100,
+  /** 5 тем ТЗ и 4 платные темы обновления 2.0, по 20 вопросов. */
+  total: 180,
   perCategory: 20,
   perDifficulty: { easy: 6, medium: 8, hard: 6 } satisfies Record<Difficulty, number>,
   optionsCount: 4,
@@ -46,7 +51,7 @@ const LocalizedSchema = z.strictObject({
 
 export const QuestionSchema = z.strictObject({
   id: z.string().regex(/^[a-z]{3}-\d{2}$/, 'id вида sci-01'),
-  category: z.enum(CATEGORIES),
+  category: z.enum(ALL_CATEGORIES),
   difficulty: z.enum(DIFFICULTIES),
   /** Индекс верного варианта, общий для обоих языков. */
   correct: z.int().min(0).max(BANK_RULES.optionsCount - 1),
@@ -130,7 +135,7 @@ export function validateQuestionBank(input: unknown): BankCheck {
     }
   }
 
-  for (const category of CATEGORIES) {
+  for (const category of ALL_CATEGORIES) {
     const inCategory = questions.filter((q) => q.category === category);
     if (inCategory.length !== BANK_RULES.perCategory) {
       errors.push(`${category}: вопросов ${inCategory.length}, нужно ${BANK_RULES.perCategory}`);

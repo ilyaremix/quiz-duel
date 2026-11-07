@@ -64,11 +64,11 @@ describe('validateQuestionBank ловит ошибки', () => {
     expect(errorsOf({})).toEqual(['база должна быть массивом вопросов']);
   });
 
-  it('99 вопросов', () => {
+  it('на один вопрос меньше', () => {
     const errors = broken((b) => b.pop());
-    expect(errors).toContain('вопросов 99, нужно 100');
-    expect(errors).toContain('tech: вопросов 19, нужно 20');
-    expect(errors).toContain('tech/hard: вопросов 5, нужно 6');
+    expect(errors).toContain('вопросов 179, нужно 180');
+    expect(errors).toContain('crypto: вопросов 19, нужно 20');
+    expect(errors).toContain('crypto/hard: вопросов 5, нужно 6');
   });
 
   it('повторяющийся id', () => {

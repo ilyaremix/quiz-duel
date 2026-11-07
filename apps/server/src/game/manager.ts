@@ -17,6 +17,8 @@
 import {
   ACTIVE_PHASES,
   CATEGORIES,
+  isPremiumCategory,
+  type PremiumCategory,
   DRAFT,
   REACTIONS,
   type Category,
@@ -156,6 +158,12 @@ export interface ManagerDeps {
    * награда за приглашение. Ошибка здесь не мешает игре.
    */
   onSettled?: (state: GameState) => Promise<void> | void;
+  /**
+   * Платные темы: открыта ли тема игроку (куплена или есть билет на 1 игру) и списание билета,
+   * когда партия началась. Без этих функций платные темы закрыты для всех.
+   */
+  topicAccess?: (userId: number, topic: PremiumCategory) => Promise<boolean>;
+  useTopic?: (userId: number, topic: PremiumCategory, gameId: string) => Promise<void>;
   /** Обновление 2.0: в «Миксе» на двоих - выбор темы перед отсчётом (без флага - сразу отсчёт). */
   draft?: boolean;
   /** Можно ли игроку эту реакцию (наборы из магазина). Без проверки - только базовые. */
@@ -431,6 +439,7 @@ export class GameManager {
     const card = await this.card(userId);
     if (!card) return fail('internal');
     if (card.docsVersion !== this.d.docsVersion) return fail('consent_required');
+    if (!(await this.topicOpen(userId, category))) return fail('locked');
 
     const busy = await this.releaseOpenGame(userId, null);
     if (busy) return busy;
@@ -619,6 +628,7 @@ export class GameManager {
     const card = await this.card(userId);
     if (!card) return fail('internal');
     if (card.docsVersion !== this.d.docsVersion) return fail('consent_required');
+    if (!(await this.topicOpen(userId, category))) return fail('locked');
 
     const currentId = this.current.get(userId);
     const cur = currentId ? this.games.get(currentId) : undefined;
@@ -658,6 +668,8 @@ export class GameManager {
     const entry = this.adopt(state);
     entry.seen = seen;
     this.schedule(entry);
+    // Тренировка начинается сразу: билет на платную тему тратится сейчас.
+    this.spendTopic(entry.state);
     return { ok: true, game: this.viewOf(entry.state, userId)! };
   }
 
@@ -1106,7 +1118,10 @@ export class GameManager {
     const freed: number[] = [];
 
     for (const event of step.events) {
-      if (event.type === 'countdown') startedAt = now;
+      if (event.type === 'countdown') {
+        startedAt = now;
+        this.spendTopic(entry.state);
+      }
       if (event.type === 'finished') finished = true;
       if (event.type === 'seatFreed') {
         freed.push(event.userId);
@@ -1240,6 +1255,26 @@ export class GameManager {
       this.d.log.error({ err: error, gameId: state.id }, 'game settle failed');
       return false;
     }
+  }
+
+  /** Платная тема открыта игроку? Обычные темы и «Микс» открыты всем. */
+  private async topicOpen(userId: number, category: GameCategory): Promise<boolean> {
+    if (!isPremiumCategory(category)) return true;
+    if (!this.d.topicAccess) return false;
+    try {
+      return await this.d.topicAccess(userId, category);
+    } catch (error) {
+      this.d.log.warn({ err: error, userId, category }, 'topic access check failed');
+      return false;
+    }
+  }
+
+  /** Партия в платной теме началась: у создателя тратится билет на 1 игру (купленная тема - бесплатно). */
+  private spendTopic(state: GameState) {
+    if (!isPremiumCategory(state.category) || !this.d.useTopic) return;
+    void Promise.resolve(this.d.useTopic(state.creator.userId, state.category, state.id)).catch((error: unknown) =>
+      this.d.log.warn({ err: error, gameId: state.id }, 'topic pass spend failed'),
+    );
   }
 
   /** Хук после итогов: не ждём его и не даём его сбою сломать партию. */

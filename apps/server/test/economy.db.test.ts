@@ -211,6 +211,24 @@ describe.skipIf(!url)('экономика на Postgres', () => {
     expect(await eco.adStart(A, 'topic', 'space', T0)).toEqual({ ok: false, error: 'owned' });
   });
 
+  it('платная тема: билет тратится один раз на партию, купленная - бесплатно', async () => {
+    expect(await eco.topicAccess(A, 'games')).toBe('locked');
+    expect(await eco.useTopic(A, 'games', 'g000000001', T0)).toBe(false);
+    const s = await eco.adStart(A, 'topic', 'games', T0);
+    if (!s.ok) throw new Error('нет ролика');
+    await eco.adDone(A, s.id, T0 + 15_000);
+    expect(await eco.topicAccess(A, 'games')).toBe('pass');
+    expect(await eco.useTopic(A, 'games', 'g000000001', T0)).toBe(true);
+    // Повтор того же старта (рестарт сервера) второй билет не берёт.
+    expect(await eco.useTopic(A, 'games', 'g000000001', T0)).toBe(true);
+    expect(await eco.topicAccess(A, 'games')).toBe('locked');
+    expect(await eco.useTopic(A, 'games', 'g000000002', T0)).toBe(false);
+    await give(A, 1000);
+    await eco.buy(A, 'topic', 'games', T0);
+    expect(await eco.topicAccess(A, 'games')).toBe('owned');
+    expect(await eco.useTopic(A, 'games', 'g000000003', T0)).toBe(true);
+  });
+
   it('звёзды: монеты зачисляются один раз на платёж, возврат забирает', async () => {
     expect(await eco.grantPurchase({ chargeId: 'ch1', userId: A, product: 'coins_m', stars: 75 }, T0)).toBe(true);
     expect(await eco.grantPurchase({ chargeId: 'ch1', userId: A, product: 'coins_m', stars: 75 }, T0)).toBe(false);

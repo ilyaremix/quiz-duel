@@ -8,10 +8,12 @@ interface CategoryTileProps {
   cat: GameCategory;
   selected: boolean;
   onPick: () => void;
+  /** Платная тема: закрыта, открыта на 1 игру или куплена. */
+  access?: 'locked' | 'pass' | 'owned';
 }
 
 /** Плитка категории в шторке выбора: глянцевый шар категории, название, число вопросов; выбранная - фиолетовое стекло с галочкой. */
-export function CategoryTile({ cat, selected, onPick }: CategoryTileProps) {
+export function CategoryTile({ cat, selected, onPick, access }: CategoryTileProps) {
   const { t } = useTranslation();
   const look = CATEGORY_LOOK[cat];
   return (
@@ -30,8 +32,19 @@ export function CategoryTile({ cat, selected, onPick }: CategoryTileProps) {
       </Ball>
       <span className="flex flex-col gap-[3px]">
         <span className="text-[16px] leading-[1.2] font-bold tracking-[-0.01em]">{t(`cat.${cat}.title`)}</span>
-        <span className="text-[12px] font-medium text-hint">{t(`cat.${cat}.count`)}</span>
+        {access ? (
+          <span className="text-[12px] font-semibold" style={{ color: access === 'locked' ? 'var(--qd-gold-text)' : access === 'pass' ? 'var(--qd-brand-text)' : 'var(--qd-correct-text)' }}>
+            {access === 'locked' ? t('s04.lockAd') : access === 'pass' ? t('s04.pass') : t('s04.owned')}
+          </span>
+        ) : (
+          <span className="text-[12px] font-medium text-hint">{t(`cat.${cat}.count`)}</span>
+        )}
       </span>
+      {access === 'locked' && !selected && (
+        <Ball size={26} {...BALLS.gold} className="absolute top-3 right-3" style={{ boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 0 12px var(--qd-gold-glow)' }}>
+          <Icon glyph="lock" size={13} stroke={2.8} />
+        </Ball>
+      )}
       {selected && (
         <Ball
           size={26}

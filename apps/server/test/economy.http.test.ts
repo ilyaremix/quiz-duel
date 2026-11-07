@@ -45,6 +45,8 @@ function fakeEconomy(calls: string[]): EconomyRepo {
     revokePurchase: async () => true,
     looks: async () => new Map(),
     ownsPack: async () => true,
+    topicAccess: async () => 'locked',
+    useTopic: async () => false,
   };
 }
 

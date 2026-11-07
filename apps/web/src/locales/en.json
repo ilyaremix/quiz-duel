@@ -135,7 +135,8 @@
     "coinsPaid": "Paid! The coins are on your balance",
     "payFailed": "Payment failed - please try again",
     "friendNotPlayed": "You can only add players you have played with",
-    "friendRequest": "{{name}} wants to be friends"
+    "friendRequest": "{{name}} wants to be friends",
+    "topicLocked": "This topic is locked - unlock it for 1 game with an ad or buy it"
   },
   "banner": {
     "resume": {

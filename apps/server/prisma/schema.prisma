@@ -121,6 +121,11 @@ enum Category {
   culture
   sport
   tech
+  /// Обновление 2.0: платные темы
+  games
+  space
+  food
+  crypto
 }
 
 enum Difficulty {
@@ -160,6 +165,11 @@ enum GameCategory {
   culture
   sport
   tech
+  /// Обновление 2.0: платные темы
+  games
+  space
+  food
+  crypto
 }
 
 /// link - дуэль по ссылке, quick - быстрая игра, rematch - реванш, solo - тренировка

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GAME_CATEGORIES, type GameCategory } from '@quiz-duel/shared';
+import { CATEGORIES, PREMIUM_CATEGORIES, isPremiumCategory, type GameCategory } from '@quiz-duel/shared';
+import { shop, topicAccess, useWallet } from '../lib/economy';
 import { Button } from '../components/Button';
 import { CategoryTile } from '../components/CategoryTile';
 import { Icon } from '../components/Icon';
@@ -22,6 +23,9 @@ export function CategorySheet() {
   const friend = useFriends((s) => s.target);
   const forFriend = !solo && friend !== null;
   const rules = useSetup((s) => s.rules);
+  const wallet = useWallet();
+  // Платная тема закрылась (билет потрачен) - снимаем выбор.
+  const blocked = selected !== null && isPremiumCategory(selected) && topicAccess(wallet.data, selected) === 'locked';
   const summary = useRulesText();
   const look = MODE_LOOK[rules.variant];
   const close = () => {
@@ -49,9 +53,27 @@ export function CategorySheet() {
         </button>
       </div>
       <div className="grid auto-rows-fr grid-cols-2 gap-3">
-        {GAME_CATEGORIES.map((cat) => (
+        {(['mix', ...CATEGORIES] as GameCategory[]).map((cat) => (
           <CategoryTile key={cat} cat={cat} selected={cat === selected} onPick={() => setSelected(cat)} />
         ))}
+      </div>
+      <div className="mx-1 -mb-1 flex flex-col gap-0.5">
+        <h3 className="m-0 text-[17px] font-bold tracking-[-0.01em]">{t('s04.premium')}</h3>
+        <span className="text-[12px] font-medium text-hint">{t('s04.premiumHint')}</span>
+      </div>
+      <div className="grid auto-rows-fr grid-cols-2 gap-3">
+        {PREMIUM_CATEGORIES.map((cat) => {
+          const access = topicAccess(wallet.data, cat);
+          return (
+            <CategoryTile
+              key={cat}
+              cat={cat}
+              access={access}
+              selected={cat === selected}
+              onPick={() => (access === 'locked' ? shop.openItem({ kind: 'topic', id: cat }) : setSelected(cat))}
+            />
+          );
+        })}
       </div>
       {!solo && (
         <button
@@ -77,7 +99,7 @@ export function CategorySheet() {
       )}
       <div className="mt-1">
         <Button
-          disabled={!selected || creating}
+          disabled={!selected || creating || blocked}
           icon={<Icon glyph={solo ? 'target' : forFriend ? 'send' : 'duel'} size={22} stroke={2.4} />}
           onClick={() => {
             if (!selected) return;
