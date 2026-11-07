@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { pointsFor, TIMINGS, type GameStateMeta, type GameView } from '@quiz-duel/shared';
-import { CREATE_LIMIT, GameManager, type InviteMaker } from '../src/game/manager.js';
+import { ALERT_DELAY_MS, CREATE_LIMIT, GameManager, type GameAlerts, type InviteMaker } from '../src/game/manager.js';
 import { memoryGamesRepo } from '../src/game/repo.js';
 import { loadQuestionBank } from '../src/questions/bank.js';
 import type { TelegramUser } from '../src/auth/initData.js';
@@ -13,7 +13,7 @@ const bank = loadQuestionBank();
 
 type Push = { userId: number; view: GameView; meta?: GameStateMeta };
 
-async function setup(options: { consent?: number[]; invites?: InviteMaker; repo?: ReturnType<typeof memoryGamesRepo> } = {}) {
+async function setup(options: { consent?: number[]; invites?: InviteMaker; repo?: ReturnType<typeof memoryGamesRepo>; alerts?: GameAlerts } = {}) {
   const users = memoryUsers();
   const repo = options.repo ?? memoryGamesRepo();
   const pushes: Push[] = [];
@@ -33,6 +33,7 @@ async function setup(options: { consent?: number[]; invites?: InviteMaker; repo?
     docsVersion: DOCS_VERSION,
     log: { error: () => {}, warn: () => {}, info: () => {} },
     invites: options.invites,
+    alerts: options.alerts,
     newId: () => `Game${String(++n).padStart(6, '0')}`,
   });
   managers.push(games);
@@ -391,6 +392,31 @@ describe('перезапуск сервера', () => {
     await second.games.restore();
     await vi.advanceTimersByTimeAsync(TIMINGS.countdownMs - 1_000);
     expect(repo.rows.get(id)!.state.phase).toBe('question');
+  });
+
+  it('выкатка посреди вопроса: оба переподключились за 2 с - бот никому не пишет «Вернитесь»', async () => {
+    const repo = memoryGamesRepo();
+    const first = await setup({ repo });
+    const id = await lobby(first.games);
+    await first.games.ready(A, id, true);
+    await first.games.ready(B, id, true);
+    await vi.advanceTimersByTimeAsync(TIMINGS.countdownMs + 100);
+    expect(repo.rows.get(id)!.state.phase).toBe('question');
+    // SIGTERM: отключения при остановке не записываются, игроки в снимке - на связи.
+    await first.games.shutdown();
+
+    const sent: number[] = [];
+    const second = await setup({ repo, alerts: { send: (userId) => void sent.push(userId) } });
+    await second.games.restore();
+    // Сразу после старта сервера все офлайн; клиенты возвращаются через секунду-другую, по одному.
+    await vi.advanceTimersByTimeAsync(1_000);
+    await second.games.connect(A);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await second.games.connect(B);
+    await vi.advanceTimersByTimeAsync(ALERT_DELAY_MS * 2);
+    // Раньше обоим уходило «Вернитесь за 30 секунд, иначе техническое поражение».
+    expect(sent).toEqual([]);
+    expect(repo.rows.get(id)!.state.phase).not.toBe('finished');
   });
 
   it('просроченные за время простоя фазы закрываются сразу', async () => {

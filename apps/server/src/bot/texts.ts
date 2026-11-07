@@ -133,6 +133,11 @@ function ruPlural(n: number, one: string, few: string, many: string) {
 const ru = (n: number) => String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
 const en = (n: number) => new Intl.NumberFormat('en-US').format(Math.abs(n));
 const signed = (d: number, fmt: (n: number) => string) => (d > 0 ? `+${fmt(d)}` : d < 0 ? `−${fmt(d)}` : '0');
+/**
+ * Сколько секунд осталось до until. Бот пишет не сразу (ALERT_DELAY_MS в менеджере), поэтому в тексте -
+ * настоящий остаток, а не «30 секунд». Без until - 30.
+ */
+const secondsLeft = (until: number | undefined) => (until === undefined ? 30 : Math.max(1, Math.round((until - Date.now()) / 1000)));
 
 /** Уведомления от бота: текст и подпись кнопки. Язык - получателя. */
 export const alertTexts: Record<Lang, { render: (a: GameAlert) => { text: string; button: string } }> = {
@@ -144,10 +149,17 @@ export const alertTexts: Record<Lang, { render: (a: GameAlert) => { text: string
           return { text: `⚔️ ${opp} принял ваш вызов и ждёт в лобби. Нажмите «Готов», чтобы начать.`, button: 'Открыть лобби' };
         case 'waitingLobby':
           return { text: `⏳ ${opp} готов и ждёт вас в лобби.`, button: 'Вернуться' };
-        case 'waitingGame':
-          return { text: `⏳ Партия идёт, ${opp} ждёт. Вернитесь за 30 секунд, иначе засчитают техническое поражение.`, button: 'Вернуться в партию' };
-        case 'rematch':
-          return { text: `🔁 ${opp} предлагает реванш. Ответить можно в течение 30 секунд.`, button: 'Ответить' };
+        case 'waitingGame': {
+          const n = secondsLeft(a.until);
+          return {
+            text: `⏳ Партия идёт, ${opp} ждёт. Вернитесь за ${n} ${ruPlural(n, 'секунду', 'секунды', 'секунд')}, иначе засчитают техническое поражение.`,
+            button: 'Вернуться в партию',
+          };
+        }
+        case 'rematch': {
+          const n = secondsLeft(a.until);
+          return { text: `🔁 ${opp} предлагает реванш. Ответить можно ещё ${n} ${ruPlural(n, 'секунду', 'секунды', 'секунд')}.`, button: 'Ответить' };
+        }
         case 'result': {
           const r = a.result!;
           const head =
@@ -170,10 +182,14 @@ export const alertTexts: Record<Lang, { render: (a: GameAlert) => { text: string
           return { text: `⚔️ ${opp} accepted your challenge and is waiting in the lobby. Tap “Ready” to start.`, button: 'Open lobby' };
         case 'waitingLobby':
           return { text: `⏳ ${opp} is ready and waiting for you in the lobby.`, button: 'Return' };
-        case 'waitingGame':
-          return { text: `⏳ Your game is on and ${opp} is waiting. Come back within 30 seconds or it counts as a technical loss.`, button: 'Back to the game' };
-        case 'rematch':
-          return { text: `🔁 ${opp} wants a rematch. You have 30 seconds to answer.`, button: 'Answer' };
+        case 'waitingGame': {
+          const n = secondsLeft(a.until);
+          return { text: `⏳ Your game is on and ${opp} is waiting. Come back within ${n} ${n === 1 ? 'second' : 'seconds'} or it counts as a technical loss.`, button: 'Back to the game' };
+        }
+        case 'rematch': {
+          const n = secondsLeft(a.until);
+          return { text: `🔁 ${opp} wants a rematch. You have ${n} ${n === 1 ? 'second' : 'seconds'} to answer.`, button: 'Answer' };
+        }
         case 'result': {
           const r = a.result!;
           const head =

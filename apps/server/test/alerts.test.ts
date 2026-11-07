@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { TIMINGS } from '@quiz-duel/shared';
-import type { GameAlert, GameAlerts } from '../src/game/manager.js';
+import { ALERT_DELAY_MS, type GameAlert, type GameAlerts } from '../src/game/manager.js';
 import { botAlerts, type AlertApi } from '../src/bot/alerts.js';
 import { cardMedia } from '../src/bot/cards.js';
 import { ilya, lobby, mark, player, playOut, start, stateWhere, until, world } from './socketWorld.js';
@@ -27,6 +27,9 @@ describe('Этап 8: когда бот пишет игроку', () => {
     a.socket.disconnect();
     await until(() => !w.games.isOnline(ilya.id), 'Илья офлайн');
     await b.socket.emitWithAck('game:join', { gameId: created.game.id });
+    // Бот пишет не сразу: вдруг создатель сейчас вернётся (ALERT_DELAY_MS).
+    expect(c.sent).toEqual([]);
+    await w.clock.advance(ALERT_DELAY_MS);
     await until(() => c.sent.length > 0, 'уведомление');
     expect(c.sent).toEqual([{ userId: ilya.id, alert: { kind: 'joined', gameId: created.game.id, opponent: 'Марк' } }]);
 
@@ -36,6 +39,7 @@ describe('Этап 8: когда бот пишет игроку', () => {
     const a2 = await player(w2, ilya);
     const b2 = await player(w2, mark);
     await lobby(a2, b2);
+    await w2.clock.advance(ALERT_DELAY_MS);
     expect(c2.sent).toEqual([]);
   });
 
@@ -50,6 +54,7 @@ describe('Этап 8: когда бот пишет игроку', () => {
     await a.socket.emitWithAck('game:ready', { gameId, ready: true });
     await a.socket.emitWithAck('game:ready', { gameId, ready: false });
     await a.socket.emitWithAck('game:ready', { gameId, ready: true });
+    await w.clock.advance(ALERT_DELAY_MS);
     expect(c.kinds(mark.id)).toEqual(['waitingLobby']);
     expect(c.kinds(ilya.id)).toEqual([]);
   });
@@ -63,6 +68,8 @@ describe('Этап 8: когда бот пишет игроку', () => {
     await start(w, a, b, gameId);
     b.socket.disconnect();
     const off = await stateWhere(a, 'у Марка отсчёт', (v) => v.opponent?.graceEndsAt != null);
+    expect(c.sent).toEqual([]);
+    await w.clock.advance(ALERT_DELAY_MS);
     expect(c.sent).toEqual([{ userId: mark.id, alert: { kind: 'waitingGame', gameId, opponent: 'Илья', until: off.opponent!.graceEndsAt } }]);
 
     // Вернулся и снова ушёл - второй раз не пишем (иначе каждое моргание сети - сообщение).
@@ -73,6 +80,7 @@ describe('Этап 8: когда бот пишет игроку', () => {
     await stateWhere(a, 'Марк снова офлайн', (v) => v.opponent?.graceEndsAt != null && v.rev > revBack);
     await w.clock.advance(TIMINGS.reconnectGraceMs + 500);
     await stateWhere(a, 'техпобеда', (v) => v.phase === 'finished');
+    await w.clock.advance(ALERT_DELAY_MS);
     await until(() => c.kinds(mark.id).includes('result'), 'итог Марку');
     expect(c.kinds(mark.id)).toEqual(['waitingGame', 'result']);
     expect(c.sent.find((s) => s.alert.kind === 'result')!.alert.result).toMatchObject({ outcome: 'loss', technical: true, delta: expect.any(Number) });
@@ -92,6 +100,8 @@ describe('Этап 8: когда бот пишет игроку', () => {
 
     await a.socket.emitWithAck('rematch:offer', { gameId });
     b.socket.disconnect();
+    await until(() => !w.games.isOnline(mark.id), 'Марк офлайн');
+    await w.clock.advance(ALERT_DELAY_MS);
     await until(() => c.kinds(mark.id).includes('rematch'), 'реванш Марку');
     expect(c.sent.at(-1)!.alert).toMatchObject({ kind: 'rematch', gameId, opponent: 'Илья', until: expect.any(Number) });
 
@@ -116,11 +126,28 @@ describe('Этап 8: когда бот пишет игроку', () => {
     a.socket.disconnect();
     b.socket.disconnect();
     for (let i = 0; i < 12; i++) await w.clock.advance(TIMINGS.questionMs + TIMINGS.answerGraceMs + TIMINGS.revealMs);
+    await w.clock.advance(ALERT_DELAY_MS);
     await until(() => c.sent.filter((s) => s.alert.kind === 'result').length === 2, 'итоги обоим');
     const res = c.sent.filter((s) => s.alert.kind === 'result');
     expect(res.map((r) => r.userId).sort()).toEqual([ilya.id, mark.id].sort());
     expect(res[0]!.alert.result).toMatchObject({ technical: false, ratingAfter: expect.any(Number) });
   }, 20_000);
+
+  it('короткий обрыв: вернулся за 3 с - бот не пишет; соперник вернулся, пока ждали, - тоже', async () => {
+    const c = collector();
+    const w = await world({ alerts: c.alerts });
+    const a = await player(w, ilya);
+    const b = await player(w, mark);
+    const gameId = await lobby(a, b);
+    await start(w, a, b, gameId);
+    b.socket.disconnect();
+    const off = await stateWhere(a, 'у Марка отсчёт', (v) => v.opponent?.graceEndsAt != null);
+    await w.clock.advance(3_000);
+    await player(w, mark);
+    await stateWhere(a, 'Марк вернулся', (v) => v.opponent?.online === true && v.rev > off.rev);
+    await w.clock.advance(ALERT_DELAY_MS);
+    expect(c.sent).toEqual([]);
+  }, 15_000);
 
   it('сбой отправки не мешает партии', async () => {
     const w = await world({ alerts: { send: () => { throw new Error('boom'); } } });

@@ -205,6 +205,8 @@ interface Entry {
   settleAttempts: number;
   /** Какие уведомления по этой партии уже отправлены (kind:userId) - каждое не больше одного раза. */
   alerted: Set<string>;
+  /** Уведомления, которые ждут ALERT_DELAY_MS: вдруг игрок сейчас вернётся (kind:userId). */
+  alertsDue: Set<string>;
   /** Подготовленные карточки результата по игрокам (Telegram хранит их сутки). */
   shared: Map<number, Promise<PreparedInvite | null>>;
 }
@@ -215,6 +217,12 @@ export const CREATE_LIMIT = { max: 10, windowMs: 60_000 } as const;
 const KEEP_FINISHED_MS = 10 * 60_000;
 /** Запас, с которым переиспользуем подготовленное приглашение. */
 const INVITE_MARGIN_MS = 5 * 60_000;
+/**
+ * Через сколько после ухода игрока бот ему пишет. Короткий обрыв сети, смена Wi-Fi на мобильную сеть
+ * и перезапуск сервера при выкатке - клиент переподключается за несколько секунд, и сообщение
+ * «Вернитесь» в такие моменты было бы ложным. Отсчёт до технического поражения от этого не меняется.
+ */
+export const ALERT_DELAY_MS = 10_000;
 /** Повтор подсчёта итогов, если база не ответила: через 2, 4, 8… с, не больше 10 попыток. */
 const SETTLE_RETRY = { firstMs: 2_000, maxMs: 60_000, attempts: 10 } as const;
 
@@ -280,6 +288,8 @@ export class GameManager {
   /** Вызовы друзьям: id игры → кого вызвали (для встречного вызова). */
   private readonly challenges = new Map<string, number>();
   private readonly pairLocks = new Map<string, Promise<void>>();
+  /** Отложенные уведомления бота (ALERT_DELAY_MS). */
+  private readonly alertTimers = new Set<unknown>();
 
   constructor(private readonly d: ManagerDeps) {
     this.clock = d.clock ?? (d.now ? { ...realClock, now: d.now } : realClock);
@@ -345,6 +355,8 @@ export class GameManager {
     this.stopped = true;
     if (this.queueTimer) this.clock.clearTimeout(this.queueTimer);
     this.queueTimer = null;
+    for (const timer of this.alertTimers) this.clock.clearTimeout(timer);
+    this.alertTimers.clear();
     for (const entry of this.games.values()) {
       if (entry.timer) this.clock.clearTimeout(entry.timer);
       if (entry.evictTimer) this.clock.clearTimeout(entry.evictTimer);
@@ -1172,6 +1184,7 @@ export class GameManager {
       settleTimer: null,
       settleAttempts: 0,
       alerted: new Set(),
+      alertsDue: new Set(),
       shared: new Map(),
     };
     this.games.set(state.id, entry);
@@ -1244,55 +1257,100 @@ export class GameManager {
     this.alert(entry, step.events);
   }
 
-  /** Уведомления от бота после шага партии: только тем, у кого сейчас нет открытого приложения. */
+  /**
+   * Уведомления от бота после шага партии: только тем, у кого сейчас нет открытого приложения.
+   * Отправка - через ALERT_DELAY_MS и только если повод ещё в силе (игрок не вернулся, отсчёт идёт,
+   * реванш ещё ждёт): так короткий обрыв сети или выкатка сервера не дают ложного «Вернитесь».
+   */
   private alert(entry: Entry, events: GameEvent[]) {
-    const alerts = this.d.alerts;
-    if (!alerts || this.shuttingDown) return;
+    if (!this.d.alerts || this.shuttingDown) return;
     const s = entry.state;
     if (s.mode === 'solo') return;
-    const send = (userId: number, kind: AlertKind, extra: Partial<GameAlert> = {}) => {
-      const key = `${kind}:${userId}`;
-      if (entry.alerted.has(key) || this.isOnline(userId)) return;
-      entry.alerted.add(key);
-      const opp = machine.otherOf(s, userId);
-      const opponent = (opp && this.cardCache.get(opp.userId)?.name) ?? '';
-      try {
-        alerts.send(userId, { kind, gameId: s.id, opponent, ...extra });
-      } catch (error) {
-        this.d.log.warn({ err: error, gameId: s.id }, 'alert failed');
-      }
-    };
+    const kinds: [number, AlertKind][] = [];
 
-    if (events.some((e) => e.type === 'joined')) send(s.creator.userId, 'joined');
-
+    if (events.some((e) => e.type === 'joined')) kinds.push([s.creator.userId, 'joined']);
     // Соперник готов, а игрока нет: «Соперник ждёт - вернитесь».
     if (s.phase === 'lobby' && s.opponent) {
-      for (const p of machine.participants(s)) if (machine.otherOf(s, p.userId)?.ready) send(p.userId, 'waitingLobby');
+      for (const p of machine.participants(s)) if (machine.otherOf(s, p.userId)?.ready) kinds.push([p.userId, 'waitingLobby']);
     }
     // Посреди партии у пропавшего идёт отсчёт 30 с.
     if (ACTIVE_PHASES.includes(s.phase)) {
-      for (const p of machine.participants(s)) if (p.graceEndsAt !== null) send(p.userId, 'waitingGame', { until: p.graceEndsAt });
+      for (const p of machine.participants(s)) if (p.graceEndsAt !== null) kinds.push([p.userId, 'waitingGame']);
     }
     // Предложение реванша висит, а соперник закрыл приложение: бот зовёт его на итоги (30 с).
     if (s.phase === 'finished' && s.rematch?.status === 'offered') {
       const to = machine.otherOf(s, s.rematch.by);
-      if (to && !to.left) send(to.userId, 'rematch', { until: s.rematch.expiresAt });
+      if (to && !to.left) kinds.push([to.userId, 'rematch']);
     }
     if (s.phase === 'finished' && events.some((e) => e.type === 'finished')) {
-      for (const p of machine.participants(s)) {
-        const opp = machine.otherOf(s, p.userId);
-        const mine = s.settlement?.players.find((x) => x.userId === p.userId);
-        send(p.userId, 'result', {
+      for (const p of machine.participants(s)) kinds.push([p.userId, 'result']);
+    }
+
+    for (const [userId, kind] of kinds) {
+      const key = `${kind}:${userId}`;
+      if (entry.alerted.has(key) || entry.alertsDue.has(key) || this.isOnline(userId)) continue;
+      entry.alertsDue.add(key);
+      const timer = this.clock.setTimeout(() => {
+        this.alertTimers.delete(timer);
+        entry.alertsDue.delete(key);
+        this.sendAlert(entry, userId, kind);
+      }, ALERT_DELAY_MS);
+      (timer as { unref?: () => void } | null)?.unref?.();
+      this.alertTimers.add(timer);
+    }
+  }
+
+  /** Отложенное уведомление: отправить, если игрок так и не вернулся и повод ещё в силе. */
+  private sendAlert(entry: Entry, userId: number, kind: AlertKind) {
+    const alerts = this.d.alerts;
+    const key = `${kind}:${userId}`;
+    if (!alerts || this.stopped || this.shuttingDown || this.isOnline(userId) || entry.alerted.has(key)) return;
+    const alert = this.alertFor(entry.state, userId, kind);
+    if (!alert) return;
+    entry.alerted.add(key);
+    try {
+      alerts.send(userId, alert);
+    } catch (error) {
+      this.d.log.warn({ err: error, gameId: entry.state.id }, 'alert failed');
+    }
+  }
+
+  /** Текст уведомления по текущему состоянию партии; null - повод уже прошёл. */
+  private alertFor(s: GameState, userId: number, kind: AlertKind): GameAlert | null {
+    const me = machine.playerOf(s, userId);
+    if (!me) return null;
+    const opp = machine.otherOf(s, userId);
+    const base = { kind, gameId: s.id, opponent: (opp && this.cardCache.get(opp.userId)?.name) ?? '' };
+    switch (kind) {
+      case 'joined':
+        return OPEN_PHASES.includes(s.phase) && s.opponent && s.creator.userId === userId ? base : null;
+      case 'waitingLobby':
+        return s.phase === 'lobby' && opp?.ready ? base : null;
+      case 'waitingGame':
+        return ACTIVE_PHASES.includes(s.phase) && me.graceEndsAt !== null ? { ...base, until: me.graceEndsAt } : null;
+      case 'rematch': {
+        const r = s.rematch;
+        return s.phase === 'finished' && r?.status === 'offered' && r.by !== userId && !me.left && r.expiresAt > this.now()
+          ? { ...base, until: r.expiresAt }
+          : null;
+      }
+      case 'result': {
+        if (s.phase !== 'finished') return null;
+        const mine = s.settlement?.players.find((x) => x.userId === userId);
+        return {
+          ...base,
           result: {
-            outcome: machine.outcomeFor(s, p.userId) ?? 'draw',
+            outcome: machine.outcomeFor(s, userId) ?? 'draw',
             technical: s.finish?.reason !== 'completed',
-            me: p.score,
+            me: me.score,
             opp: opp?.score ?? 0,
             ratingAfter: mine?.after ?? null,
             delta: mine?.delta ?? null,
           },
-        });
+        };
       }
+      case 'friendInvite':
+        return null;
     }
   }
 
