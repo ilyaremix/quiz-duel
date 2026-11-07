@@ -125,6 +125,16 @@ describe.skipIf(!url)('друзья на Postgres', () => {
     expect(await friends.isFriend(B, A)).toBe(false);
   });
 
+  it('оба нажали «Добавить» одновременно - сразу дружба, без двух висящих заявок', async () => {
+    await played(A, B);
+    const results = await Promise.all([friends.request(A, B), friends.request(B, A)]);
+    expect(results.sort()).toEqual(['accepted', 'sent']);
+    expect(await friends.isFriend(A, B)).toBe(true);
+    expect(await friends.isFriend(B, A)).toBe(true);
+    expect((await friends.list(A, presence)).incoming).toEqual([]);
+    expect((await friends.list(B, presence)).incoming).toEqual([]);
+  });
+
   it('встречная заявка - сразу дружба; отказ удаляет заявку', async () => {
     await played(A, C);
     await played(B, C);

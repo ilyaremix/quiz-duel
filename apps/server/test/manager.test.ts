@@ -607,3 +607,30 @@ describe('партия: сдача и уход', () => {
     expect(state.creator.score).toBe(pointsFor(true, 2_000));
   });
 });
+
+describe('встречные вызовы друзей', () => {
+  it('оба вызвали друг друга одновременно - одна игра, оба в одном лобби', async () => {
+    const { games } = await setup();
+    await games.connect(A);
+    await games.connect(B);
+    const [ra, rb] = await Promise.all([games.challenge(A, B, 'science'), games.challenge(B, A, 'sport')]);
+    if (!ra.ok || !rb.ok) throw new Error('вызов не прошёл');
+    expect(ra.game.id).toBe(rb.game.id);
+    expect([ra.joined, rb.joined].sort()).toEqual([false, true]);
+    // Тема - того, кто вызвал первым; второй сразу в его лобби.
+    expect(ra.game.category).toBe('science');
+    expect((await games.sync(A, ra.game.id)).ok && (await games.sync(A, ra.game.id))).toMatchObject({ game: { phase: 'lobby' } });
+  });
+
+  it('друг уже вызвал меня и ждёт - мой вызов заводит в его лобби; вызов третьему - новая игра', async () => {
+    const { games } = await setup();
+    for (const id of [A, B, C]) await games.connect(id);
+    const first = await games.challenge(A, B, 'history');
+    if (!first.ok) throw new Error(first.error);
+    const back = await games.challenge(B, A, 'sport');
+    expect(back).toMatchObject({ ok: true, joined: true, game: { id: first.game.id, phase: 'lobby', category: 'history' } });
+    // A вызвал C, а C - не A: у C своя новая игра.
+    const other = await games.challenge(C, B, 'sport');
+    expect(other.ok && other.joined).toBe(false);
+  });
+});

@@ -276,6 +276,9 @@ export class GameManager {
   private shuttingDown = false;
   /** Темы «Микса» по игрокам - загружаются перед стартом партии (deps машины синхронные). */
   private readonly mixTopics = new Map<number, readonly Category[]>();
+  /** Вызовы друзьям: id игры → кого вызвали (для встречного вызова). */
+  private readonly challenges = new Map<string, number>();
+  private readonly pairLocks = new Map<string, Promise<void>>();
 
   constructor(private readonly d: ManagerDeps) {
     this.clock = d.clock ?? (d.now ? { ...realClock, now: d.now } : realClock);
@@ -494,6 +497,44 @@ export class GameManager {
     // Карточку для shareMessage готовим заранее, чтобы «Пригласить» срабатывало сразу.
     void this.invite(userId, state.id).catch(() => undefined);
     return { ok: true, game: this.viewOf(entry.state, userId)! };
+  }
+
+  /**
+   * Вызов другу из вкладки «Друзья». Если друг уже вызвал меня и ждёт в своём лобби - не создаём
+   * вторую игру, а заходим в его: иначе при встречных вызовах каждый сидел в своём лобби, а принятие
+   * чужого вызова отменяло своё - и оба «слетали». Вызовы одной пары идут строго по очереди.
+   */
+  async challenge(userId: number, friendId: number, category: GameCategory, rules?: GameRules): Promise<Result<{ game: GameView; joined: boolean }>> {
+    const key = userId < friendId ? `${userId}:${friendId}` : `${friendId}:${userId}`;
+    const prev = this.pairLocks.get(key) ?? Promise.resolve();
+    const run = prev.then(async (): Promise<Result<{ game: GameView; joined: boolean }>> => {
+      const theirsId = this.current.get(friendId);
+      const theirs = theirsId ? this.games.get(theirsId) : undefined;
+      if (
+        theirsId &&
+        theirs &&
+        this.challenges.get(theirsId) === userId &&
+        theirs.state.creator.userId === friendId &&
+        theirs.state.phase === 'waiting' &&
+        !theirs.state.opponent
+      ) {
+        const joined = await this.join(userId, theirsId);
+        if (joined.ok) return { ok: true, game: joined.game, joined: true };
+      }
+      const created = await this.create(userId, category, rules);
+      if (!created.ok) return created;
+      this.challenges.set(created.game.id, friendId);
+      return { ok: true, game: created.game, joined: false };
+    });
+    const tail = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.pairLocks.set(key, tail);
+    void tail.then(() => {
+      if (this.pairLocks.get(key) === tail) this.pairLocks.delete(key);
+    });
+    return run;
   }
 
   /**
@@ -1388,6 +1429,7 @@ export class GameManager {
     entry.evictTimer = this.clock.setTimeout(() => {
       if (FINAL_PHASES.includes(entry.state.phase) && this.games.get(entry.state.id) === entry) {
         this.games.delete(entry.state.id);
+        this.challenges.delete(entry.state.id);
         for (const [userId, id] of this.lastResults) if (id === entry.state.id) this.lastResults.delete(userId);
         for (const [userId, id] of this.missedResults) if (id === entry.state.id) this.missedResults.delete(userId);
       }

@@ -144,18 +144,32 @@ export function createPrismaFriendsRepo(prisma: PrismaClient): FriendsRepo {
       if (userId === targetId) return 'not_allowed';
       const target = await prisma.user.findUnique({ where: { id: BigInt(targetId) }, select: { id: true } });
       if (!target) return 'not_found';
-      const mine = await prisma.friend.findUnique({ where: { userId_friendId: { userId: BigInt(userId), friendId: BigInt(targetId) } } });
-      if (mine?.status === 'accepted') return 'already';
-      // Он уже звал меня - встречная заявка и есть согласие.
-      const theirs = await prisma.friend.findUnique({ where: { userId_friendId: { userId: BigInt(targetId), friendId: BigInt(userId) } } });
-      if (theirs?.status === 'pending') {
-        await befriend(userId, targetId, theirs.via);
-        return 'accepted';
+      if (!(await playedTogether(userId, targetId))) {
+        const mine = await prisma.friend.findUnique({ where: { userId_friendId: { userId: BigInt(userId), friendId: BigInt(targetId) } } });
+        if (mine?.status === 'accepted') return 'already';
+        return 'not_allowed';
       }
-      if (mine?.status === 'pending') return 'sent';
-      if (!(await playedTogether(userId, targetId))) return 'not_allowed';
-      await prisma.friend.create({ data: { userId: BigInt(userId), friendId: BigInt(targetId), status: 'pending', via: 'request' } });
-      return 'sent';
+      // Заявки одной пары - строго по очереди (блокировка на пару до конца транзакции): если оба
+      // нажали «Добавить» одновременно, второй увидит заявку первого, и это сразу дружба,
+      // а не две встречные заявки, которые висят у обоих.
+      const [lo, hi] = userId < targetId ? [userId, targetId] : [targetId, userId];
+      return prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`friend:${lo}:${hi}`}))`;
+        const key = (a: number, b: number) => ({ userId_friendId: { userId: BigInt(a), friendId: BigInt(b) } });
+        const mine = await tx.friend.findUnique({ where: key(userId, targetId) });
+        if (mine?.status === 'accepted') return 'already' as const;
+        // Он уже звал меня - встречная заявка и есть согласие.
+        const theirs = await tx.friend.findUnique({ where: key(targetId, userId) });
+        if (theirs?.status === 'pending' || theirs?.status === 'accepted') {
+          const via = theirs.via;
+          await tx.friend.upsert({ where: key(userId, targetId), create: { userId: BigInt(userId), friendId: BigInt(targetId), status: 'accepted', via }, update: { status: 'accepted' } });
+          await tx.friend.upsert({ where: key(targetId, userId), create: { userId: BigInt(targetId), friendId: BigInt(userId), status: 'accepted', via }, update: { status: 'accepted' } });
+          return 'accepted' as const;
+        }
+        if (mine?.status === 'pending') return 'sent' as const;
+        await tx.friend.create({ data: { userId: BigInt(userId), friendId: BigInt(targetId), status: 'pending', via: 'request' } });
+        return 'sent' as const;
+      });
     },
 
     async respond(userId, fromId, accept) {
