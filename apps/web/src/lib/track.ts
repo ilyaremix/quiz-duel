@@ -45,6 +45,8 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flush(true);
   });
+  // Закрытие мини-аппа не всегда успевает дать visibilitychange - дошлём и на pagehide.
+  window.addEventListener('pagehide', () => flush(true));
 }
 
 /** Экран открыт: считается при появлении и при смене key (например, новая партия). */
