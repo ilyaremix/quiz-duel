@@ -94,11 +94,11 @@ export function Achievement({ code, state, layout = 'row', current = 0, goal = 1
           progress
         ) : (
           <span
-            className="mt-auto flex items-center gap-1 text-[12px] font-semibold"
+            className="mt-auto flex items-center justify-center gap-1 text-center text-[12px] leading-[1.25] font-semibold"
             style={{ color: fresh ? 'var(--qd-gold-text)' : 'var(--qd-correct-text)' }}
           >
             <Icon glyph="check" size={12} stroke={3.5} />
-            {fresh ? t('ach.newBadge') : t('ach.got')}
+            {fresh ? t('ach.tileNew') : t('ach.got')}
           </span>
         )}
       </div>

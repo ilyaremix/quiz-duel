@@ -227,7 +227,15 @@ export function ItemSheet({ me }: { me: MeResponse }) {
                 disabled={passReady}
                 onClick={() => void shop.watchAd('topic', { topic: item.id as never })}
               >
-                {passReady ? t('s04.pass') : `${t('s33.once.t')} · ${t('s33.once.a')}`}
+                {passReady ? (
+                  t('s04.pass')
+                ) : (
+                  // На узком экране (320 px) целиком не влезает - остаётся «Смотреть рекламу».
+                  <>
+                    <span className="hidden min-[360px]:inline">{`${t('s33.once.t')} · `}</span>
+                    {t('s33.once.a')}
+                  </>
+                )}
               </Button>
             )}
             <Button icon={<Icon glyph={mainGlyph} size={22} stroke={2.4} />} disabled={mainDisabled || pending} onClick={onMain}>

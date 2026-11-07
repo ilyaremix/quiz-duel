@@ -564,6 +564,7 @@
   },
   "ach": {
     "newBadge": "New achievement!",
+    "tileNew": "New achievement!",
     "got": "Unlocked",
     "progress": "Progress",
     "first_blood": {
