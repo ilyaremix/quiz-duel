@@ -270,8 +270,8 @@ describe('этап 8: уведомления от бота - POST /api/settings 
 
   it('выключить уведомления и отметить разрешение; id - только из initData; мусор - 400; без initData - 401', async () => {
     const { app, users } = await makeApp();
-    expect((await post(app, { notifications: false })).json()).toEqual({ notifications: false, writeAccess: false });
-    expect((await post(app, { writeAccess: true })).json()).toEqual({ notifications: false, writeAccess: true });
+    expect((await post(app, { notifications: false })).json()).toMatchObject({ notifications: false, writeAccess: false });
+    expect((await post(app, { writeAccess: true })).json()).toMatchObject({ notifications: false, writeAccess: true });
     expect(users.rows.get(ilya.id)).toMatchObject({ notifications: false, writeAccess: true });
     expect((await post(app, {})).statusCode).toBe(400);
     expect((await post(app, { writeAccess: false })).statusCode).toBe(400);

@@ -28,7 +28,15 @@ async function main() {
     botUsername = bot.botInfo.username;
   }
 
-  const app = await buildApp({ env, users, stats: createPrismaStatsRepo(prisma), botUsername });
+  // Менеджер партий создаётся после HTTP (ему нужен логгер приложения), поэтому ссылка - через переменную.
+  let gamesRef: GameManager | null = null;
+  const app = await buildApp({
+    env,
+    users,
+    stats: createPrismaStatsRepo(prisma),
+    botUsername,
+    onSettingsChanged: (userId) => gamesRef?.userChanged(userId),
+  });
 
   // Таблица questions всегда совпадает с data/questions.json из этой сборки
   // (до восстановления партий: их ответы ссылаются на вопросы).
@@ -50,6 +58,7 @@ async function main() {
     sharer: bot ? botResults(bot) : undefined,
     clock: realClock,
   });
+  gamesRef = games;
   // Партии, шедшие до перезапуска, поднимаются из базы; просроченные фазы закрываются сразу.
   const restored = await games.restore();
   app.log.info({ restored }, 'games restored');

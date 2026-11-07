@@ -1,6 +1,6 @@
 import { signInitData, type TelegramUser } from '../src/auth/initData.js';
 import { resolveLang } from '@quiz-duel/shared';
-import { telegramProfile, type ConsentInput, type UserCard, type UserRecord, type UsersRepo } from '../src/users.js';
+import { settingsOf, telegramProfile, type ConsentInput, type UserCard, type UserRecord, type UsersRepo } from '../src/users.js';
 import type { AppDeps } from '../src/http/app.js';
 
 export const BOT_TOKEN = '1234567890:AAH-test-token-for-unit-tests-only_xyz';
@@ -99,7 +99,7 @@ export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord>; cons
       const r = rows.get(id);
       if (!r) return null;
       Object.assign(r, patch);
-      return { notifications: r.notifications, writeAccess: r.writeAccess };
+      return settingsOf(r);
     },
   };
 }

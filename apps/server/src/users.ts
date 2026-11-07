@@ -1,4 +1,5 @@
 import {
+  langFromTelegram,
   resolveLang,
   type ConsentDoc,
   type Lang,
@@ -6,6 +7,7 @@ import {
   type MeResponse,
   type MotionSetting,
   type PlayerProfile,
+  type SettingsResponse,
 } from '@quiz-duel/shared';
 import type { PrismaClient } from './generated/prisma/client.js';
 import type { TelegramUser } from './auth/initData.js';
@@ -46,6 +48,24 @@ export interface UserCard extends PlayerProfile {
   docsVersion: string | null;
 }
 
+/** Что меняет POST /api/settings (только переданные поля). */
+export interface SettingsPatch {
+  notifications?: boolean;
+  writeAccess?: boolean;
+  language?: LangSetting;
+}
+
+/** Настройки из строки игрока в том виде, в каком их отдаёт API. */
+export function settingsOf(row: { notifications: boolean; writeAccess: boolean; language: LangSetting; tgLanguage: string | null }): SettingsResponse {
+  return {
+    notifications: row.notifications,
+    writeAccess: row.writeAccess,
+    language: row.language,
+    lang: resolveLang(row.language, row.tgLanguage),
+    autoLang: langFromTelegram(row.tgLanguage),
+  };
+}
+
 export interface ConsentInput {
   userId: number;
   docs: ConsentDoc[];
@@ -68,7 +88,7 @@ export interface UsersRepo {
   /** Бот может (или больше не может) писать игроку. */
   setWriteAccess(id: number, allowed: boolean): Promise<void>;
   /** Настройки игрока; возвращает итоговые значения. null - игрока нет. */
-  updateSettings(id: number, patch: { notifications?: boolean; writeAccess?: boolean }): Promise<{ notifications: boolean; writeAccess: boolean } | null>;
+  updateSettings(id: number, patch: SettingsPatch): Promise<SettingsResponse | null>;
 }
 
 /** Длины как в Telegram, плюс запас; защищает базу от мусора в initData. */
@@ -160,7 +180,11 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
     async updateSettings(id, patch) {
       const done = await prisma.user.updateMany({ where: { id: BigInt(id) }, data: patch });
       if (done.count === 0) return null;
-      return prisma.user.findUniqueOrThrow({ where: { id: BigInt(id) }, select: { notifications: true, writeAccess: true } });
+      const row = await prisma.user.findUniqueOrThrow({
+        where: { id: BigInt(id) },
+        select: { notifications: true, writeAccess: true, language: true, tgLanguage: true },
+      });
+      return settingsOf(row);
     },
     async ping() {
       try {
@@ -182,6 +206,7 @@ export function toMeResponse(user: UserRecord, docsVersion: string, serverNow = 
     photoUrl: user.photoUrl,
     language: user.language,
     lang: resolveLang(user.language, user.tgLanguage),
+    autoLang: langFromTelegram(user.tgLanguage),
     reducedMotion: user.reducedMotion,
     rating: user.rating,
     games: user.games,

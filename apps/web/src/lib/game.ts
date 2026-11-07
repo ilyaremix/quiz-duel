@@ -81,6 +81,8 @@ interface GameStore {
   oppSheet: number | null;
   /** Открыт экран ачивок (из профиля). */
   achievements: boolean;
+  /** Открыт экран настроек (с главной). */
+  settings: boolean;
   /** Последняя реакция каждого игрока текущей партии (пузырь у аватарки). */
   bubbles: Record<number, { id: number; emoji: Reaction; at: number }>;
   /** До какого времени строка реакций неактивна (кулдаун 2 с). */
@@ -110,6 +112,7 @@ export const useGame = create<GameStore>(() => ({
   review: null,
   oppSheet: null,
   achievements: false,
+  settings: false,
   bubbles: {},
   reactUntil: 0,
   search: null,
@@ -543,7 +546,7 @@ export const gameActions = {
   },
 
   setTab(tab: Tab) {
-    set({ tab, review: null, achievements: false });
+    set({ tab, review: null, achievements: false, settings: false });
     window.scrollTo(0, 0);
   },
 
@@ -570,6 +573,15 @@ export const gameActions = {
 
   closeAchievements() {
     set({ achievements: false });
+  },
+
+  openSettings() {
+    set({ settings: true });
+    window.scrollTo(0, 0);
+  },
+
+  closeSettings() {
+    set({ settings: false });
   },
 
   // -------------------------------------------------------------------------

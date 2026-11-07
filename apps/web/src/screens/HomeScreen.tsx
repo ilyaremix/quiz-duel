@@ -10,7 +10,7 @@ import { MatchRow } from '../components/MatchRow';
 import { TabDock } from '../components/TabDock';
 import { formatNumber } from '../i18n';
 import { api, queryKeys } from '../lib/api';
-import { gameActions, showToast, useGame } from '../lib/game';
+import { gameActions, useGame } from '../lib/game';
 
 function ModeCard({ glyph, tone, title, hint, onPress }: { glyph: IconGlyph; tone: 'brand' | 'gold'; title: string; hint: string; onPress: () => void }) {
   return (
@@ -40,7 +40,6 @@ export function HomeScreen({ me }: { me: MeResponse }) {
   const { t, i18n } = useTranslation();
   const game = useGame((s) => s.game);
   const hidden = useGame((s) => s.hidden);
-  const soon = () => showToast('info', 'toast.soon');
   const profile = useQuery({ queryKey: queryKeys.profile, queryFn: api.profile });
   const stats = profile.data?.stats;
   const recent = profile.data?.matches.slice(0, 3) ?? [];
@@ -76,7 +75,7 @@ export function HomeScreen({ me }: { me: MeResponse }) {
           <button
             type="button"
             aria-label={t('s03.settings')}
-            onClick={soon}
+            onClick={gameActions.openSettings}
             className="qd-press flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-0 bg-section p-0 text-hint"
           >
             <Icon glyph="settings" size={22} />

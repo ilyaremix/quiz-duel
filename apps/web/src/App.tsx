@@ -29,6 +29,7 @@ import { OppSheet } from './screens/OppSheet';
 import { AchievementsScreen } from './screens/AchievementsScreen';
 import { SoloResultScreen } from './screens/SoloResultScreen';
 import { SearchScreen } from './screens/SearchScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
 
 /** Вне Telegram: заглушка с кнопкой, ведущей в мини-апп (адрес отдаёт сервер). */
 function OutsideTelegram() {
@@ -103,7 +104,9 @@ function TabsRoute({ me }: { me: MeResponse }) {
   const tab = useGame((s) => s.tab);
   const review = useGame((s) => s.review);
   const achievements = useGame((s) => s.achievements);
+  const settings = useGame((s) => s.settings);
   if (review) return <ReviewScreen gameId={review} />;
+  if (settings && tab === 'home') return <SettingsScreen me={me} />;
   if (achievements && tab === 'profile') return <AchievementsScreen />;
   if (tab === 'rating') return <LeaderboardScreen me={me} />;
   if (tab === 'profile') return <ProfileScreen me={me} />;

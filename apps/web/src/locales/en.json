@@ -73,7 +73,6 @@
     "cancelled": "Game cancelled",
     "slotFreed": "Your opponent didn’t come back - the seat is free again",
     "oppLeft": "{{opp}} left the lobby - the seat is free again",
-    "soon": "Coming in one of the next updates",
     "connection": "No connection to the server - try again",
     "rmAccepted": "Rematch accepted - let’s go!",
     "rmGone": "Your opponent has already left",
@@ -81,7 +80,8 @@
     "ach": "New achievement: {{name}}",
     "achMany": "New achievements: {{name}} and {{n}} more",
     "shared": "Result card sent to the chat",
-    "copiedResult": "Result copied"
+    "copiedResult": "Result copied",
+    "settingsFailed": "Couldn’t save the setting - check your connection"
   },
   "banner": {
     "resume": {
@@ -555,5 +555,20 @@
     "create": "Create duel",
     "training": "Practice",
     "retry": "Search again"
+  },
+  "s20": {
+    "title": "Settings",
+    "lang": "Language",
+    "auto": "Auto",
+    "langAuto": "Auto follows your Telegram language, now {{name}}. Questions use it too",
+    "langFixed": "The interface and questions use this language on all your devices",
+    "langNames": {
+      "ru": "Russian",
+      "en": "English"
+    },
+    "native": {
+      "ru": "Русский",
+      "en": "English"
+    }
   }
 }

@@ -51,6 +51,8 @@ export interface MeResponse {
   language: LangSetting;
   /** Итоговый язык с учётом настройки и language_code из Telegram. */
   lang: Lang;
+  /** Каким был бы язык при «Авто» - по language_code из Telegram (подсказка в настройках). */
+  autoLang: Lang;
   reducedMotion: MotionSetting;
   rating: number;
   games: number;
@@ -252,14 +254,23 @@ export interface AchievementsResponse {
 // ---------------------------------------------------------------------------
 // Этап 8: уведомления от бота
 
-/** POST /api/settings - настройки игрока (этап 8: уведомления; остальное - этап 9). */
+/**
+ * POST /api/settings - настройки игрока. Хранятся на сервере, поэтому действуют на всех устройствах.
+ * Передаются только изменённые поля; ответ - все настройки после сохранения.
+ */
 export interface SettingsRequest {
   notifications?: boolean;
   /** Игрок разрешил боту писать (requestWriteAccess в мини-аппе вернул allowed). */
   writeAccess?: true;
+  /** Язык интерфейса и вопросов: «Авто» (по Telegram) или явный выбор. */
+  language?: LangSetting;
 }
 
 export interface SettingsResponse {
   notifications: boolean;
   writeAccess: boolean;
+  language: LangSetting;
+  /** Итоговый язык после сохранения. */
+  lang: Lang;
+  autoLang: Lang;
 }

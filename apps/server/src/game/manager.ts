@@ -355,6 +355,25 @@ export class GameManager {
     return (this.online.get(userId) ?? 0) > 0;
   }
 
+  /**
+   * Игрок поменял язык в настройках: перечитываем его карточку и пересылаем ему снимок
+   * текущей партии и итогов, где он ещё сидит, - вопрос и варианты придут уже на новом языке.
+   * Соперник ничего не получает: его язык не менялся. Снимок не меняет rev и состояние партии.
+   */
+  async userChanged(userId: number): Promise<void> {
+    await this.refreshCards([userId]);
+    const ids = new Set([this.current.get(userId), this.lastResults.get(userId)].filter((id): id is string => Boolean(id)));
+    for (const id of ids) {
+      const entry = this.games.get(id);
+      if (!entry) continue;
+      // Через очередь партии: снимок не обгонит параллельный переход фазы.
+      await this.run(entry, async () => {
+        const view = this.viewOf(entry.state, userId);
+        if (view) this.d.notify.state(userId, view);
+      });
+    }
+  }
+
   currentGameOf(userId: number): string | null {
     return this.current.get(userId) ?? null;
   }

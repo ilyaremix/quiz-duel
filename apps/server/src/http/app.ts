@@ -36,6 +36,11 @@ export interface AppDeps {
   /** Профиль, лидерборд, разбор (без него маршруты этапа 7 не регистрируются - тесты авторизации). */
   stats?: StatsRepo;
   botUsername: string;
+  /**
+   * Игрок поменял настройку, от которой зависит то, что ему шлёт игровой сервер (язык):
+   * идущая партия пересылается ему на новом языке.
+   */
+  onSettingsChanged?: (userId: number) => Promise<void> | void;
   /** false - без логов (тесты). */
   logger?: FastifyServerOptions['logger'];
 }
@@ -47,7 +52,7 @@ export function parseTrustProxy(value: string): string[] {
     .filter(Boolean);
 }
 
-export async function buildApp({ env, users, stats, botUsername, logger }: AppDeps) {
+export async function buildApp({ env, users, stats, botUsername, onSettingsChanged, logger }: AppDeps) {
   const app = Fastify({
     logger: logger ?? {
       level: env.LOG_LEVEL,
@@ -145,7 +150,8 @@ export async function buildApp({ env, users, stats, botUsername, logger }: AppDe
     return { ok: true, docsVersion: env.DOCS_VERSION } satisfies ConsentResponse;
   });
 
-  // Настройки игрока. Этап 8: уведомления от бота и разрешение писать (requestWriteAccess).
+  // Настройки игрока: уведомления, разрешение писать (requestWriteAccess), язык.
+  // Хранятся на сервере - действуют на всех устройствах игрока.
   app.post('/api/settings', { onRequest: auth }, async (request, reply) => {
     const parsed = SettingsRequestSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: 'bad_request' } satisfies ApiError);
@@ -153,6 +159,14 @@ export async function buildApp({ env, users, stats, botUsername, logger }: AppDe
     await users.upsertFromTelegram(tgUser);
     const saved = await users.updateSettings(tgUser.id, parsed.data);
     if (!saved) return reply.code(404).send({ error: 'not_found' } satisfies ApiError);
+    if (parsed.data.language !== undefined && onSettingsChanged) {
+      // Сбой пересылки партии не должен ломать сохранение настройки: клиент и так запросит снимок.
+      try {
+        await onSettingsChanged(tgUser.id);
+      } catch (error) {
+        request.log.warn({ err: error }, 'settings push failed');
+      }
+    }
     return saved satisfies SettingsResponse;
   });
 
