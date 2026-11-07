@@ -86,6 +86,15 @@ export interface HealthResponse {
   ok: boolean;
   db: boolean;
   uptimeSec: number;
+  /**
+   * Бот: опрашивает Telegram (polling), только запускается (starting), перезапускает опрос
+   * после сбоя (restarting) или выключен (off). Не влияет на ok: игра работает и без бота.
+   */
+  bot?: 'starting' | 'polling' | 'restarting' | 'off';
+  /** Сколько раз опрос Telegram перезапускался после сбоя с запуска сервера. */
+  botRestarts?: number;
+  /** Сколько секунд назад от Telegram пришло последнее обновление (null - ещё ни одного). */
+  botUpdateAgoSec?: number | null;
 }
 
 /** Коды ошибок REST и сокета. */

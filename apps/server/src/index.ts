@@ -5,7 +5,7 @@ import { createPrismaUsersRepo } from './users.js';
 import { createPrismaStatsRepo } from './stats.js';
 import { buildApp } from './http/app.js';
 import { attachSocket, socketNotifier, socketPush, type IoServer } from './socket.js';
-import { attachInline, botInvites, botResults, configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
+import { attachInline, botHealth, botInvites, botResults, configureBot, createBot, startBot, type BotTrouble, type QuizBot } from './bot/index.js';
 import { botAlerts } from './bot/alerts.js';
 import { cardMedia } from './bot/cards.js';
 import { dailyReminders } from './bot/reminders.js';
@@ -34,7 +34,7 @@ async function main() {
   let bot: QuizBot | null = null;
   let botUsername = 'quiz_duel_bot';
   if (env.BOT_ENABLED) {
-    bot = await createBot(env.BOT_TOKEN, env.WEB_APP_URL, users);
+    bot = await createBot(env.BOT_TOKEN, env.WEB_APP_URL, users, { termsUrl: env.TERMS_URL, privacyUrl: env.PRIVACY_URL });
     botUsername = bot.botInfo.username;
   }
 
@@ -46,6 +46,18 @@ async function main() {
   await economy.ensureTasks();
   const friends = createPrismaFriendsRepo(prisma);
   const adminIds = adminIdsOf(env);
+  // Сбои бота (упал опрос Telegram, не прошёл inline-запрос) - сообщением владельцу,
+  // не чаще раза в полчаса на каждый вид: без доступа к журналу сервера сразу видно, что случилось.
+  const ownerChat = Number(env.DEPLOY_NOTIFY_CHAT_ID.trim()) || [...adminIds][0] || 0;
+  const troubleAt = new Map<string, number>();
+  const trouble: BotTrouble = (kind, detail) => {
+    if (!bot || !ownerChat) return;
+    const at = Date.now();
+    if (at - (troubleAt.get(kind) ?? 0) < 30 * 60_000) return;
+    troubleAt.set(kind, at);
+    const head = kind === 'polling' ? '⚠️ Quiz Duel: бот потерял связь с Telegram и сам перезапускает опрос.' : '⚠️ Quiz Duel: inline-запрос не прошёл.';
+    void bot.api.sendMessage(ownerChat, `${head}\n${detail}`, { link_preview_options: { is_disabled: true } }).catch(() => undefined);
+  };
   const channels = bot ? botChannels(bot.api, () => logRef) : undefined;
   const admin = createAdminRepo({
     prisma,
@@ -56,6 +68,7 @@ async function main() {
     appUrl: `https://t.me/${botUsername}/${env.APP_SHORT_NAME}`,
   });
   let io: IoServer | null = null;
+  let poller: ReturnType<typeof startBot> | null = null;
   const push = socketPush(() => io);
   const app = await buildApp({
     env,
@@ -73,6 +86,7 @@ async function main() {
     },
     botUsername,
     onSettingsChanged: (userId) => gamesRef?.userChanged(userId),
+    botStatus: bot ? botHealth : undefined,
   });
   logRef = app.log;
 
@@ -139,7 +153,7 @@ async function main() {
   await app.listen({ host: env.HOST, port: env.PORT });
 
   if (bot) {
-    attachInline(bot, games, users, env.WEB_APP_URL, app.log);
+    attachInline(bot, games, users, env.WEB_APP_URL, app.log, trouble);
     // /admin - кнопка, открывающая админку (только админам; остальным бот молчит про неё).
     bot.command('admin', async (ctx) => {
       if (!ctx.from || !adminIds.has(ctx.from.id)) return;
@@ -155,7 +169,7 @@ async function main() {
       app.log,
     );
     await configureBot(bot, env.WEB_APP_URL, app.log);
-    startBot(bot, app.log);
+    poller = startBot(bot, app.log, trouble);
     // Напоминание о ежедневной награде: проход раз в 5 минут, пишет только вечером по Москве.
     const reminders = dailyReminders({ prisma, users, api: bot.api, cards, appUrl, log: app.log });
     const remind = () =>
@@ -172,7 +186,7 @@ async function main() {
     stopping = true;
     app.log.info({ signal }, 'shutting down');
     try {
-      await bot?.stop();
+      await poller?.stop();
       // Сначала партии: таймеры стоп, начатые изменения дописываются в базу. Отключения
       // сокетов при остановке - не уход игроков, отсчёт до техпоражения из-за выкатки не пойдёт.
       await games.shutdown();

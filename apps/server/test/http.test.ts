@@ -5,9 +5,9 @@ import { DOCS_VERSION, ilya, makeInitData, memoryUsers, testEnv } from './helper
 
 const apps: Array<Awaited<ReturnType<typeof buildApp>>> = [];
 
-async function makeApp() {
+async function makeApp(extra: Partial<Parameters<typeof buildApp>[0]> = {}) {
   const users = memoryUsers();
-  const app = await buildApp({ env: testEnv(), users, botUsername: 'quizduel_test_bot', logger: false });
+  const app = await buildApp({ env: testEnv(), users, botUsername: 'quizduel_test_bot', logger: false, ...extra });
   apps.push(app);
   return { app, users };
 }
@@ -87,7 +87,16 @@ describe('публичные маршруты', () => {
     const { app } = await makeApp();
     const res = await app.inject({ method: 'GET', url: '/api/health' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ ok: true, db: true });
+    // Без бота (тесты, локальная вёрстка) - «off».
+    expect(res.json()).toMatchObject({ ok: true, db: true, bot: 'off', botUpdateAgoSec: null });
+  });
+
+  it('GET /api/health показывает, жив ли опрос Telegram', async () => {
+    const at = Date.now() - 42_000;
+    const { app } = await makeApp({ botStatus: () => ({ state: 'polling', restarts: 1, lastUpdateAt: at }) });
+    const body = (await app.inject({ method: 'GET', url: '/api/health' })).json();
+    expect(body).toMatchObject({ ok: true, bot: 'polling', botRestarts: 1 });
+    expect(body.botUpdateAgoSec).toBeGreaterThanOrEqual(41);
   });
 
   it('GET /api/config отдаёт ссылку на мини-апп', async () => {

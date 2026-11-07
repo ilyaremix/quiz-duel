@@ -19,6 +19,34 @@ export const botTexts: Record<Lang, { start: string; play: string; startCommand:
   },
 };
 
+/** Команды /paysupport (помощь с оплатой звёздами - её требует Telegram) и /terms. */
+export const supportTexts: Record<Lang, { pay: string; payCommand: string; terms: string; termsCommand: string; termsButton: string; privacyButton: string }> = {
+  ru: {
+    pay:
+      '💳 Помощь с оплатой\n\n' +
+      'Если покупка за звёзды не пришла, списалась дважды или что-то пошло не так, напишите @ilyaremix. ' +
+      'Укажите, что покупали и когда, и приложите ID операции: Telegram → Настройки → Мои звёзды → нужная покупка.\n\n' +
+      'Отвечаем в течение 24 часов. Если товар не выдан, вернём звёзды.',
+    payCommand: 'Помощь с оплатой',
+    terms: 'Правила использования и Политика конфиденциальности Quiz Duel:',
+    termsCommand: 'Правила и конфиденциальность',
+    termsButton: 'Правила использования',
+    privacyButton: 'Политика конфиденциальности',
+  },
+  en: {
+    pay:
+      '💳 Payment support\n\n' +
+      'If a Stars purchase did not arrive, was charged twice or something else went wrong, message @ilyaremix. ' +
+      'Tell us what you bought and when, and attach the transaction ID: Telegram → Settings → My Stars → the purchase.\n\n' +
+      'We reply within 24 hours. If the item was not delivered, we refund the Stars.',
+    payCommand: 'Payment support',
+    terms: 'Quiz Duel Terms of Use and Privacy Policy:',
+    termsCommand: 'Terms and privacy',
+    termsButton: 'Terms of Use',
+    privacyButton: 'Privacy Policy',
+  },
+};
+
 /** Карточка «Вызов на дуэль» для shareMessage. Язык - создателя игры. */
 export const inviteTexts: Record<
   Lang,

@@ -83,6 +83,8 @@ export interface AppDeps {
   adminIds?: ReadonlySet<number>;
   /** Баланс игрока изменили в админке - его кошелёк обновится. */
   onWalletChanged?: (userId: number) => void;
+  /** Состояние опроса Telegram ботом - в /api/health (без бота - «off»). */
+  botStatus?: () => { state: 'starting' | 'polling' | 'restarting'; restarts: number; lastUpdateAt: number | null };
   /** Часы (тесты подставляют свои). */
   now?: () => number;
   /** false - без логов (тесты). */
@@ -116,6 +118,7 @@ export async function buildApp({
   botUsername,
   onSettingsChanged,
   logger,
+  botStatus,
   now = Date.now,
 }: AppDeps) {
   const app = Fastify({
@@ -172,7 +175,15 @@ export async function buildApp({
   // Healthcheck Docker дёргает каждые 30 с - не засоряем им логи.
   app.get('/api/health', { logLevel: 'warn' }, async (_request, reply) => {
     const db = await users.ping();
-    const body: HealthResponse = { ok: db, db, uptimeSec: Math.round(process.uptime()) };
+    const bot = botStatus?.();
+    const body: HealthResponse = {
+      ok: db,
+      db,
+      uptimeSec: Math.round(process.uptime()),
+      bot: bot?.state ?? 'off',
+      botRestarts: bot?.restarts ?? 0,
+      botUpdateAgoSec: bot?.lastUpdateAt ? Math.round((now() - bot.lastUpdateAt) / 1000) : null,
+    };
     return reply.code(db ? 200 : 503).send(body);
   });
 

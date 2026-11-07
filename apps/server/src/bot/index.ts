@@ -1,19 +1,38 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import type { FastifyBaseLogger } from 'fastify';
 import { langFromTelegram, type GameCategory, type GameRules, type Lang } from '@quiz-duel/shared';
-import { botTexts, inviteTexts, shareTexts } from './texts.js';
+import { botTexts, inviteTexts, shareTexts, supportTexts } from './texts.js';
 import { CARD_VIDEO, cardMedia, type CardKind } from './cards.js';
 import type { GameManager, InviteMaker, ResultSharer } from '../game/manager.js';
 import type { UsersRepo } from '../users.js';
 import type { TelegramUser } from '../auth/initData.js';
 
+/** Состояние опроса Telegram - для /api/health. */
+export interface BotHealth {
+  /** starting - сервер только поднимается; polling - бот получает обновления; restarting - опрос упал и сейчас перезапускается. */
+  state: 'starting' | 'polling' | 'restarting';
+  /** Сколько раз опрос перезапускался после сбоя с момента старта сервера. */
+  restarts: number;
+  /** Когда пришло последнее обновление от Telegram (null - ещё ни одного). */
+  lastUpdateAt: number | null;
+}
+
+const pollState: BotHealth = { state: 'starting', restarts: 0, lastUpdateAt: null };
+export const botHealth = (): BotHealth => ({ ...pollState });
+
 /**
  * Создаёт бота и проверяет токен (getMe). Сам опрос Telegram
  * запускается отдельно через startBot, чтобы сервер успел подняться.
  */
-export async function createBot(token: string, webAppUrl: string, users?: UsersRepo) {
+export async function createBot(token: string, webAppUrl: string, users?: UsersRepo, docs?: { termsUrl: string; privacyUrl: string }) {
   const bot = new Bot(token);
   await bot.init();
+
+  // Первым - отметка «бот жив»: время последнего обновления от Telegram видно в /api/health.
+  bot.use(async (_ctx, next) => {
+    pollState.lastUpdateAt = Date.now();
+    await next();
+  });
 
   bot.command('start', async (ctx) => {
     // Нажал /start - бот может ему писать (уведомления о лобби, реванше, итогах).
@@ -24,6 +43,20 @@ export async function createBot(token: string, webAppUrl: string, users?: UsersR
     const t = botTexts[langFromTelegram(ctx.from?.language_code)];
     await ctx.reply(t.start, {
       reply_markup: new InlineKeyboard().webApp(t.play, webAppUrl),
+    });
+  });
+
+  // Помощь с оплатой звёздами: Telegram требует, чтобы бот отвечал на /paysupport.
+  bot.command('paysupport', async (ctx) => {
+    await ctx.reply(supportTexts[langFromTelegram(ctx.from?.language_code)].pay, { link_preview_options: { is_disabled: true } });
+  });
+
+  // Правила и политика - те же страницы, что в приложении.
+  bot.command('terms', async (ctx) => {
+    const t = supportTexts[langFromTelegram(ctx.from?.language_code)];
+    if (!docs) return;
+    await ctx.reply(t.terms, {
+      reply_markup: new InlineKeyboard().url(t.termsButton, docs.termsUrl).row().url(t.privacyButton, docs.privacyUrl),
     });
   });
 
@@ -46,41 +79,110 @@ export async function configureBot(bot: QuizBot, webAppUrl: string, log: Fastify
     await bot.api.setChatMenuButton({
       menu_button: { type: 'web_app', text: 'Quiz Duel', web_app: { url: webAppUrl } },
     });
-    await bot.api.setMyCommands([{ command: 'start', description: botTexts.en.startCommand }]);
-    await bot.api.setMyCommands([{ command: 'start', description: botTexts.ru.startCommand }], {
-      language_code: 'ru',
-    });
+    const commands = (lang: Lang) => [
+      { command: 'start', description: botTexts[lang].startCommand },
+      { command: 'paysupport', description: supportTexts[lang].payCommand },
+      { command: 'terms', description: supportTexts[lang].termsCommand },
+    ];
+    await bot.api.setMyCommands(commands('en'));
+    await bot.api.setMyCommands(commands('ru'), { language_code: 'ru' });
   } catch (error) {
     log.warn({ err: error }, 'bot configuration failed');
   }
 }
 
-/** Inline-режим подключается, когда менеджер партий уже создан. */
-export function attachInline(bot: QuizBot, games: GameManager, users: UsersRepo, webAppUrl: string, log: FastifyBaseLogger) {
-  bot.on('inline_query', async (ctx) => {
-    try {
-      const answer = await inlineAnswer(games, users, ctx.from as TelegramUser, webAppUrl);
-      await ctx.answerInlineQuery(answer.results, answer.options);
-    } catch (error) {
-      log.warn({ err: error }, 'inline query failed');
-    }
+/** Что сломалось в боте - пишем владельцу (не чаще раза в полчаса на каждый вид сбоя). */
+export type BotTrouble = (kind: 'polling' | 'inline', detail: string) => void;
+
+/**
+ * Inline-режим подключается, когда менеджер партий уже создан.
+ * Обработчик не держит общую очередь обновлений бота: Telegram шлёт запрос на каждую букву,
+ * а медленный ответ (сеть, база) не должен задерживать /start, оплату и остальное.
+ * Запросы одного игрока идут строго по очереди - иначе два запроса подряд создали бы две игры.
+ * Telegram не принял анимированную карточку - отвечаем той же карточкой текстом.
+ */
+export function attachInline(bot: QuizBot, games: GameManager, users: UsersRepo, webAppUrl: string, log: FastifyBaseLogger, trouble?: BotTrouble) {
+  const queue = new Map<number, Promise<void>>();
+  bot.on('inline_query', (ctx) => {
+    const from = ctx.from as TelegramUser;
+    const run = async () => {
+      const answer = await inlineAnswer(games, users, from, webAppUrl);
+      try {
+        await ctx.answerInlineQuery(answer.results, answer.options);
+      } catch (error) {
+        if (isStaleQuery(error) || answer.fallback.length === 0) throw error;
+        log.warn({ err: error }, 'inline card rejected, answering with text');
+        trouble?.('inline', describe(error));
+        await ctx.answerInlineQuery(answer.fallback, answer.options);
+      }
+    };
+    const prev = queue.get(from.id) ?? Promise.resolve();
+    const job = prev
+      .then(run)
+      .catch((error: unknown) => {
+        if (isStaleQuery(error)) return;
+        log.warn({ err: error }, 'inline query failed');
+        trouble?.('inline', describe(error));
+      })
+      .finally(() => {
+        if (queue.get(from.id) === job) queue.delete(from.id);
+      });
+    queue.set(from.id, job);
   });
 }
 
-/** Long polling. Один токен может опрашивать только один процесс. */
-export function startBot(bot: QuizBot, log: FastifyBaseLogger) {
+/** Игрок уже печатает дальше - Telegram закрыл старый запрос («query is too old»). Это не сбой. */
+const isStaleQuery = (error: unknown) => /query is too old|query ID is invalid/i.test(describe(error));
+const describe = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 300);
+
+const ALLOWED_UPDATES = ['message', 'inline_query', 'callback_query', 'my_chat_member', 'pre_checkout_query'] as const;
+
+/**
+ * Long polling. Один токен может опрашивать только один процесс.
+ * grammY бросает опрос насовсем при 409 (на секунду встретились два процесса - старый
+ * контейнер при выкатке) и при сбое сети в момент старта. Тогда бот молчал до следующей
+ * выкатки: не отвечал на inline-запросы, /start и оплату. Теперь опрос перезапускается сам:
+ * через 2, 4, 8… секунд (не дольше минуты), владельцу приходит сообщение о сбое.
+ */
+export function startBot(bot: QuizBot, log: FastifyBaseLogger, trouble?: BotTrouble, sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))) {
   bot.catch(({ error, ctx }) => {
     log.error({ err: error, updateId: ctx.update.update_id }, 'bot handler failed');
   });
-  bot
-    .start({
-      drop_pending_updates: true,
-      allowed_updates: ['message', 'inline_query', 'callback_query', 'my_chat_member', 'pre_checkout_query'],
-      onStart: (info) => log.info({ bot: info.username }, 'bot polling started'),
-    })
-    .catch((error: unknown) => {
-      log.error({ err: error }, 'bot polling stopped with error');
-    });
+  let stopped = false;
+  let failures = 0;
+  const loop = async () => {
+    for (let first = true; !stopped; first = false) {
+      try {
+        await bot.start({
+          // Старые обновления выбрасываем только при запуске сервера, при перезапуске опроса - нет.
+          drop_pending_updates: first,
+          allowed_updates: [...ALLOWED_UPDATES],
+          onStart: (info) => {
+            pollState.state = 'polling';
+            failures = 0;
+            log.info({ bot: info.username, restarts: pollState.restarts }, 'bot polling started');
+          },
+        });
+        // start() вернулся без ошибки - значит, бота остановили (выкатка).
+        if (stopped) return;
+      } catch (error) {
+        if (stopped) return;
+        log.error({ err: error }, 'bot polling stopped with error, restarting');
+        trouble?.('polling', describe(error));
+      }
+      pollState.state = 'restarting';
+      pollState.restarts += 1;
+      failures += 1;
+      await sleep(Math.min(60_000, 1_000 * 2 ** Math.min(failures, 6)));
+    }
+  };
+  void loop();
+  return {
+    async stop() {
+      stopped = true;
+      await bot.stop();
+    },
+  };
 }
 
 const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -140,10 +242,33 @@ export async function inlineAnswer(
   };
   if (!res.ok) {
     const text = res.error === 'consent_required' ? t.inlineConsent : res.error === 'busy' ? t.inlineBusy : t.inlineOpen;
-    return { results: [], options: { ...options, button: { text, web_app: { url: webAppUrl } } } };
+    return { results: [], fallback: [], options: { ...options, button: { text, web_app: { url: webAppUrl } } } };
   }
-  const card = inviteCard({ gameId: res.gameId, link: res.link, category: res.category, rules: res.rules, lang, creatorName: user.firstName, webAppUrl });
-  return { results: [card], options };
+  const input = { gameId: res.gameId, link: res.link, category: res.category, rules: res.rules, lang, creatorName: user.firstName, webAppUrl };
+  return { results: [inviteCard(input)], fallback: [inviteArticle(input)], options };
+}
+
+/**
+ * Та же карточка «Вызов на дуэль» строкой списка: обложка, название, правила; в чат уходит
+ * текст с кнопкой «Принять». Запасной вариант, если Telegram не принял ролик.
+ */
+export function inviteArticle(input: { gameId: string; link: string; category: GameCategory; rules: GameRules; lang: Lang; creatorName: string; webAppUrl: string }) {
+  const t = inviteTexts[input.lang];
+  return {
+    type: 'article' as const,
+    id: `t_${input.gameId}`,
+    title: `⚔️ ${t.title} · ${t.categories[input.category]}`,
+    description: t.rules(t.categories[input.category], input.rules),
+    thumbnail_url: cardMedia(input.webAppUrl).thumb('invite', input.lang),
+    thumbnail_width: CARD_VIDEO.width,
+    thumbnail_height: CARD_VIDEO.height,
+    input_message_content: {
+      message_text: t.body(escapeHtml(input.creatorName), t.categories[input.category], input.rules),
+      parse_mode: 'HTML' as const,
+      link_preview_options: { is_disabled: true },
+    },
+    reply_markup: new InlineKeyboard().url(t.accept, input.link),
+  };
 }
 
 /**
