@@ -25,6 +25,7 @@ import { ResultScreen } from './screens/ResultScreen';
 import { ExitDialog } from './components/ExitDialog';
 import { useServerNow } from './hooks/useServerNow';
 import { OnboardingScreen } from './screens/OnboardingScreen';
+import { DocsUpdateScreen } from './screens/DocsUpdateScreen';
 import { ReviewScreen } from './screens/ReviewScreen';
 import { LeaderboardScreen } from './screens/LeaderboardScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
@@ -305,8 +306,12 @@ function InTelegram({ session }: { session: TelegramSession }) {
   // Пришедшие по ссылке принимают документы в шторке перед лобби (закрыли шторку - сюда же),
   // а слайды видят после партии: когда с итогов ушли на главную.
   const onboarding = (!me.data.docsAccepted || !me.data.onboarded) && !game && !linkError && !consent && !search;
+  // Онбординг пройден, но вышла новая версия документов - один экран «Мы обновили документы».
+  const docsUpdate = onboarding && me.data.onboarded;
 
-  const screen = onboarding ? (
+  const screen = docsUpdate ? (
+    <DocsUpdateScreen docs={config.data?.docs} docsFailed={config.isError} onRetryDocs={() => void config.refetch()} />
+  ) : onboarding ? (
     <OnboardingScreen me={me.data} docs={config.data?.docs} docsFailed={config.isError} onRetryDocs={() => void config.refetch()} />
   ) : linkError ? (
     <LinkErrorScreen kind={linkError.kind} docsAccepted={me.data.docsAccepted} />

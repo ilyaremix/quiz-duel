@@ -26,7 +26,8 @@ const EnvSchema = z.object({
   DOCS_VERSION: z
     .string()
     .regex(/^[\w.-]{1,32}$/)
-    .default('2026-11-07'),
+    // 2026-11-07.2: в документах - монеты, покупки за звёзды, друзья, реклама и статистика (Обновление 2.0).
+    .default('2026-11-07.2'),
   /** Адреса документов: страницы в Telegraph на английском (открываются в Telegram через Instant View). */
   TERMS_URL: z.url({ protocol: /^https$/ }).default('https://telegra.ph/Quiz-Duel---Terms-of-Use-11-06'),
   PRIVACY_URL: z.url({ protocol: /^https$/ }).default('https://telegra.ph/Quiz-Duel---Privacy-Policy-11-06'),

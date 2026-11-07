@@ -1357,5 +1357,16 @@
     "empty": "No data yet",
     "loadError": "Couldn’t load",
     "retry": "Retry"
+  },
+  "docsUpdate": {
+    "title": "We’ve updated our documents",
+    "text": "The Terms of Use and Privacy Policy now cover what came with the latest update. To keep playing, please accept the new versions",
+    "news": [
+      "Coins, the shop and purchases with Stars",
+      "Friends, invitations and rewards for them",
+      "Ads and rewards for watching",
+      "Usage statistics: which screens are opened and where players come from"
+    ],
+    "accept": "Accept and continue"
   }
 }
