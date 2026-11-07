@@ -64,13 +64,21 @@ export function HomeScreen({ me }: { me: MeResponse }) {
           <div className="flex min-w-0 grow flex-col gap-[7px]">
             <h1 className="m-0 truncate text-[23px] font-bold tracking-[-0.02em]">{t('s03.greeting', { me: me.firstName })}</h1>
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="qd-chip qd-chip-gold qd-num">
+              <button
+                type="button"
+                aria-label={t('s03.ratingAria', { r: formatNumber(rating, i18n.language) })}
+                onClick={() => gameActions.setTab('rating')}
+                className="qd-press qd-chip qd-chip-gold qd-num cursor-pointer border-0"
+              >
                 <Icon glyph="rating" size={14} stroke={2.6} />
                 {formatNumber(rating, i18n.language)}
                 {stats?.place ? (
                   <span className="font-semibold opacity-75">· {t('s03.placeShort', { n: formatNumber(stats.place, i18n.language) })}</span>
                 ) : null}
-              </span>
+                <span aria-hidden="true" className="-mr-1 flex opacity-70">
+                  <Icon glyph="chevron" size={12} stroke={3} />
+                </span>
+              </button>
               <button
                 type="button"
                 aria-label={t('s03.coinsAria', { n: formatNumber(w?.coins ?? 0, i18n.language), coins: pw(t, w?.coins ?? 0, 'coin') })}

@@ -1,6 +1,7 @@
 /**
- * Обновление 2.0: режим и настройки дуэли (шторка 32). Помним последний выбор на этом устройстве:
- * следующая дуэль создаётся с ним же, «Сбросить» - назад к Классике 10 × 15 с.
+ * Обновление 2.0: режим и настройки дуэли - панель вверху шторки выбора темы (раньше - отдельная
+ * шторка 32). Помним последний выбор на этом устройстве: следующая дуэль создаётся с ним же,
+ * «Сбросить» - назад к Классике 10 × 15 с. Панель раскрыта или свёрнута - тоже помним (до перезапуска).
  */
 import { create } from 'zustand';
 import { COUNT_OPTIONS, DEFAULT_RULES, TIME_OPTIONS, VARIANTS, type GameRules } from '@quiz-duel/shared';
@@ -26,17 +27,15 @@ function load(): GameRules {
 
 interface SetupStore {
   rules: GameRules;
-  open: boolean;
+  /** Панель «Режим и настройки» раскрыта. */
+  expanded: boolean;
 }
 
-export const useSetup = create<SetupStore>(() => ({ rules: load(), open: false }));
+export const useSetup = create<SetupStore>(() => ({ rules: load(), expanded: false }));
 
 export const setupActions = {
-  open() {
-    useSetup.setState({ open: true });
-  },
-  close() {
-    useSetup.setState({ open: false });
+  toggle() {
+    useSetup.setState((s) => ({ expanded: !s.expanded }));
   },
   set(patch: Partial<GameRules>) {
     const rules = { ...useSetup.getState().rules, ...patch };

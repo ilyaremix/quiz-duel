@@ -193,7 +193,7 @@ function Items({ w, me }: { w: WalletResponse; me: MeResponse }) {
         </div>
         <div className="grid grid-cols-3 gap-2 pt-0.5">
           {GLOWS.map((id) => (
-            <GlowTile key={id} id={id} state={glowState(id)} meId={me.id} meName={me.firstName} onPress={() => shop.openItem({ kind: 'glow', id })} />
+            <GlowTile key={id} id={id} state={glowState(id)} meId={me.id} meName={me.firstName} mePhoto={me.photoUrl} onPress={() => shop.openItem({ kind: 'glow', id })} />
           ))}
         </div>
       </section>

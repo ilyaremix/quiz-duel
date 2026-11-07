@@ -71,6 +71,8 @@ const PATHS = {
   ban: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M5.6 5.6l12.8 12.8',
   funnel: 'M3 5h18l-7 8v6l-4 2v-8z',
   eye: 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6',
+  question: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M9.6 9.4a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1.1.9-1.1 1.6v.4M12 16.8h.01',
+  doc: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h4',
 } as const;
 
 export type IconGlyph = keyof typeof PATHS;

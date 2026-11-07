@@ -7,7 +7,8 @@ import { Ball, BALLS } from '../components/Ball';
 import { DisconnectBanner, OfflineStrip } from '../components/Banner';
 import { CategoryChip } from '../components/CategoryTile';
 import { Icon, type IconGlyph } from '../components/Icon';
-import { Reactions, useLiveReaction } from '../components/Reactions';
+import { reactionName, Reactions, useLiveReaction } from '../components/Reactions';
+import { ReactionGlyph } from '../components/Art';
 import { RulesStrip } from '../components/Modes';
 import { ScoreBar } from '../components/ScoreBar';
 import { Timer } from '../components/Timer';
@@ -291,14 +292,14 @@ function LiveReaction({ userId, side }: { userId: number; side: 'me' | 'opp' }) 
     <div
       key={live.id}
       role="img"
-      aria-label={t('reactions.from', { r: live.emoji })}
-      className={`qd-react-up qd-emoji pointer-events-none absolute bottom-1 z-[3] flex h-[54px] w-[54px] items-center justify-center rounded-full text-[27px] ${me ? 'left-5' : 'right-5'}`}
+      aria-label={t('reactions.from', { r: reactionName(t, live.emoji) })}
+      className={`qd-react-up pointer-events-none absolute bottom-1 z-[3] flex h-[54px] w-[54px] items-center justify-center rounded-full ${me ? 'left-5' : 'right-5'}`}
       style={{
         background: 'var(--qd-sheen), var(--qd-glass-solid)',
         boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 0 0 2px var(${me ? '--qd-me' : '--qd-opp'}), 0 0 22px var(${me ? '--qd-me-glow' : '--qd-opp-glow'}), 0 10px 24px rgba(3, 4, 20, 0.35)`,
       }}
     >
-      {live.emoji}
+      <ReactionGlyph r={live.emoji} size={38} live />
     </div>
   );
 }

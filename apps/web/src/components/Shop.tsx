@@ -7,6 +7,7 @@ import { COIN_PACKS, GLOW_PRICES, PACK_PRICES, REACTION_PACKS, TOPIC_PRICE, type
 import { formatNumber } from '../i18n';
 import { pw } from '../lib/economy';
 import { Avatar } from './Avatar';
+import { CoinPackArt, ReactionGlyph } from './Art';
 import { CATEGORY_LOOK } from './Category';
 import { Icon, type IconGlyph } from './Icon';
 
@@ -108,14 +109,14 @@ function BigBall({ glyph, ball, glow, ink }: { glyph: IconGlyph; ball: string; g
   );
 }
 
-export function GlowTile({ id, state, meId, meName, onPress }: { id: GlowId; state: ItemState; meId: number; meName: string; onPress: () => void }) {
+export function GlowTile({ id, state, meId, meName, mePhoto, onPress }: { id: GlowId; state: ItemState; meId: number; meName: string; mePhoto: string | null; onPress: () => void }) {
   const { t, i18n } = useTranslation();
   const price = priceText(t, i18n.language, state, GLOW_PRICES[id], 'glow');
   const title = t(`s27.glows.${id}`);
   return (
     <Tile label={`${title}: ${price.text}`} onPress={onPress} equipped={state === 'equipped'} minH={146}>
       <span className="flex h-[60px] items-center justify-center">
-        <Avatar id={meId} name={meName} size={50} glow={id} />
+        <Avatar id={meId} name={meName} photoUrl={mePhoto} size={50} glow={id} />
       </span>
       <span className="max-w-full truncate text-[14px] leading-[1.2] font-bold tracking-[-0.01em]">{title}</span>
       <span className="mt-auto">
@@ -154,7 +155,7 @@ export function CoinPackTile({ id, onPress }: { id: (typeof COIN_PACKS)[number][
   return (
     <Tile label={`${title} ${pw(t, pack.coins, 'coin')}: ${pack.stars}`} onPress={onPress} equipped={false} badge={badge} minH={146}>
       <span className="flex h-[60px] items-center justify-center">
-        <BigBall glyph="coin" ball="#FFD36B" glow="rgba(255,211,107,.55)" ink="#3A2600" />
+        <CoinPackArt id={id} size={60} />
       </span>
       <span className="flex max-w-full min-w-0 flex-col gap-0.5">
         <span className="qd-num truncate text-[17px] leading-[1.2] font-bold tracking-[-0.01em]">{title}</span>
@@ -186,10 +187,10 @@ export function PackRow({ id, state, onPress }: { id: PackId; state: ItemState; 
           {REACTION_PACKS[id].map((e) => (
             <span
               key={e}
-              className="qd-emoji flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-[17px] leading-none"
+              className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full"
               style={{ background: 'var(--qd-glass)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.3)' }}
             >
-              {e}
+              <ReactionGlyph r={e} size={24} />
             </span>
           ))}
         </span>

@@ -27,6 +27,7 @@ export function useRulesText() {
 
 export const isDefaultRules = (rules: GameRules) => sameRules(rules, DEFAULT_RULES);
 
+/** Карточка режима в панели «Режим и настройки»: шар режима слева, название и короткое правило. */
 export function ModeCard({ variant, selected, onPick }: { variant: Variant; selected: boolean; onPick: () => void }) {
   const { t } = useTranslation();
   const look = MODE_LOOK[variant];
@@ -36,21 +37,27 @@ export function ModeCard({ variant, selected, onPick }: { variant: Variant; sele
       role="radio"
       aria-checked={selected}
       onClick={onPick}
-      className="qd-press relative box-border flex h-full min-h-[112px] w-full cursor-pointer flex-col items-start gap-2.5 rounded-[24px] border-0 px-3 pt-3 pb-3.5 text-left text-text"
-      style={{ background: selected ? 'var(--qd-brand-glass)' : 'var(--qd-sheen), var(--qd-glass)', boxShadow: selected ? 'var(--qd-brand-edge)' : 'var(--qd-glass-edge)' }}
+      className="qd-press relative box-border flex h-full min-h-[62px] w-full cursor-pointer items-center gap-2.5 rounded-[20px] border-0 py-2 pr-2.5 pl-2 text-left text-text"
+      style={{ background: selected ? 'var(--qd-brand-glass)' : 'var(--qd-sheen), var(--qd-glass)', boxShadow: selected ? 'var(--qd-brand-edge)' : 'var(--qd-glass-edge-flat)' }}
     >
-      <span aria-hidden="true" className="qd-ball h-[38px] w-[38px]" style={{ '--qd-ball': look.ball, '--qd-ball-glow': look.glow, color: look.ink } as CSSProperties}>
-        <Icon glyph={look.glyph} size={19} stroke={2.3} />
-      </span>
-      <span className="flex flex-col gap-[3px]">
-        <span className="text-[15px] leading-[1.2] font-bold tracking-[-0.01em]">{t(`s32.mode.${variant}.t`)}</span>
-        <span className="text-[12px] leading-[1.3] font-medium text-hint">{t(`s32.mode.${variant}.d`)}</span>
-      </span>
-      {selected && (
-        <span aria-hidden="true" className="qd-pop qd-ball absolute top-2.5 right-2.5 h-6 w-6" style={{ '--qd-ball': '#3BE58B', '--qd-ball-glow': 'var(--qd-ok-glow)', color: '#04261A' } as CSSProperties}>
-          <Icon glyph="check" size={13} stroke={3.5} />
+      <span className="relative shrink-0">
+        <span aria-hidden="true" className="qd-ball h-[32px] w-[32px]" style={{ '--qd-ball': look.ball, '--qd-ball-glow': look.glow, color: look.ink } as CSSProperties}>
+          <Icon glyph={look.glyph} size={16} stroke={2.4} />
         </span>
-      )}
+        {selected && (
+          <span
+            aria-hidden="true"
+            className="qd-pop qd-ball absolute -right-1.5 -bottom-1 h-[18px] w-[18px]"
+            style={{ '--qd-ball': '#3BE58B', '--qd-ball-glow': 'var(--qd-ok-glow)', color: '#04261A', boxShadow: '0 0 0 2px var(--qd-ring-gap), 0 0 10px var(--qd-ok-glow)' } as CSSProperties}
+          >
+            <Icon glyph="check" size={10} stroke={3.6} />
+          </span>
+        )}
+      </span>
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-[14px] leading-[1.2] font-bold tracking-[-0.01em]">{t(`s32.mode.${variant}.t`)}</span>
+        <span className="text-[11.5px] leading-[1.25] font-medium text-hint">{t(`s32.mode.${variant}.d`)}</span>
+      </span>
     </button>
   );
 }

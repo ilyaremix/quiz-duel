@@ -1433,6 +1433,271 @@ button:focus-visible {
   mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
 }
 
+/*
+ * Рисунки магазина (components/Art.tsx): свои реакции платных наборов и пакеты монет.
+ * Двигаются только «живые» (.qd-art-live: отправленная реакция, превью товара),
+ * в списках и на кнопках выбора стоят. Каждая часть качается вокруг своего центра.
+ */
+.qd-art-live .qd-art-glint,
+.qd-art-live .qd-art-honk,
+.qd-art-live .qd-art-jaw,
+.qd-art-live .qd-art-salute,
+.qd-art-live .qd-art-shiver,
+.qd-art-live .qd-art-boom,
+.qd-art-live .qd-art-beat,
+.qd-art-live .qd-art-float,
+.qd-art-live .qd-art-tw,
+.qd-art-live .qd-art-shake,
+.qd-art-live .qd-art-tear,
+.qd-art-live .qd-art-pop,
+.qd-art-live .qd-art-horn,
+.qd-art-live .qd-art-cork,
+.qd-art-live .qd-art-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.qd-art-live .qd-art-glint {
+  animation: qd-art-glint 2600ms var(--qd-ease-ui) infinite;
+}
+@keyframes qd-art-glint {
+  0% {
+    transform: translateX(-26px);
+  }
+  45%,
+  100% {
+    transform: translateX(40px);
+  }
+}
+.qd-art-live .qd-art-honk {
+  animation: qd-art-honk 1600ms ease infinite;
+}
+@keyframes qd-art-honk {
+  0%,
+  60%,
+  100% {
+    transform: scale(1);
+  }
+  70% {
+    transform: scale(1.22, 0.86);
+  }
+  82% {
+    transform: scale(0.9, 1.1);
+  }
+}
+.qd-art-live .qd-art-jaw {
+  animation: qd-art-jaw 520ms ease-in-out infinite alternate;
+}
+@keyframes qd-art-jaw {
+  to {
+    transform: translateY(2.6px);
+  }
+}
+.qd-art-live .qd-art-salute {
+  transform-origin: 20% 90%;
+  animation: qd-art-salute 1400ms var(--qd-ease-ui) infinite;
+}
+@keyframes qd-art-salute {
+  0%,
+  55%,
+  100% {
+    transform: rotate(0deg);
+  }
+  65% {
+    transform: rotate(-9deg);
+  }
+  78% {
+    transform: rotate(3deg);
+  }
+}
+.qd-art-live .qd-art-shiver {
+  animation: qd-art-shiver 140ms linear infinite alternate;
+}
+@keyframes qd-art-shiver {
+  from {
+    transform: translateX(-0.9px);
+  }
+  to {
+    transform: translateX(0.9px);
+  }
+}
+.qd-art-live .qd-art-boom {
+  transform-origin: 50% 100%;
+  animation: qd-art-boom 900ms var(--qd-ease-ui) infinite alternate;
+}
+@keyframes qd-art-boom {
+  from {
+    transform: scale(0.86);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
+.qd-art-live .qd-art-beat {
+  animation: qd-art-beat 1200ms ease infinite;
+}
+@keyframes qd-art-beat {
+  0%,
+  40%,
+  100% {
+    transform: scale(1);
+  }
+  12% {
+    transform: scale(1.12);
+  }
+  26% {
+    transform: scale(1.04);
+  }
+}
+.qd-art-live .qd-art-float {
+  animation: qd-art-float 2200ms ease-in-out infinite;
+}
+@keyframes qd-art-float {
+  0% {
+    transform: translateY(3px) scale(0.85);
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-7px) scale(1.05);
+    opacity: 0;
+  }
+}
+.qd-art-live .qd-art-tw {
+  animation: qd-art-tw 1600ms ease-in-out infinite;
+}
+@keyframes qd-art-tw {
+  0%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+.qd-art-live .qd-art-d2 {
+  animation-delay: -530ms;
+}
+.qd-art-live .qd-art-d3 {
+  animation-delay: -1060ms;
+}
+.qd-art-live .qd-art-shake {
+  animation: qd-art-shake 900ms ease-in-out infinite;
+}
+@keyframes qd-art-shake {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-2.4px) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(2.4px) rotate(2deg);
+  }
+}
+.qd-art-live .qd-art-rays {
+  transform-box: view-box;
+  transform-origin: 32px 30px;
+  animation: qd-glow-turn 9s linear infinite;
+}
+.qd-art-live .qd-art-tear {
+  animation: qd-art-tear 1800ms ease-in infinite;
+}
+@keyframes qd-art-tear {
+  0%,
+  20% {
+    transform: translateY(-3px) scale(0.6);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(7px) scale(1);
+    opacity: 0;
+  }
+}
+.qd-art-live .qd-art-pop {
+  transform-origin: 0% 100%;
+  animation: qd-art-pop 1500ms var(--qd-ease-ui) infinite;
+}
+@keyframes qd-art-pop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.12) translate(1px, -2px);
+    opacity: 0;
+  }
+}
+.qd-art-live .qd-art-horn {
+  transform-origin: 0% 50%;
+  animation: qd-art-horn 1300ms var(--qd-ease-ui) infinite alternate;
+}
+@keyframes qd-art-horn {
+  from {
+    transform: scaleX(0.45);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.qd-art-live .qd-art-cork {
+  animation: qd-art-cork 1100ms var(--qd-ease-ui) infinite alternate;
+}
+@keyframes qd-art-cork {
+  from {
+    transform: translate(-1.5px, 2px) scale(0.9);
+  }
+  to {
+    transform: translate(1.5px, -2px) scale(1.06);
+  }
+}
+.qd-art-live .qd-art-wobble {
+  transform-box: view-box;
+  transform-origin: 30px 34px;
+  animation: qd-art-wobble 1600ms ease-out infinite;
+}
+@keyframes qd-art-wobble {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  10% {
+    transform: rotate(-6deg);
+  }
+  22% {
+    transform: rotate(4.5deg);
+  }
+  34% {
+    transform: rotate(-3deg);
+  }
+  46% {
+    transform: rotate(1.5deg);
+  }
+  58% {
+    transform: rotate(0deg);
+  }
+}
+.qd-art-live .qd-art-glow {
+  animation: qd-glow-pulse 1800ms ease infinite;
+}
+
 /* Задание с готовой наградой: золотая кнопка «дышит» свечением. */
 .qd-task-ready {
   animation: qd-task-ready 2200ms ease infinite;
@@ -1500,6 +1765,11 @@ button:focus-visible {
 .qd-rm .qd-glow-flame,
 .qd-rm .qd-task-ready {
   animation: none;
+}
+/* Рисунки реакций и монет стоят: ни качания, ни искр. */
+.qd-rm .qd-art-live *,
+.qd-rm .qd-art-live {
+  animation: none !important;
 }
 .qd-rm .qd-ad-bar {
   transition: none;

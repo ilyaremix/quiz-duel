@@ -20,7 +20,7 @@ export function DraftScreen({ game }: { game: GameView }) {
   const sec = Math.max(0, Math.ceil(((game.phaseEndsAt ?? now) - now) / 1000));
   const urgent = sec <= 3 && !draft.revealed;
   const pick = draft.myPick;
-  const look = (id: Category) => ({ ...CATEGORY_LOOK[id], title: t(`cat.${id}.title`), count: t(`cat.${id}.count`) });
+  const look = (id: Category) => ({ ...CATEGORY_LOOK[id], title: t(`cat.${id}.title`), hint: t(`cat.${id}.hint`) });
   const per = draft.myPick && draft.oppPick && draft.myPick !== draft.oppPick ? Math.ceil(game.rules.count / 2) : game.rules.count;
   const same = draft.myPick === draft.oppPick;
 
@@ -98,7 +98,7 @@ export function DraftScreen({ game }: { game: GameView }) {
                   </span>
                   <span className="flex min-w-0 grow flex-col gap-[3px]">
                     <span className="text-[18px] font-bold tracking-[-0.01em]">{l.title}</span>
-                    <span className="text-[13px] font-medium text-hint">{l.count}</span>
+                    <span className="text-[13px] leading-[1.3] font-medium text-hint">{l.hint}</span>
                   </span>
                   <span
                     aria-hidden="true"

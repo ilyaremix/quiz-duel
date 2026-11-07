@@ -38,7 +38,6 @@ import { FriendsScreen } from './screens/FriendsScreen';
 import { ItemSheet } from './screens/ItemSheet';
 import { AdScreen } from './screens/AdScreen';
 import { InviteBanner } from './components/InviteBanner';
-import { SetupSheet } from './screens/SetupSheet';
 import { DraftScreen } from './screens/DraftScreen';
 import { shop, useShop, useWallet } from './lib/economy';
 import { adminActions, useAdmin } from './lib/admin';
@@ -329,7 +328,6 @@ function InTelegram({ session }: { session: TelegramSession }) {
       )}
       {screen}
       <CategorySheet />
-      <SetupSheet />
       <ConsentSheet docs={config.data?.docs} />
       <ExitDialog />
       <OppSheet me={me.data} />

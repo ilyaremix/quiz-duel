@@ -1,15 +1,17 @@
 import type { CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { LeaderRowView, MeResponse } from '@quiz-duel/shared';
+import { REFERRAL, type LeaderRowView, type MeResponse } from '@quiz-duel/shared';
 import { Avatar } from '../components/Avatar';
+import { Ball, BALLS } from '../components/Ball';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { LeaderRow, LeaderRowSkeleton } from '../components/LeaderRow';
 import { Notice } from '../components/Notice';
 import { formatNumber } from '../i18n';
 import { api, queryKeys } from '../lib/api';
-import { useWallet } from '../lib/economy';
+import { pw, useWallet } from '../lib/economy';
+import { friendsActions } from '../lib/friends';
 
 /** Пьедестал стиля C: золотой глянцевый столб с бликом, серебряное и бронзовое стекло; у первого места - золотой ореол. */
 const PILLAR = [
@@ -39,13 +41,42 @@ const PILLAR = [
 const ORDER = [1, 0, 2];
 const HEIGHT = [92, 68, 52];
 
+/** Свободное место на пьедестале: пунктирный кружок, «Свободно», приглушённый столб с номером. */
+function EmptyStep({ i }: { i: number }) {
+  const { t } = useTranslation();
+  const size = i === 0 ? 64 : 52;
+  const k = PILLAR[i]!;
+  return (
+    <div role="img" aria-label={t('s15.freeAria', { n: i + 1 })} className="flex min-w-0 flex-col items-center gap-1">
+      <span
+        aria-hidden="true"
+        className="box-border flex items-center justify-center rounded-full text-hint"
+        style={{ width: size, height: size, border: '2px dashed var(--qd-dash)', background: 'var(--qd-glass)' }}
+      >
+        <Icon glyph="userPlus" size={Math.round(size * 0.38)} stroke={2.2} />
+      </span>
+      <span className="mt-1 max-w-full truncate text-[14px] font-semibold text-hint">{t('s15.free')}</span>
+      <span aria-hidden="true" className="qd-num text-[13px] font-bold text-hint opacity-60">
+        —
+      </span>
+      <div
+        aria-hidden="true"
+        className="mt-1.5 box-border flex w-full justify-center rounded-[20px_20px_10px_10px] pt-2.5 text-[28px] font-bold"
+        style={{ height: HEIGHT[i], background: k.bg, boxShadow: k.edge.replace(/, 0 0 34px var\(--qd-gold-glow\)/, ''), color: k.ink, opacity: 0.38 }}
+      >
+        {i + 1}
+      </div>
+    </div>
+  );
+}
+
 function Podium({ top, meId }: { top: LeaderRowView[]; meId: number }) {
   const { i18n } = useTranslation();
   return (
     <div className="grid grid-cols-3 items-end gap-2.5">
       {ORDER.map((i) => {
         const row = top[i];
-        if (!row) return <div key={i} />;
+        if (!row) return <EmptyStep key={i} i={i} />;
         const me = row.player.id === meId;
         const k = PILLAR[i]!;
         return (
@@ -85,6 +116,49 @@ function PodiumSkeleton() {
   );
 }
 
+/** Пустая строка списка: «Место свободно» - видно, что в топ ещё можно попасть. */
+function EmptyRow({ place }: { place: number }) {
+  const { t, i18n } = useTranslation();
+  return (
+    <div
+      role="img"
+      aria-label={t('s15.freeAria', { n: place })}
+      className="box-border flex h-[60px] w-full items-center gap-3 rounded-[24px] pr-3.5 pl-3"
+      style={{ border: '1.5px dashed var(--qd-dash)', background: 'var(--qd-glass)', opacity: 0.75 }}
+    >
+      <span className="qd-num w-7 shrink-0 text-center text-[15px] font-bold text-hint">{formatNumber(place, i18n.language)}</span>
+      <span aria-hidden="true" className="box-border flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full text-hint" style={{ border: '1.5px dashed var(--qd-dash)' }}>
+        <Icon glyph="userPlus" size={16} stroke={2.2} />
+      </span>
+      <span className="min-w-0 grow truncate text-[15px] font-semibold text-hint">{t('s15.freeRow')}</span>
+    </div>
+  );
+}
+
+/** Мест в топе пока много: позвать друзей (за приглашённого - монеты). */
+function InviteCard() {
+  const { t } = useTranslation();
+  return (
+    <div className="qd-card flex items-center gap-3 rounded-[26px] py-3 pr-3 pl-3.5">
+      <Ball size={42} {...BALLS.ok}>
+        <Icon glyph="userPlus" size={20} stroke={2.3} />
+      </Ball>
+      <div className="flex min-w-0 grow flex-col gap-0.5">
+        <span className="text-[15px] font-bold">{t('s15.inviteT')}</span>
+        <span className="text-[12px] leading-[1.35] font-medium text-hint">{t('s15.inviteD', { n: REFERRAL.inviter, coins: pw(t, REFERRAL.inviter, 'coin') })}</span>
+      </div>
+      <div className="shrink-0">
+        <Button variant="secondary" size="s" full={false} onClick={() => void friendsActions.shareInvite(t)}>
+          {t('s15.inviteA')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Сколько пустых строк показать под пьедесталом, чтобы список не обрывался на 1-2 игроках. */
+const MIN_ROWS = 5;
+
 /** Экран 15: топ-100 пьедесталом и списком, моя строка закреплена снизу, если меня не видно в списке. */
 export function LeaderboardScreen({ me }: { me: MeResponse }) {
   const { t } = useTranslation();
@@ -119,20 +193,21 @@ export function LeaderboardScreen({ me }: { me: MeResponse }) {
               {t('common.retry')}
             </Button>
           </div>
-        ) : !data ? null : data.top.length === 0 ? (
-          <div className="pt-6">
-            <Notice glyph="rating" tone="gold" title={t('s15.title')} text={t('s15.empty')} />
-          </div>
-        ) : (
+        ) : !data ? null : (
           <>
-            <section aria-label={t('s15.podium')} className="qd-fade-in">
+            <section aria-label={t('s15.podium')} className="qd-fade-in mt-2">
               <Podium top={data.top} meId={me.id} />
             </section>
+            {data.top.length === 0 && <p className="m-0 -mt-1 px-4 text-center text-[14px] leading-[1.4] font-medium text-hint">{t('s15.empty')}</p>}
             <section aria-label={t('s15.list')} className="flex flex-col gap-2">
               {data.top.slice(3).map((row) => (
                 <LeaderRow key={row.player.id} place={row.place} player={row.player} games={row.games} me={row.player.id === me.id} />
               ))}
+              {Array.from({ length: Math.max(0, MIN_ROWS - Math.max(3, data.top.length)) }, (_, k) => (
+                <EmptyRow key={`free-${k}`} place={Math.max(3, data.top.length) + k + 1} />
+              ))}
             </section>
+            {data.top.length < 10 && <InviteCard />}
           </>
         )}
       </main>

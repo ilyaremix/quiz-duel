@@ -24,27 +24,28 @@
   "cat": {
     "mix": {
       "title": "Mix",
-      "count": "All topics · 100 questions"
+      "duel": "Each of you gets 3 random topics and picks one. Questions come from both picks",
+      "solo": "Questions from all five topics, shuffled"
     },
     "science": {
       "title": "Science & Nature",
-      "count": "20 questions"
+      "hint": "Planets, animals, chemistry and physics"
     },
     "history": {
       "title": "History & Geography",
-      "count": "20 questions"
+      "hint": "Countries, oceans, events and people"
     },
     "culture": {
       "title": "Film, Music & Books",
-      "count": "20 questions"
+      "hint": "Books, films, music and composers"
     },
     "sport": {
       "title": "Sports",
-      "count": "20 questions"
+      "hint": "Rules, the Olympics and champions"
     },
     "tech": {
       "title": "Tech & Internet",
-      "count": "20 questions"
+      "hint": "The internet, gadgets, companies and IT"
     },
     "games": {
       "title": "Video Games",
@@ -196,12 +197,12 @@
       "title": "Daily reward",
       "text": "Day {{d}} of 7 · +{{n}} {{coins}}",
       "action": "Claim"
-    }
+    },
+    "ratingAria": "Rating {{r}} - open the leaderboard"
   },
   "s04": {
     "aria": "Choose a category",
-    "title": "Choose a category",
-    "sub": "10 questions, 15 seconds each",
+    "title": "Pick a topic",
     "create": "Create duel",
     "train": "Start practice",
     "trainSub": "10 questions, no opponent, no rating",
@@ -212,9 +213,13 @@
     "friendTitle": "Challenge a friend",
     "friendSub": "{{name}} will see it in the bot and in the game",
     "friendSend": "Send challenge",
-    "lockAd": "1 game for an ad",
     "pass": "1 game",
-    "owned": "Unlocked"
+    "owned": "Unlocked",
+    "rated": "rated",
+    "unrated": "unrated",
+    "setupEdit": "Change",
+    "setupHide": "Hide",
+    "perAnswer": "{{t}} s per answer"
   },
   "s05": {
     "title": "Waiting for opponent",
@@ -510,11 +515,17 @@
     "podium": "Top 3",
     "loading": "Loading",
     "list": "List",
-    "empty": "Nobody on the leaderboard yet - play 5 games and be the first",
+    "empty": "Play 5 games and first place could be yours",
     "qualify_one": "{{count}} more game to get ranked",
     "qualify_other": "{{count}} more games to get ranked",
     "outside": "Unranked",
-    "error": "Couldn’t load the leaderboard"
+    "error": "Couldn’t load the leaderboard",
+    "free": "Open",
+    "freeRow": "This spot is open",
+    "freeAria": "Place {{n}} is open",
+    "inviteT": "Invite friends",
+    "inviteD": "There is still room at the top. Get +{{n}} {{coins}} for each friend who plays their first game",
+    "inviteA": "Invite"
   },
   "s16": {
     "statsAria": "Stats",
@@ -622,7 +633,31 @@
       "Fire",
       "Bravo"
     ],
-    "from": "Reaction: {{r}}"
+    "from": "Reaction: {{r}}",
+    "bold": [
+      "Cool",
+      "Clown",
+      "Skull",
+      "Salute",
+      "Frozen",
+      "Mind blown"
+    ],
+    "warm": [
+      "In love",
+      "Hugs",
+      "Heart",
+      "Deal",
+      "Thank you",
+      "Touched"
+    ],
+    "party": [
+      "Popper",
+      "Party",
+      "Champagne",
+      "Bullseye",
+      "Genius",
+      "Crown"
+    ]
   },
   "s19": {
     "title": "Practice",
@@ -732,9 +767,15 @@
       "light": "light"
     },
     "ads": "Ads",
-    "adsOn": "A short video after every 3rd game",
-    "adsOff": "Turned off for good",
-    "adsBuy": "Remove ads"
+    "adsOn": "Now: a short video after every 3rd game",
+    "adsOff": "For good, on all your devices",
+    "adsOnT": "Turn off ads",
+    "adsOffT": "Ads are off",
+    "adsBuyAria": "Turn off ads for good for {{n}} Stars",
+    "docs": "Documents",
+    "terms": "Terms of Use",
+    "privacy": "Privacy Policy",
+    "support": "Questions, data deletion and payment help: @ilyaremix or /paysupport in the bot"
   },
   "s25": {
     "title": "Friends",
@@ -964,8 +1005,6 @@
     }
   },
   "s32": {
-    "aria": "Mode and settings",
-    "title": "Mode & settings",
     "modes": "Mode",
     "time": "Time per answer",
     "count": "Questions",
@@ -990,9 +1029,7 @@
       }
     },
     "summary": "{{mode}} · {{n}} {{questions}}, {{t}} s each",
-    "base": "Default: Classic, 10 questions, 15 s each",
     "reset": "Reset",
-    "done": "Done",
     "rated": "This game counts for rating",
     "unrated": "Unrated - only Classic counts for rating"
   },

@@ -1,9 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { ThemeSetting, LangSetting, MeResponse, MotionSetting } from '@quiz-duel/shared';
+import { AD_FREE_STARS, type ThemeSetting, type LangSetting, type MeResponse, type MotionSetting } from '@quiz-duel/shared';
 import { Ball, BALLS } from '../components/Ball';
 import { Button } from '../components/Button';
+import { CoinDot } from '../components/Shop';
+import { api } from '../lib/api';
 import { Icon, type IconGlyph } from '../components/Icon';
 import { Segmented } from '../components/Segmented';
 import { shop, useWallet } from '../lib/economy';
@@ -34,6 +36,26 @@ function ToggleRow({ title, hint, on, onToggle }: { title: string; hint: string;
       </div>
       <Switch on={on} label={title} onToggle={onToggle} />
     </div>
+  );
+}
+
+/** Строка документа: иконка, название, стрелка. Открывается в Telegram (Instant View). */
+function DocRow({ glyph, title, onOpen, disabled }: { glyph: IconGlyph; title: string; onOpen: () => void; disabled: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      disabled={disabled}
+      className="qd-press box-border flex min-h-[54px] w-full cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left text-text disabled:opacity-50"
+    >
+      <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-hint" style={{ background: 'var(--qd-glass)', boxShadow: 'var(--qd-glass-edge-flat)' }}>
+        <Icon glyph={glyph} size={17} stroke={2.2} />
+      </span>
+      <span className="grow text-[15px] font-semibold">{title}</span>
+      <span aria-hidden="true" className="flex text-hint">
+        <Icon glyph="chevron" size={17} stroke={2.5} />
+      </span>
+    </button>
   );
 }
 
@@ -82,6 +104,7 @@ export function SettingsScreen({ me }: { me: MeResponse }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [howTo, setHowTo] = useState(false);
+  const docs = useQuery({ queryKey: ['config'], queryFn: api.config }).data?.docs;
 
   // «Назад»: сначала закрывает шторку «Как играть», потом - на главную.
   useEffect(() => onBack(howTo ? () => setHowTo(false) : gameActions.closeSettings), [howTo]);
@@ -193,14 +216,25 @@ export function SettingsScreen({ me }: { me: MeResponse }) {
         {wallet && (
           <div className="qd-in qd-d3">
             <Group title={t('s20.ads')}>
-              <div className="qd-card flex items-center gap-3 rounded-[26px] py-2.5 pr-2.5 pl-4">
-                <span className="min-w-0 grow text-[14px] leading-[1.35] font-medium" style={{ color: wallet.adFree ? 'var(--qd-correct-text)' : 'var(--tg-theme-hint-color)' }}>
-                  {wallet.adFree ? t('s20.adsOff') : t('s20.adsOn')}
-                </span>
+              <div className={`flex items-center gap-3 rounded-[26px] py-2.5 pr-2.5 pl-3 ${wallet.adFree ? 'qd-card-ok' : 'qd-card'}`}>
+                <Ball size={40} {...(wallet.adFree ? BALLS.ok : { color: '#FF6A88', glow: 'rgba(255,106,136,.5)', ink: '#FFFFFF' })}>
+                  <Icon glyph={wallet.adFree ? 'check' : 'ad'} size={19} stroke={2.4} />
+                </Ball>
+                <div className="flex min-w-0 grow flex-col gap-0.5">
+                  <span className="text-[15px] font-semibold">{wallet.adFree ? t('s20.adsOffT') : t('s20.adsOnT')}</span>
+                  <span className="text-[13px] leading-[1.35] font-medium text-hint">{wallet.adFree ? t('s20.adsOff') : t('s20.adsOn')}</span>
+                </div>
                 {!wallet.adFree && (
-                  <Button variant="secondary" size="s" full={false} icon={<Icon glyph="star" size={17} stroke={2.4} />} onClick={() => shop.openItem({ kind: 'adFree', id: 'adfree' })}>
-                    {t('s20.adsBuy')}
-                  </Button>
+                  <button
+                    type="button"
+                    aria-label={t('s20.adsBuyAria', { n: AD_FREE_STARS })}
+                    onClick={() => shop.openItem({ kind: 'adFree', id: 'adfree' })}
+                    className="qd-press qd-num box-border flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-[20px] border-0 pr-3.5 pl-[5px] text-[14px] font-bold"
+                    style={{ background: 'var(--qd-gold-glass)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.4), inset 0 0 0 1px var(--qd-gold-ring)', color: 'var(--qd-gold-text)' }}
+                  >
+                    <CoinDot size={30} star />
+                    {AD_FREE_STARS}
+                  </button>
                 )}
               </div>
             </Group>
@@ -239,6 +273,16 @@ export function SettingsScreen({ me }: { me: MeResponse }) {
             </span>
           </button>
         )}
+        <div className="qd-in qd-d5">
+          <Group title={t('s20.docs')}>
+            <div className="qd-card flex flex-col rounded-[26px] py-1 pr-3 pl-2.5">
+              <DocRow glyph="doc" title={t('s20.terms')} onOpen={() => docs && gameActions.openDoc(docs.termsUrl)} disabled={!docs} />
+              <div aria-hidden="true" className="ml-12 h-px bg-separator" />
+              <DocRow glyph="shield" title={t('s20.privacy')} onOpen={() => docs && gameActions.openDoc(docs.privacyUrl)} disabled={!docs} />
+            </div>
+          </Group>
+        </div>
+        <p className="qd-in qd-d5 m-0 mt-1 mb-2 text-center text-[12px] leading-[1.45] font-medium text-hint">{t('s20.support')}</p>
       </main>
       <HowToSheet open={howTo} onClose={() => setHowTo(false)} />
     </div>

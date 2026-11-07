@@ -19,6 +19,7 @@ import { CATEGORY_LOOK } from '../components/Category';
 import { Icon, type IconGlyph } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { CoinDot } from '../components/Shop';
+import { CoinPackArt, ReactionGlyph } from '../components/Art';
 import { formatNumber } from '../i18n';
 import { pw, shop, topicAccess, useShop, useWallet } from '../lib/economy';
 
@@ -167,15 +168,20 @@ export function ItemSheet({ me }: { me: MeResponse }) {
                 {REACTION_PACKS[item.id].map((e, i) => (
                   <span
                     key={e}
-                    className="qd-emoji qd-bob flex h-[58px] w-[58px] items-center justify-center rounded-full text-[30px] leading-none"
+                    className="qd-bob flex h-[62px] w-[62px] items-center justify-center rounded-full"
                     style={{ background: 'var(--qd-sheen), var(--qd-glass)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.45), 0 0 0 2px var(--qd-ring-gap)', animationDelay: `${i * 160}ms` }}
                   >
-                    {e}
+                    <ReactionGlyph r={e} size={44} live />
                   </span>
                 ))}
               </div>
             )}
-            {look.ball && (
+            {item.kind === 'coins' && (
+              <div className="qd-bob relative">
+                <CoinPackArt id={(COIN_PACKS.find((x) => x.id === item.id) ?? COIN_PACKS[1]).id} size={112} live />
+              </div>
+            )}
+            {look.ball && item.kind !== 'coins' && (
               <span
                 aria-hidden="true"
                 className="qd-ball qd-bob relative h-[92px] w-[92px]"
