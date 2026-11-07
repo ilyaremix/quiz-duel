@@ -100,9 +100,16 @@ export interface ConsentInput {
   userAgent: string | null;
 }
 
+/**
+ * Откуда пришли данные игрока. initData мини-аппа несёт фото (нет поля - фото у игрока нет),
+ * а пользователь в обновлениях бота (/start, inline-запрос) фото не несёт никогда:
+ * из них фото не трогаем, иначе оно стиралось бы до следующего открытия мини-аппа.
+ */
+export type ProfileSource = 'miniapp' | 'bot';
+
 export interface UsersRepo {
-  /** Создаёт игрока при первом входе, при следующих - обновляет имя, фото и язык из Telegram. */
-  upsertFromTelegram(user: TelegramUser): Promise<UserRecord>;
+  /** Создаёт игрока при первом входе, при следующих - обновляет имя, фото (только из мини-аппа) и язык из Telegram. */
+  upsertFromTelegram(user: TelegramUser, source?: ProfileSource): Promise<UserRecord>;
   /** Карточки игроков по id (кого нет в базе - того нет в ответе). */
   cards(ids: readonly number[]): Promise<Map<number, UserCard>>;
   /** Записывает принятие документов в журнал consents и запоминает версию у игрока. */
@@ -136,8 +143,9 @@ export function telegramProfile(user: TelegramUser) {
 
 export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
   return {
-    async upsertFromTelegram(user) {
-      const profile = telegramProfile(user);
+    async upsertFromTelegram(user, source = 'miniapp') {
+      const { photoUrl, ...rest } = telegramProfile(user);
+      const profile = source === 'bot' ? rest : { ...rest, photoUrl };
       // allows_write_to_pm подписан Telegram: разрешение писать берём из него (снять его может только ошибка отправки).
       const allowed = user.allows_write_to_pm === true ? { writeAccess: true } : {};
       const row = await prisma.user.upsert({

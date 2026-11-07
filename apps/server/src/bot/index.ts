@@ -46,7 +46,7 @@ export async function createBot(token: string, webAppUrl: string, users?: UsersR
   bot.command('start', async (ctx) => {
     // Нажал /start - бот может ему писать (уведомления о лобби, реванше, итогах).
     if (users && ctx.from) {
-      const user = await users.upsertFromTelegram(ctx.from as TelegramUser);
+      const user = await users.upsertFromTelegram(ctx.from as TelegramUser, 'bot');
       await users.setWriteAccess(ctx.from.id, true);
       // Меню команд в этом чате - на языке из настроек приложения.
       void syncChatCommands(bot, ctx.from.id, user.language === 'auto' ? null : resolveLang(user.language, user.tgLanguage));
@@ -266,8 +266,8 @@ export async function inlineAnswer(
   from: TelegramUser,
   webAppUrl: string,
 ) {
-  // Inline-запрос может прийти от того, кто ещё ни разу не открывал игру.
-  const user = await users.upsertFromTelegram(from);
+  // Inline-запрос может прийти от того, кто ещё ни разу не открывал игру. Фото в нём нет - его не трогаем.
+  const user = await users.upsertFromTelegram(from, 'bot');
   // Язык карточки - из настроек приложения (там «Авто» - язык Telegram).
   const lang = resolveLang(user.language, user.tgLanguage);
   const t = inviteTexts[lang];

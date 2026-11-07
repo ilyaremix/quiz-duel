@@ -86,6 +86,15 @@ describe('Этап 8: inline-режим', () => {
     expect(answer.options.button?.text).toBe('Open Quiz Duel and accept the documents');
   });
 
+  it('inline-запрос не стирает фото игрока (у бота в данных пользователя фото нет)', async () => {
+    const w = await world();
+    await w.users.upsertFromTelegram(ilya);
+    expect(w.users.rows.get(ilya.id)!.photoUrl).toBe(ilya.photo_url);
+    const { photo_url: _none, ...fromBot } = ilya;
+    await inlineAnswer(w.games, w.users, fromBot, WEB);
+    expect(w.users.rows.get(ilya.id)!.photoUrl).toBe(ilya.photo_url);
+  });
+
   it('язык из настроек мини-аппа важнее языка Telegram', async () => {
     const w = await world();
     await w.users.upsertFromTelegram(ilya);

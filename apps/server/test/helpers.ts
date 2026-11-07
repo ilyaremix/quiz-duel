@@ -36,9 +36,11 @@ export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord>; cons
   return {
     rows,
     consents,
-    async upsertFromTelegram(user) {
+    async upsertFromTelegram(user, source = 'miniapp') {
       const profile = telegramProfile(user);
       const existing = rows.get(user.id);
+      // Как в базе: обновления бота фото не несут и его не трогают.
+      if (source === 'bot') profile.photoUrl = existing?.photoUrl ?? null;
       const record: UserRecord = {
         id: user.id,
         language: 'auto',
