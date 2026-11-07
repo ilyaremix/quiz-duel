@@ -1479,11 +1479,6 @@ html {
     transform: scale(1.05);
   }
 }
-.qd-glow-ring {
-  background: conic-gradient(from 0deg, #4f8dff, #9b5cff, #ff6a88, #ffd36b, #22d3ee, #4f8dff);
-  -webkit-mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
-  mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
-}
 
 /*
  * Рисунки магазина (components/Art.tsx): свои реакции платных наборов и пакеты монет.
