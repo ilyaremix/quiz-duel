@@ -5,7 +5,9 @@ import {
   init,
   isTMA,
   miniApp,
+  postEvent,
   requestWriteAccess,
+  retrieveLaunchParams,
   retrieveRawInitData,
   swipeBehavior,
   themeParams,
@@ -52,6 +54,33 @@ function readUnverified(initDataRaw: string) {
   return { languageCode, startParam: params.get('start_param') ?? undefined };
 }
 
+/** На телефоне приложение раскрывается на весь экран, на компьютере остаётся обычным окном. */
+const MOBILE_PLATFORMS = new Set(['ios', 'android', 'android_x']);
+
+function launchPlatform(): string {
+  try {
+    return retrieveLaunchParams().tgWebAppPlatform;
+  } catch {
+    return 'unknown';
+  }
+}
+
+/**
+ * Телефон: фуллскрин (шапки Telegram нет, поверх остаются только его кнопки - под них
+ * отступ content-safe-area в .qd-screen) и замок ориентации, чтобы поворот не ломал раскладку.
+ * Старые клиенты без Bot API 8.0 просто остаются в обычном развёрнутом окне.
+ */
+function goFullscreen() {
+  if (!MOBILE_PLATFORMS.has(launchPlatform())) return;
+  safe(() => {
+    if (viewport.requestFullscreen.isAvailable() && !viewport.isFullscreen()) {
+      void viewport.requestFullscreen().catch(() => undefined);
+    }
+  });
+  // Замок держит текущую ориентацию - ставим его, только если телефон держат вертикально.
+  if (window.innerHeight >= window.innerWidth) safe(() => postEvent('web_app_toggle_orientation_lock', { locked: true }));
+}
+
 /** Тема, раскрытие на весь экран, safe area, сигнал «готово». */
 function setupSdk() {
   init();
@@ -68,20 +97,23 @@ function setupSdk() {
     applyChromeColors(themeParams.isDark());
   });
 
-  // Высота и отступы под вырез в --tg-viewport-*.
+  // Высота и отступы под вырез и кнопки Telegram в --tg-viewport-*.
   const mounting = viewport.mount.ifAvailable();
   if (mounting.ok) {
     void Promise.resolve(mounting.data)
       .then(() => {
         viewport.bindCssVars.ifAvailable();
         viewport.expand.ifAvailable();
+        goFullscreen();
       })
       .catch(() => undefined);
   }
 
-  // Кнопка «Назад», жесты и подтверждение закрытия - для партии (setGameGuards, onBack).
+  // Свайп вниз не сворачивает и не сдвигает приложение нигде - закрыть можно крестиком Telegram.
+  // Подтверждение закрытия и «Назад» - для партии (setGameGuards, onBack).
   backButton.mount.ifAvailable();
   swipeBehavior.mount.ifAvailable();
+  safe(() => swipeBehavior.disableVertical.ifAvailable());
   closingBehavior.mount.ifAvailable();
 
   miniApp.ready.ifAvailable();
@@ -97,12 +129,17 @@ function safe(fn: () => unknown) {
 }
 
 /**
- * Во время партии свайп вниз не закрывает приложение, а закрытие крестиком
- * спрашивает подтверждение. Вне партии - как обычно.
+ * Во время партии закрытие крестиком спрашивает подтверждение. Вне партии - как обычно.
+ * Свайп вниз выключен всегда (setupSdk), повторный вызов - на случай, если клиент его сбросил.
  */
 export function setGameGuards(on: boolean) {
-  safe(() => (on ? swipeBehavior.disableVertical.ifAvailable() : swipeBehavior.enableVertical.ifAvailable()));
+  safe(() => swipeBehavior.disableVertical.ifAvailable());
   safe(() => (on ? closingBehavior.enableConfirmation.ifAvailable() : closingBehavior.disableConfirmation.ifAvailable()));
+}
+
+/** Прокрутка в начало: прокручивается не документ, а #root (см. styles.css - так iOS не «резинит» весь экран). */
+export function scrollToTop() {
+  document.getElementById('root')?.scrollTo(0, 0);
 }
 
 /**

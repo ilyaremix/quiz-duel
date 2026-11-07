@@ -290,21 +290,42 @@
   --color-on-fill: var(--qd-on-fill);
 }
 
+/*
+ * Приложение не «съезжает» под пальцем: документ не прокручивается вовсе (body закреплён),
+ * прокручивается только #root - без резинки на краях, без сдвига вбок и без зума.
+ * Свайп вниз, который сворачивает Telegram, выключен в lib/telegram.ts (disableVertical).
+ */
 html,
 body,
 #root {
   height: 100%;
 }
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 
 body {
+  position: fixed;
+  inset: 0;
   margin: 0;
   background: var(--qd-bg);
   color: var(--tg-theme-text-color);
   font-family: var(--qd-font);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
   user-select: none;
+}
+
+#root {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 button,
 input {

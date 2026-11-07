@@ -92,8 +92,8 @@ function GameRoute({ game, me, review }: { game: GameView; me: MeResponse; revie
 }
 
 /**
- * Пока идёт партия: свайп вниз не закрывает приложение, закрытие спрашивает
- * подтверждение, а системная «Назад» на VS и вопросе открывает «Выйти из партии?».
+ * Пока идёт партия: закрытие спрашивает подтверждение, а системная «Назад» на VS и вопросе
+ * открывает «Выйти из партии?». Свайп вниз выключен всегда (lib/telegram.ts).
  */
 function useGameChrome(game: GameView | null, onScreen: boolean) {
   const active = Boolean(game && ACTIVE_PHASES.includes(game.phase));

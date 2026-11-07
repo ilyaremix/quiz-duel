@@ -20,7 +20,7 @@ import {
   REACTION_COOLDOWN_MS,
 } from '@quiz-duel/shared';
 import { createSocket, type GameSocket } from './socket';
-import { haptic, onResume } from './telegram';
+import { haptic, onResume, scrollToTop } from './telegram';
 import type { IconGlyph } from '../components/Icon';
 
 export type LinkErrorKind = 'taken' | 'notFound' | 'expired' | 'cancelled' | 'finished' | 'busy';
@@ -565,7 +565,7 @@ export const gameActions = {
 
   setTab(tab: Tab) {
     set({ tab, review: null, achievements: false, settings: false });
-    window.scrollTo(0, 0);
+    scrollToTop();
   },
 
   openReview(gameId: string) {
@@ -586,7 +586,7 @@ export const gameActions = {
 
   openAchievements() {
     set({ achievements: true });
-    window.scrollTo(0, 0);
+    scrollToTop();
   },
 
   closeAchievements() {
@@ -595,7 +595,7 @@ export const gameActions = {
 
   openSettings() {
     set({ settings: true });
-    window.scrollTo(0, 0);
+    scrollToTop();
   },
 
   closeSettings() {
