@@ -67,7 +67,17 @@ export async function world(extra: Partial<ManagerDeps> = {}): Promise<World> {
     clock,
     ...extra,
   });
-  io = attachSocket(http, { botToken: BOT_TOKEN, maxAgeSec: 86_400, origin: 'https://quiz.example.sslip.io', log: silentLog, games, now: clock.now });
+  io = attachSocket(http, {
+    botToken: BOT_TOKEN,
+    maxAgeSec: 86_400,
+    origin: 'https://quiz.example.sslip.io',
+    log: silentLog,
+    games,
+    now: clock.now,
+    // Время партий здесь перематывается (JumpClock), а лимиты сокета идут по настоящим часам:
+    // за секунду теста проходят несколько партий. Сами лимиты проверяет limits.socket.test.ts.
+    limits: { events: { max: 10_000, windowMs: 10_000 }, connects: { max: 10_000, windowMs: 60_000 } },
+  });
   await new Promise<void>((resolve) => http.listen(0, '127.0.0.1', resolve));
   const w: World = { clock, repo, users, http, io, games, port: (http.address() as AddressInfo).port };
   worlds.push(w);

@@ -62,7 +62,7 @@ describe('Этап 8: тренировка', () => {
     const first = await playSolo(w, a, (await startSolo(a)).id, (i) => i < 6);
     const best = first.me.score;
 
-    // Каждая попытка - новое подключение: лимит сокета 30 событий за 10 с рассчитан на живого игрока.
+    // Каждая попытка - новое подключение (как если бы игрок открывал приложение заново).
     const a2 = await player(w, ilya);
     const g2 = await startSolo(a2);
     expect(g2.soloBest).toBe(best);

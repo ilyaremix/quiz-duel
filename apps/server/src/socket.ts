@@ -25,6 +25,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import { InitDataError, verifyInitData } from './auth/initData.js';
 import { authErrorBody } from './auth/fastify.js';
 import type { GameManager, GameNotifier } from './game/manager.js';
+import { WindowLimiter, type Limit } from './limits.js';
 
 export type IoServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 
@@ -42,6 +43,8 @@ export interface SocketDeps {
   /** Вызов другу: проверка дружбы и уведомление (бот и баннер в приложении). */
   isFriend?: (a: number, b: number) => Promise<boolean>;
   onChallenge?: (fromId: number, friendId: number, game: GameView) => void;
+  /** Лимиты (по умолчанию EVENT_LIMIT и CONNECT_LIMIT; тесты с длинными сценариями ставят свои). */
+  limits?: { events?: Limit; connects?: Limit };
 }
 
 /** Комната игрока: все его вкладки и устройства. */
@@ -55,10 +58,17 @@ export const userRoom = (userId: number) => `user:${userId}`;
  */
 export const HEARTBEAT = { intervalMs: 10_000, timeoutMs: 8_000 } as const;
 
-/** Сколько игровых событий можно прислать с одного подключения за окно. */
-const EVENT_LIMIT = { max: 30, windowMs: 10_000 } as const;
+/**
+ * Сколько игровых событий игрок может прислать за окно. Счёт - на игрока, а не на подключение:
+ * иначе переподключение сбрасывало бы лимит. Настоящей партии хватает с большим запасом.
+ */
+export const EVENT_LIMIT: Limit = { max: 30, windowMs: 10_000 };
+/**
+ * Сколько раз игрок может подключиться за минуту. Каждое подключение - запрос в базу, а в партии -
+ * ещё и запись снимка; обычному игроку (свернул, вернулся, сменил сеть) хватает с запасом.
+ */
+export const CONNECT_LIMIT: Limit = { max: 20, windowMs: 60_000 };
 
-/** Снимки партии уходят в комнату игрока. */
 /** Пуши игроку вне партии: кошелёк изменился (оплата, награды), друзья. */
 export function socketPush(getIo: () => IoServer | null) {
   return {
@@ -75,6 +85,7 @@ export function socketPush(getIo: () => IoServer | null) {
 }
 export type SocketPush = ReturnType<typeof socketPush>;
 
+/** Снимки партии и реакции уходят в комнату игрока. */
 export function socketNotifier(getIo: () => IoServer | null): GameNotifier {
   return {
     state(userId, view, meta) {
@@ -103,6 +114,17 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
   });
   const now = deps.now ?? Date.now;
 
+  const events = new WindowLimiter(deps.limits?.events ?? EVENT_LIMIT);
+  const connects = new WindowLimiter(deps.limits?.connects ?? CONNECT_LIMIT);
+  // Закончившиеся окна - раз в минуту, чтобы карты не росли с числом игроков.
+  const sweep = setInterval(() => {
+    const t = Date.now();
+    events.sweep(t);
+    connects.sweep(t);
+  }, 60_000);
+  sweep.unref();
+  httpServer.once('close', () => clearInterval(sweep));
+
   // Без верного initData соединение не устанавливается вообще.
   io.use((socket, next) => {
     const raw: unknown = socket.handshake.auth?.initData;
@@ -110,6 +132,12 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
       const verified = verifyInitData(typeof raw === 'string' ? raw : undefined, deps.botToken, {
         maxAgeSec: deps.maxAgeSec,
       });
+      if (!connects.hit(verified.user.id, Date.now())) {
+        // Клиент подождёт несколько секунд и подключится снова (lib/game.ts).
+        const err = new Error('rate_limited') as Error & { data?: unknown };
+        err.data = { error: 'rate_limited' };
+        return next(err);
+      }
       socket.data.userId = verified.user.id;
       next();
     } catch (error) {
@@ -128,18 +156,8 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
       if (typeof ack === 'function') ack({ serverNow: now() });
     });
 
-    // Скользящее окно событий на подключение.
-    let windowStart = Date.now();
-    let count = 0;
-    const allowed = () => {
-      const now = Date.now();
-      if (now - windowStart > EVENT_LIMIT.windowMs) {
-        windowStart = now;
-        count = 0;
-      }
-      count += 1;
-      return count <= EVENT_LIMIT.max;
-    };
+    // Окно событий - общее для всех подключений игрока (см. EVENT_LIMIT).
+    const allowed = () => events.hit(userId, Date.now());
 
     /** Событие с ack: проверка схемой, лимит, ошибка сервера не роняет соединение. */
     function on<S extends z.ZodType, R extends object>(

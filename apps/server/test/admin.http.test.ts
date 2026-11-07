@@ -3,7 +3,7 @@
  * /api/me сообщает, админ ли игрок.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import { buildApp } from '../src/http/app.js';
+import { buildApp, EVENTS_LIMIT } from '../src/http/app.js';
 import type { AdminRepo } from '../src/admin.js';
 import type { EconomyRepo } from '../src/economy.js';
 import type { FriendsRepo } from '../src/friends.js';
@@ -111,5 +111,21 @@ describe('бан', () => {
     // Обычный игрок - как раньше.
     expect((await post('/api/daily?x', {}, ilya)).statusCode).toBe(200);
     expect(calls).toEqual([`daily:${ilya.id}`]);
+  });
+});
+
+describe('аналитика: лимит событий', () => {
+  it(`не больше ${EVENTS_LIMIT.max} событий в минуту от игрока, дальше 429`, async () => {
+    const { app, tracked } = await makeApp();
+    const batch = Array.from({ length: 50 }, () => 'home');
+    const send = () => app.inject({ method: 'POST', url: '/api/events', headers: auth(mark), payload: JSON.stringify({ events: batch }) });
+    for (let i = 0; i < EVENTS_LIMIT.max / 50; i++) expect((await send()).statusCode).toBe(200);
+    const over = await send();
+    expect(over.statusCode).toBe(429);
+    expect(over.json()).toEqual({ error: 'rate_limited' });
+    expect(tracked.length).toBe(EVENTS_LIMIT.max / 50);
+    // У другого игрока свой счёт.
+    const own = await app.inject({ method: 'POST', url: '/api/events', headers: auth(), payload: JSON.stringify({ events: ['home'] }) });
+    expect(own.statusCode).toBe(200);
   });
 });

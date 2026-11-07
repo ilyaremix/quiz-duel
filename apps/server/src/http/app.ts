@@ -42,6 +42,7 @@ import type { EcoFailure, EconomyRepo } from '../economy.js';
 import type { FriendsRepo, Presence } from '../friends.js';
 import type { ReferralMaker } from '../bot/index.js';
 import type { AdminRepo } from '../admin.js';
+import { WindowLimiter } from '../limits.js';
 
 /** Счёт на оплату звёздами (createInvoiceLink у бота). */
 export interface InvoiceMaker {
@@ -101,6 +102,12 @@ export function parseTrustProxy(value: string): string[] {
     .map((item) => item.trim())
     .filter(Boolean);
 }
+
+/**
+ * Аналитика: сколько событий (экраны и кнопки) игрок может записать за минуту. Настоящему игроку
+ * хватает с большим запасом; без лимита скрипт писал бы до 6 000 строк в минуту (50 × 120 запросов).
+ */
+export const EVENTS_LIMIT = { max: 300, windowMs: 60_000 } as const;
 
 /** Отказ экономики: 404 - нет такого, остальное - 409 с причиной для экрана. */
 function ecoStatus(error: EconomyErrorCode) {
@@ -319,9 +326,17 @@ export async function buildApp({
     const guard = { onRequest: auth, preHandler: onlyAdmin };
 
     // Аналитика: экраны и кнопки из приложения (пачкой, только известные имена).
+    const eventBudget = new WindowLimiter(EVENTS_LIMIT);
+    const sweep = setInterval(() => eventBudget.sweep(now()), 60_000);
+    sweep.unref();
+    app.addHook('onClose', async () => clearInterval(sweep));
+
     app.post('/api/events', authNotBanned, async (request, reply) => {
       const parsed = TrackRequestSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send(bad);
+      if (!eventBudget.hit(request.tg!.user.id, now(), parsed.data.events.length)) {
+        return reply.code(429).send({ error: 'rate_limited' } satisfies ApiError);
+      }
       await admin.track(request.tg!.user.id, parsed.data.events, now());
       return { ok: true };
     });

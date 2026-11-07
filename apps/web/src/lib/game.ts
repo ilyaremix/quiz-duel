@@ -202,6 +202,18 @@ let helloSeen = false;
 let consentSender: (() => Promise<void>) | null = null;
 /** Смещение часов уже измерено по time:sync (до этого - грубая оценка по приветствию). */
 let clockMeasured = false;
+let retryTimer: number | null = null;
+
+/** Повторное подключение после отказа сервера: 4-7 с, чтобы клиенты не стучались разом. */
+function retryLater() {
+  if (retryTimer !== null) return;
+  retryTimer = window.setTimeout(() => {
+    retryTimer = null;
+    const s = socket;
+    const conn = get().conn;
+    if (s && !s.connected && !s.active && conn !== 'replaced' && conn !== 'auth') s.connect();
+  }, 4_000 + Math.random() * 3_000);
+}
 
 type EventName = keyof ClientToServerEvents;
 type PayloadOf<E extends EventName> = Parameters<ClientToServerEvents[E]>[0];
@@ -420,6 +432,9 @@ export const gameActions = {
         return;
       }
       set({ conn: helloSeen ? 'reconnecting' : 'connecting' });
+      // Сервер сам отказал в подключении (слишком часто, сбой) - в этом случае Socket.IO не повторяет
+      // попытку сам: подключаемся снова через несколько секунд.
+      if (socket && !socket.active) retryLater();
     });
     onResume(() => void wake());
     window.addEventListener('offline', () => set({ net: false }));
