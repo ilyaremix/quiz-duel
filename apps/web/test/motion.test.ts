@@ -47,4 +47,15 @@ describe('styles.css: у каждой анимации есть правило �
     expect(animated.size).toBeGreaterThan(20);
     expect(missing).toEqual([]);
   });
+
+  it('бесконечные анимации меняют только transform и opacity - их ведёт видеокарта, без перерисовки каждый кадр', () => {
+    const props = new Map<string, Set<string>>();
+    for (const m of css.matchAll(/@keyframes\s+([\w-]+)\s*\{((?:[^{}]*\{[^{}]*\})*)\s*\}/g)) {
+      props.set(m[1] ?? '', new Set([...(m[2] ?? '').matchAll(/([a-z-]+)\s*:/g)].map((p) => p[1] ?? '')));
+    }
+    const endless = new Set([...css.matchAll(/\banimation:\s*([\w-]+)[^;]*\binfinite\b/g)].map((m) => m[1] ?? ''));
+    const heavy = [...endless].flatMap((name) => [...(props.get(name) ?? ['нет @keyframes'])].filter((p) => p !== 'transform' && p !== 'opacity').map((p) => `${name}: ${p}`));
+    expect(endless.size).toBeGreaterThan(20);
+    expect(heavy).toEqual([]);
+  });
 });

@@ -53,9 +53,9 @@ export function Trophy({ tone, glyph, rays = false }: { tone: TrophyTone; glyph?
             {
               background: `linear-gradient(155deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.06) 55%), radial-gradient(circle at 50% 115%, ${o.core}, rgba(0, 0, 0, 0) 62%), var(--qd-glass)`,
               color: o.ink,
-              '--qd-ga': `${EDGE}, 0 0 40px ${o.glowA}, 0 20px 40px rgba(0, 0, 0, 0.3)`,
-              '--qd-gb': `${EDGE}, 0 0 74px ${o.glowB}, 0 20px 40px rgba(0, 0, 0, 0.3)`,
-              boxShadow: 'var(--qd-ga)',
+              // Покой - своя тень; на пике поверх проявляется более широкое свечение (.qd-breathe).
+              boxShadow: `${EDGE}, 0 0 40px ${o.glowA}, 0 20px 40px rgba(0, 0, 0, 0.3)`,
+              '--qd-gb': `0 0 74px ${o.glowB}`,
             } as CSSProperties
           }
         >

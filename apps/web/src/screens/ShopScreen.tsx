@@ -65,8 +65,7 @@ function StreakCard({ w }: { w: WalletResponse }) {
                   background: today ? 'var(--qd-brand-glass)' : past ? 'var(--qd-gold-glass)' : 'var(--qd-glass)',
                   boxShadow: today ? 'var(--qd-brand-edge)' : past ? 'var(--qd-gold-edge)' : 'var(--qd-glass-edge-flat)',
                   opacity: !past && !today ? 0.62 : 1,
-                  '--qd-ga': 'var(--qd-brand-edge)',
-                  '--qd-gb': 'inset 0 1px 0 rgba(255,255,255,.45), inset 0 0 0 1.5px rgba(195,166,255,.9), 0 0 30px rgba(155,92,255,.7)',
+                  '--qd-gb': 'inset 0 0 0 1.5px rgba(195,166,255,.9), 0 0 30px rgba(155,92,255,.7)',
                 } as CSSProperties
               }
             >

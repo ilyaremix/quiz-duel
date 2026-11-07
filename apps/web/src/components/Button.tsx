@@ -55,7 +55,11 @@ export function Button({ variant = 'primary', size = 'l', full = true, icon, chi
       }}
       {...rest}
     >
-      {live && <span className="qd-btn-shine" aria-hidden="true" />}
+      {live && (
+        <span className="qd-btn-clip" aria-hidden="true">
+          <span className="qd-btn-shine" />
+        </span>
+      )}
       <span className="relative z-[2] flex min-w-0 items-center justify-center gap-2">
         {icon}
         <span className="truncate">{children}</span>

@@ -62,7 +62,7 @@
   --qd-cta-bg: linear-gradient(180deg, #ffffff, #e6eaff);
   --qd-cta-fg: #0b0d24;
   --qd-cta-edge: inset 0 -2px 0 rgba(120, 130, 220, 0.25), 0 10px 28px rgba(120, 140, 255, 0.35);
-  --qd-cta-glow: inset 0 -2px 0 rgba(120, 130, 220, 0.25), 0 10px 40px rgba(155, 92, 255, 0.6), 0 0 0 6px rgba(190, 160, 255, 0.2);
+  --qd-cta-halo: 0 10px 40px rgba(155, 92, 255, 0.5), 0 0 0 6px rgba(190, 160, 255, 0.2);
   --qd-iris: conic-gradient(from 200deg, #4f8dff, #9b5cff, #ff6a88, #ffd36b, #22d3ee, #4f8dff);
   --qd-timer: linear-gradient(90deg, #4f8dff, #9b5cff, #ff6a88);
   --qd-me-glow: rgba(79, 141, 255, 0.6);
@@ -168,7 +168,7 @@
   --qd-cta-bg: linear-gradient(180deg, #22264d, #0b0d24);
   --qd-cta-fg: #ffffff;
   --qd-cta-edge: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 26px rgba(30, 40, 110, 0.3);
-  --qd-cta-glow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 34px rgba(100, 80, 220, 0.45), 0 0 0 6px rgba(155, 92, 255, 0.16);
+  --qd-cta-halo: 0 10px 34px rgba(100, 80, 220, 0.36), 0 0 0 6px rgba(155, 92, 255, 0.16);
   --qd-iris: conic-gradient(from 200deg, #4f8dff, #9b5cff, #ff6a88, #ffd36b, #22d3ee, #4f8dff);
   --qd-timer: linear-gradient(90deg, #4f8dff, #9b5cff, #ff6a88);
   --qd-me-glow: rgba(47, 111, 235, 0.35);
@@ -707,8 +707,16 @@ html {
 /* Главная кнопка: радужная кромка, у большой - «дыхание» свечения и блик раз в 3,6 с. */
 .qd-btn {
   position: relative;
-  overflow: hidden;
   isolation: isolate;
+}
+/* Блик обрезается по форме кнопки, а свечение (::after) выходит за неё - поэтому обрезает не сама кнопка. */
+.qd-btn-clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
 }
 .qd-btn-iris::before {
   content: '';
@@ -728,17 +736,32 @@ html {
 .qd-btn:not(:disabled):active {
   filter: brightness(1.06);
 }
-@keyframes qd-btn-breathe {
+/* «Дыхание» свечения (здесь, у кубка, плитки дня и «Забрать»): тень не анимируется - её пришлось бы
+   перерисовывать каждый кадр. Свечение нарисовано один раз на отдельном слое ::after, и меняется
+   только его прозрачность - это делает видеокарта, без перерисовки страницы. */
+.qd-btn-glow::after,
+.qd-breathe::after,
+.qd-task-ready::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+@keyframes qd-glow-in {
   0%,
   100% {
-    box-shadow: var(--qd-cta-edge);
+    opacity: 0;
   }
   50% {
-    box-shadow: var(--qd-cta-glow);
+    opacity: 1;
   }
 }
-.qd-btn-glow {
-  animation: qd-btn-breathe 2400ms ease infinite;
+.qd-btn-glow::after {
+  box-shadow: var(--qd-cta-halo);
+  animation: qd-glow-in 2400ms ease infinite;
 }
 @keyframes qd-btn-shine {
   0% {
@@ -939,17 +962,14 @@ html {
 .qd-turn {
   animation: qd-turn 6s linear infinite;
 }
-@keyframes qd-breathe {
-  0%,
-  100% {
-    box-shadow: var(--qd-ga);
-  }
-  50% {
-    box-shadow: var(--qd-gb);
-  }
-}
+/* Кубок и плитка дня: своя тень - покой, слой ::after (--qd-gb) - добавка на пике (см. .qd-btn-glow). */
 .qd-breathe {
-  animation: qd-breathe 2400ms ease infinite;
+  position: relative;
+  isolation: isolate;
+}
+.qd-breathe::after {
+  box-shadow: var(--qd-gb);
+  animation: qd-glow-in 2400ms ease infinite;
 }
 @keyframes qd-halo {
   0%,
@@ -1766,22 +1786,17 @@ html {
   animation: qd-glow-pulse 1800ms ease infinite;
 }
 
-/* Задание с готовой наградой: золотая кнопка «дышит» свечением. */
+/* Задание с готовой наградой: золотая кнопка «дышит» свечением (как .qd-btn-glow). */
 .qd-task-ready {
-  animation: qd-task-ready 2200ms ease infinite;
+  position: relative;
+  isolation: isolate;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 0 14px rgba(255, 211, 107, 0.45);
 }
-@keyframes qd-task-ready {
-  0%,
-  100% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.7),
-      0 0 14px rgba(255, 211, 107, 0.45);
-  }
-  50% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.7),
-      0 0 28px rgba(255, 211, 107, 0.85);
-  }
+.qd-task-ready::after {
+  box-shadow: 0 0 28px rgba(255, 211, 107, 0.72);
+  animation: qd-glow-in 2200ms ease infinite;
 }
 .qd-gold-btn {
   background: radial-gradient(circle at 30% 20%, #fff3c4, #ffd36b 55%, #f2b230);
@@ -1843,7 +1858,7 @@ html {
 .qd-rm .qd-glow-pulse,
 .qd-rm .qd-glow-spin,
 .qd-rm .qd-glow-flame,
-.qd-rm .qd-task-ready {
+.qd-rm .qd-task-ready::after {
   animation: none;
 }
 /* Рисунки реакций и монет стоят: ни качания, ни искр. */
@@ -1868,10 +1883,10 @@ html {
 .qd-rm .qd-skel,
 .qd-rm .qd-bob,
 .qd-rm .qd-turn,
-.qd-rm .qd-breathe,
+.qd-rm .qd-breathe::after,
 .qd-rm .qd-halo,
 .qd-rm .qd-beat,
-.qd-rm .qd-btn-glow,
+.qd-rm .qd-btn-glow::after,
 .qd-rm .qd-bn-live {
   animation: none;
 }
