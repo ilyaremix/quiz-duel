@@ -169,6 +169,18 @@ describe('вход соперника', () => {
     expect((await games.join(B, created.game.id)).ok).toBe(true);
   });
 
+  it('принята старая версия документов - создать и войти нельзя (consent_required), пока не примет новую', async () => {
+    const { games, users } = await setup();
+    const created = await games.create(A, 'mix');
+    if (!created.ok) throw new Error(created.error);
+    users.rows.get(A)!.docsVersion = '2026-01-01';
+    users.rows.get(B)!.docsVersion = '2026-01-01';
+    expect(await games.create(A, 'science')).toMatchObject({ ok: false, error: 'consent_required' });
+    expect(await games.join(B, created.game.id)).toMatchObject({ ok: false, error: 'consent_required' });
+    users.rows.get(B)!.docsVersion = DOCS_VERSION;
+    expect((await games.join(B, created.game.id)).ok).toBe(true);
+  });
+
   it('мёртвая ссылка отвечает сразу, без шторки документов', async () => {
     const { games } = await setup({ consent: [A, B] });
     const id = await lobby(games);

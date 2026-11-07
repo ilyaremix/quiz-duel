@@ -179,6 +179,24 @@ describe('POST /api/consents', () => {
     expect(res.json()).toEqual({ error: 'stale_version', reason: DOCS_VERSION });
   });
 
+  it('обновилась версия документов: при следующем входе снова шторка, старые записи журнала остаются', async () => {
+    const { app, users } = await makeApp();
+    await post(app, { docs: ['terms', 'privacy'], version: DOCS_VERSION });
+
+    // Тексты поменяли и подняли DOCS_VERSION - тот же игрок, тот же журнал.
+    const NEXT = '2026-12-01';
+    const next = await buildApp({ env: { ...testEnv(), DOCS_VERSION: NEXT }, users, botUsername: 'quizduel_test_bot', logger: false });
+    apps.push(next);
+    const me = await next.inject({ method: 'GET', url: '/api/me', headers: { authorization: `tma ${makeInitData()}` } });
+    expect(me.json().docsAccepted).toBe(false);
+
+    expect((await post(next, { docs: ['terms', 'privacy'], version: DOCS_VERSION })).statusCode).toBe(409);
+    expect((await post(next, { docs: ['terms', 'privacy'], version: NEXT })).statusCode).toBe(200);
+    expect(users.consents.map((c) => c.version)).toEqual([DOCS_VERSION, NEXT]);
+    const after = await next.inject({ method: 'GET', url: '/api/me', headers: { authorization: `tma ${makeInitData()}` } });
+    expect(after.json().docsAccepted).toBe(true);
+  });
+
   it('повторная отправка - новая строка в журнале, без ошибки', async () => {
     const { app, users } = await makeApp();
     await post(app, { docs: ['terms', 'privacy'], version: DOCS_VERSION });

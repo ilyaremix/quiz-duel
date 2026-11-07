@@ -17,6 +17,7 @@ import { settleInput } from '../src/game/settle.js';
 import { loadQuestionBank } from '../src/questions/bank.js';
 import { syncQuestions } from '../src/questions/sync.js';
 import { createPrismaStatsRepo } from '../src/stats.js';
+import { createPrismaUsersRepo } from '../src/users.js';
 import { seededRng } from '../src/game/rng.js';
 
 const url = process.env.TEST_DATABASE_URL;
@@ -190,6 +191,35 @@ describe.skipIf(!url)('итоги на Postgres', () => {
     expect((await prisma.game.findUniqueOrThrow({ where: { id: 'SoloGame01' } })).settledAt).not.toBeNull();
     // В историю матчей и разбор тренировка не попадает.
     expect((await stats.profile(A))?.matches).toEqual([]);
+  });
+
+  it('уникальный индекс answers - вторая линия защиты: второй ответ того же игрока на тот же вопрос база не примет', async () => {
+    const s = played('UniqAnsw01', A, B, [n(10), n(0)]);
+    await repo.save(s);
+    const q = s.questions[0]!;
+    const first = s.creator.answers[0]!;
+    await repo.saveAnswer(s.id, A, 0, q.id, first);
+    await expect(repo.saveAnswer(s.id, A, 0, q.id, { ...first, position: (first.position + 1) % 4, correct: false, points: 0 })).rejects.toThrow();
+    const rows = await prisma.answer.findMany({ where: { gameId: s.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ userId: BigInt(A), questionIndex: 0, isCorrect: true, points: first.points });
+    // У соперника на тот же вопрос - своя строка.
+    await repo.saveAnswer(s.id, B, 0, q.id, s.opponent!.answers[0]!);
+    expect(await prisma.answer.count({ where: { gameId: s.id } })).toBe(2);
+  });
+
+  it('журнал согласий: новая версия документов - новые строки, старые остаются; повтор - ещё строки', async () => {
+    const users = createPrismaUsersRepo(prisma);
+    const input = { userId: A, docs: ['terms', 'privacy'] as ('terms' | 'privacy')[], ip: '203.0.113.7', userAgent: 'Telegram-Android/11.2' };
+    await users.acceptDocs({ ...input, version: '2026-11-07' });
+    await users.acceptDocs({ ...input, version: '2026-12-01' });
+    await users.acceptDocs({ ...input, version: '2026-12-01' });
+    const rows = await prisma.consent.findMany({ where: { userId: BigInt(A) }, orderBy: { id: 'asc' } });
+    expect(rows.map((r) => `${r.doc}@${r.docVersion}`)).toEqual([
+      'terms@2026-11-07', 'privacy@2026-11-07', 'terms@2026-12-01', 'privacy@2026-12-01', 'terms@2026-12-01', 'privacy@2026-12-01',
+    ]);
+    expect(rows[0]).toMatchObject({ ip: '203.0.113.7', userAgent: 'Telegram-Android/11.2' });
+    expect((await user(A)).docsVersion).toBe('2026-12-01');
   });
 
   describe('чтение для экранов', () => {
