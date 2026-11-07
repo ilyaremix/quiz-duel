@@ -34,7 +34,26 @@ export function CategorySheet() {
   };
 
   return (
-    <Sheet open={open} label={t('s04.aria')} onClose={close}>
+    <Sheet
+      open={open}
+      label={t('s04.aria')}
+      onClose={close}
+      footer={
+        <Button
+          disabled={!selected || creating || blocked}
+          icon={<Icon glyph={solo ? 'target' : forFriend ? 'send' : 'duel'} size={22} stroke={2.4} />}
+          onClick={() => {
+            if (!selected) return;
+            if (solo) return void gameActions.startSolo(selected);
+            const to = forFriend ? friend.id : undefined;
+            friendsActions.clearTarget();
+            void gameActions.create(selected, to, rules);
+          }}
+        >
+          {t(solo ? 's04.train' : forFriend ? 's04.friendSend' : 's04.create')}
+        </Button>
+      }
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <h2 className="m-0 text-[22px] font-bold tracking-[-0.02em]">{forFriend ? t('s04.friendTitle') : t('s04.title')}</h2>
@@ -97,21 +116,6 @@ export function CategorySheet() {
           </span>
         </button>
       )}
-      <div className="mt-1">
-        <Button
-          disabled={!selected || creating || blocked}
-          icon={<Icon glyph={solo ? 'target' : forFriend ? 'send' : 'duel'} size={22} stroke={2.4} />}
-          onClick={() => {
-            if (!selected) return;
-            if (solo) return void gameActions.startSolo(selected);
-            const to = forFriend ? friend.id : undefined;
-            friendsActions.clearTarget();
-            void gameActions.create(selected, to, rules);
-          }}
-        >
-          {t(solo ? 's04.train' : forFriend ? 's04.friendSend' : 's04.create')}
-        </Button>
-      </div>
     </Sheet>
   );
 }

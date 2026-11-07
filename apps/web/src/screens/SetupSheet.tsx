@@ -20,7 +20,23 @@ export function SetupSheet() {
   const timeLabels = t('s32.timeOpts').split('|');
 
   return (
-    <Sheet open={open} label={t('s32.aria')} onClose={setupActions.close}>
+    <Sheet
+      open={open}
+      label={t('s32.aria')}
+      onClose={setupActions.close}
+      footer={
+        <div className="flex flex-col gap-2">
+          <Button icon={<Icon glyph="check" size={22} stroke={2.6} />} onClick={setupActions.close}>
+            {t('s32.done')}
+          </Button>
+          {!isDefaultRules(rules) && (
+            <Button variant="ghost" size="s" onClick={setupActions.reset}>
+              {t('s32.reset')}
+            </Button>
+          )}
+        </div>
+      }
+    >
       <div className="flex items-center justify-between gap-3">
         <h2 className="m-0 text-[22px] font-bold tracking-[-0.02em]">{t('s32.title')}</h2>
         <button type="button" aria-label={t('common.close')} onClick={setupActions.close} className="qd-press qd-icon-btn h-11 w-11">
@@ -60,16 +76,6 @@ export function SetupSheet() {
         </span>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Button icon={<Icon glyph="check" size={22} stroke={2.6} />} onClick={setupActions.close}>
-          {t('s32.done')}
-        </Button>
-        {!isDefaultRules(rules) && (
-          <Button variant="ghost" size="s" onClick={setupActions.reset}>
-            {t('s32.reset')}
-          </Button>
-        )}
-      </div>
     </Sheet>
   );
 }

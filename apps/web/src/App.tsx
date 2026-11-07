@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ACTIVE_PHASES, gameIdFromStartParam, TIMINGS, type GameView, type MeResponse } from '@quiz-duel/shared';
+import { ACTIVE_PHASES, FINAL_PHASES, gameIdFromStartParam, TIMINGS, type GameView, type MeResponse } from '@quiz-duel/shared';
 import { api, ApiRequestError, queryKeys, setSessionAuth } from './lib/api';
 import { askWriteAccess, closeMiniApp, onBack, setGameGuards, setHapticsEnabled, setThemeSetting, type TelegramSession } from './lib/telegram';
 import { gameActions, useGame } from './lib/game';
@@ -182,7 +182,9 @@ function useForcedAd(me: MeResponse) {
   const ad = useShop((s) => s.ad);
   const skipped = useShop((s) => s.adSkipped);
   const admin = useAdmin((s) => s.open);
-  const due = Boolean(wallet.data?.adDue && !wallet.data.adFree && me.docsAccepted && !admin);
+  // Своя партия идёт в фоне (ушёл на главную с плашкой «Вернуться») - ролик не мешает ей: покажется после.
+  const playing = useGame((s) => Boolean(s.game && !FINAL_PHASES.includes(s.game.phase)));
+  const due = Boolean(wallet.data?.adDue && !wallet.data.adFree && me.docsAccepted && !admin && !playing);
   useEffect(() => {
     if (!due || ad || skipped) return;
     const id = window.setTimeout(() => void shop.watchAd('forced'), 700);
