@@ -19,6 +19,7 @@ import { syncQuestions } from '../src/questions/sync.js';
 import { createPrismaStatsRepo } from '../src/stats.js';
 import { createPrismaUsersRepo } from '../src/users.js';
 import { seededRng } from '../src/game/rng.js';
+import { lockDb } from './dbLock.js';
 
 const url = process.env.TEST_DATABASE_URL;
 const bank = loadQuestionBank();
@@ -74,9 +75,11 @@ describe.skipIf(!url)('итоги на Postgres', () => {
     return repo.settle(state, settleInput(state, bank), state.finish!.at);
   }
 
+  let unlock: (() => Promise<void>) | null = null;
   beforeAll(async () => {
+    unlock = await lockDb(url!);
     await syncQuestions(prisma, bank.all);
-  });
+  }, 120_000);
 
   beforeEach(async () => {
     await prisma.$executeRawUnsafe('TRUNCATE answers, user_achievements, category_stats, consents, games, users CASCADE');
@@ -87,6 +90,7 @@ describe.skipIf(!url)('итоги на Postgres', () => {
 
   afterAll(async () => {
     await prisma.$disconnect();
+    await unlock?.();
   });
 
   const user = (id: number) => prisma.user.findUniqueOrThrow({ where: { id: BigInt(id) } });

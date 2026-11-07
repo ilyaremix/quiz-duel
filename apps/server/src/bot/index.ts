@@ -74,7 +74,7 @@ export function startBot(bot: QuizBot, log: FastifyBaseLogger) {
   bot
     .start({
       drop_pending_updates: true,
-      allowed_updates: ['message', 'inline_query', 'callback_query', 'my_chat_member'],
+      allowed_updates: ['message', 'inline_query', 'callback_query', 'my_chat_member', 'pre_checkout_query'],
       onStart: (info) => log.info({ bot: info.username }, 'bot polling started'),
     })
     .catch((error: unknown) => {

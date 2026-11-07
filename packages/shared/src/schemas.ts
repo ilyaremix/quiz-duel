@@ -8,6 +8,7 @@ import { GAME_ID_RE } from './links.js';
 import { QUESTIONS_PER_GAME } from './questions.js';
 import { GAME_CATEGORIES, type GameCategory } from './categories.js';
 import { REACTIONS, type Reaction } from './game.js';
+import { PREMIUM_TOPICS, STARS_PRODUCTS, type PremiumTopic, type StarsProduct } from './economy.js';
 
 type Tuple<T> = readonly [T, ...T[]];
 
@@ -53,3 +54,23 @@ export const SettingsRequestSchema = z
   .refine((v) => Object.values(v).some((x) => x !== undefined), 'empty');
 
 export const EmptyPayloadSchema = z.strictObject({});
+
+// ---------------------------------------------------------------------------
+// Обновление 2.0: магазин, задания, реклама, звёзды
+
+const shopItem = z.string().min(1).max(16).regex(/^[a-z]+$/);
+
+export const BuyRequestSchema = z.strictObject({ kind: z.enum(['glow', 'pack', 'topic']), item: shopItem });
+
+export const EquipRequestSchema = z.strictObject({ kind: z.enum(['glow', 'pack']), item: shopItem });
+
+export const TaskClaimSchema = z.strictObject({ id: z.string().min(1).max(32).regex(/^[a-z0-9_-]+$/) });
+
+export const AdStartRequestSchema = z.strictObject({
+  purpose: z.enum(['forced', 'reward', 'topic']),
+  topic: z.enum(PREMIUM_TOPICS as unknown as Tuple<PremiumTopic>).optional(),
+});
+
+export const AdDoneRequestSchema = z.strictObject({ id: z.string().min(8).max(32).regex(/^[A-Za-z0-9_-]+$/) });
+
+export const InvoiceRequestSchema = z.strictObject({ product: z.enum(STARS_PRODUCTS as unknown as Tuple<StarsProduct>) });

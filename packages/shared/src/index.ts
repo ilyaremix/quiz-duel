@@ -9,4 +9,5 @@ export * from './achievements.js';
 export * from './game.js';
 export * from './links.js';
 export * from './clock.js';
+export * from './economy.js';
 export * from './schemas.js';

@@ -52,6 +52,16 @@ export const HEARTBEAT = { intervalMs: 10_000, timeoutMs: 8_000 } as const;
 const EVENT_LIMIT = { max: 30, windowMs: 10_000 } as const;
 
 /** Снимки партии уходят в комнату игрока. */
+/** Пуши игроку вне партии: кошелёк изменился (оплата, награды). */
+export function socketPush(getIo: () => IoServer | null) {
+  return {
+    wallet(userId: number) {
+      getIo()?.to(userRoom(userId)).emit('wallet:changed');
+    },
+  };
+}
+export type SocketPush = ReturnType<typeof socketPush>;
+
 export function socketNotifier(getIo: () => IoServer | null): GameNotifier {
   return {
     state(userId, view, meta) {

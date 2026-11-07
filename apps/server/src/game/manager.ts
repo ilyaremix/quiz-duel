@@ -144,6 +144,11 @@ export interface ManagerDeps {
   alerts?: GameAlerts;
   /** Карточка «Поделиться результатом» (этап 8). */
   sharer?: ResultSharer;
+  /**
+   * Итоги партии записаны (один раз на партию): задания «Сыграйте 3 партии», счётчик до рекламы,
+   * награда за приглашение. Ошибка здесь не мешает игре.
+   */
+  onSettled?: (state: GameState) => Promise<void> | void;
   /** Часы и таймеры (по умолчанию настоящие). */
   clock?: ServerClock;
   /** Только часы (тесты менеджера с фейковыми таймерами vitest). */
@@ -1171,6 +1176,7 @@ export class GameManager {
         entry.state = machine.withSettlement(entry.state, await this.d.repo.settleSolo(state, this.now()));
         if (entry.settleTimer) this.clock.clearTimeout(entry.settleTimer);
         entry.settleTimer = null;
+        this.settled(entry.state);
         return true;
       } catch (error) {
         this.d.log.error({ err: error, gameId: state.id }, 'solo settle failed');
@@ -1189,11 +1195,20 @@ export class GameManager {
       entry.settleTimer = null;
       // Рейтинг изменился - карточки игроков (лобби, профиль соперника) должны это показать.
       await this.refreshCards(machine.participants(state).map((p) => p.userId));
+      this.settled(entry.state);
       return true;
     } catch (error) {
       this.d.log.error({ err: error, gameId: state.id }, 'game settle failed');
       return false;
     }
+  }
+
+  /** Хук после итогов: не ждём его и не даём его сбою сломать партию. */
+  private settled(state: GameState) {
+    if (!this.d.onSettled) return;
+    void Promise.resolve()
+      .then(() => this.d.onSettled!(state))
+      .catch((error: unknown) => this.d.log.error({ err: error, gameId: state.id }, 'after-settle hook failed'));
   }
 
   private scheduleSettleRetry(entry: Entry) {

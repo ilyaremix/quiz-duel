@@ -1,14 +1,18 @@
+import type { FastifyBaseLogger } from 'fastify';
 import { loadEnv, webOrigin } from './env.js';
 import { createPrisma } from './db.js';
 import { createPrismaUsersRepo } from './users.js';
 import { createPrismaStatsRepo } from './stats.js';
 import { buildApp } from './http/app.js';
-import { attachSocket, socketNotifier, type IoServer } from './socket.js';
+import { attachSocket, socketNotifier, socketPush, type IoServer } from './socket.js';
 import { attachInline, botInvites, botResults, configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
 import { botAlerts } from './bot/alerts.js';
 import { createPrismaGamesRepo } from './game/repo.js';
 import { GameManager, realClock } from './game/manager.js';
 import { loadQuestionBank } from './questions/bank.js';
+import { createPrismaEconomyRepo } from './economy.js';
+import { attachPayments, botChannels, botInvoices } from './bot/payments.js';
+import { participants } from './game/machine.js';
 import { syncQuestions } from './questions/sync.js';
 
 async function main() {
@@ -30,13 +34,20 @@ async function main() {
 
   // Менеджер партий создаётся после HTTP (ему нужен логгер приложения), поэтому ссылка - через переменную.
   let gamesRef: GameManager | null = null;
+  let logRef: FastifyBaseLogger | null = null;
+  // Подписку на канал проверяет бот (getChatMember); логгер появится вместе с приложением.
+  const economy = createPrismaEconomyRepo(prisma, bot ? botChannels(bot.api, () => logRef) : undefined);
+  await economy.ensureTasks();
   const app = await buildApp({
     env,
     users,
     stats: createPrismaStatsRepo(prisma),
+    economy,
+    invoices: bot ? botInvoices(bot.api) : undefined,
     botUsername,
     onSettingsChanged: (userId) => gamesRef?.userChanged(userId),
   });
+  logRef = app.log;
 
   // Таблица questions всегда совпадает с data/questions.json из этой сборки
   // (до восстановления партий: их ответы ссылаются на вопросы).
@@ -44,6 +55,7 @@ async function main() {
   app.log.info(synced, 'questions synced');
 
   let io: IoServer | null = null;
+  const push = socketPush(() => io);
   const appUrl = `https://t.me/${botUsername}/${env.APP_SHORT_NAME}`;
   const games = new GameManager({
     repo: createPrismaGamesRepo(prisma),
@@ -57,6 +69,11 @@ async function main() {
     alerts: bot ? botAlerts(bot.api, users, appUrl, app.log) : undefined,
     sharer: bot ? botResults(bot) : undefined,
     clock: realClock,
+    onSettled: async (state) => {
+      const ids = participants(state).map((p) => p.userId);
+      await economy.gamePlayed(ids, Date.now());
+      for (const id of ids) push.wallet(id);
+    },
   });
   gamesRef = games;
   // Партии, шедшие до перезапуска, поднимаются из базы; просроченные фазы закрываются сразу.
@@ -76,6 +93,12 @@ async function main() {
 
   if (bot) {
     attachInline(bot, games, users, env.WEB_APP_URL, app.log);
+    attachPayments(
+      bot,
+      economy,
+      { changed: (userId) => push.wallet(userId), lang: async (userId) => (await users.alertTarget(userId))?.lang ?? 'en' },
+      app.log,
+    );
     await configureBot(bot, env.WEB_APP_URL, app.log);
     startBot(bot, app.log);
   }

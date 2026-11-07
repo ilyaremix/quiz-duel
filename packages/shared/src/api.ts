@@ -88,6 +88,9 @@ export type ApiErrorCode =
   | 'not_found'
   | 'bad_request'
   | 'stale_version'
+  /** Действие сейчас невозможно (не хватает монет, уже забрано...): причина - в reason. */
+  | 'conflict'
+  | 'forbidden'
   | 'internal';
 
 export interface ApiError {

@@ -17,6 +17,12 @@ enum LangSetting {
   en
 }
 
+enum ThemeSetting {
+  auto
+  light
+  dark
+}
+
 enum MotionSetting {
   auto
   on
@@ -44,6 +50,28 @@ model User {
   docsVersion   String?       @map("docs_version")
   /// Смотрел слайды онбординга (пришедший по ссылке видит их после партии)
   onboarded     Boolean       @default(false)
+  /// Обновление 2.0: тема оформления (auto - как в Telegram)
+  theme         ThemeSetting  @default(auto)
+
+  /// Монеты: тратятся на оформление и темы. Каждое изменение - строка в coin_ledger
+  coins         Int           @default(0)
+  /// Куплено «Без рекламы» за звёзды
+  adFree        Boolean       @default(false) @map("ad_free")
+  /// Надетое свечение аватарки и набор реакций (купленные - в inventory)
+  glow          String        @default("none")
+  reactionPack  String        @default("base") @map("reaction_pack")
+  /// Серия входа: день последней награды (YYYY-MM-DD по Москве) и длина серии
+  streakDay     String?       @map("streak_day")
+  streakCount   Int           @default(0) @map("streak_count")
+  /// Партий с последней обязательной рекламы (после каждой 3-й - ролик)
+  gamesSinceAd  Int           @default(0) @map("games_since_ad")
+  /// Откуда пришёл: первый start_param (src_..., r_..., g_...) или inline/organic
+  source        String?
+  /// Кто пригласил (r_<id>) и выдана ли награда за его первую партию
+  referrerId    BigInt?       @map("referrer_id")
+  refRewarded   Boolean       @default(false) @map("ref_rewarded")
+  /// Заблокирован в админке: не может играть
+  banned        Boolean       @default(false)
 
   rating        Int           @default(1000)
   games         Int           @default(0)
@@ -72,8 +100,18 @@ model User {
   categoryStats CategoryStat[]
   achievements  UserAchievement[]
   soloRuns      SoloRun[]
+  coinTxs       CoinTx[]
+  owned         Owned[]
+  taskProgress  TaskProgress[]
+  purchases     Purchase[]
+  adViews       AdView[]
+  topicPasses   TopicPass[]
+  friendsOut    Friend[]      @relation("FriendFrom")
+  friendsIn     Friend[]      @relation("FriendTo")
+  days          UserDay[]
 
   @@index([rating(sort: Desc)])
+  @@index([referrerId])
   @@map("users")
 }
 
@@ -307,4 +345,181 @@ model SoloRun {
 
   @@index([userId, category, score(sort: Desc)])
   @@map("solo_runs")
+}
+
+// ---------------------------------------------------------------------------
+// Обновление 2.0: монеты, магазин, реклама, друзья, аналитика
+
+/// Журнал монет: любое начисление и списание. key - защита от повтора (одна награда - одна строка)
+model CoinTx {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt   @map("user_id")
+  delta     Int
+  /// Баланс после операции
+  balance   Int
+  /// daily, task, ad, buy, stars, invite, friend, admin, refund
+  reason    String
+  /// Что именно: id задания, товар, id платежа
+  ref       String?
+  key       String?  @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([reason, createdAt])
+  @@map("coin_ledger")
+}
+
+/// Купленное: свечения (glow), наборы реакций (pack), темы навсегда (topic)
+model Owned {
+  userId    BigInt   @map("user_id")
+  kind      String
+  item      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, kind, item])
+  @@index([kind, item])
+  @@map("inventory")
+}
+
+/// Задания магазина. Настраиваются в админке; при первом запуске создаются из DEFAULT_TASKS
+model TaskConfig {
+  id        String   @id @db.VarChar(32)
+  /// channel, play, ads, story, invite
+  type      String
+  /// Для channel: @username канала
+  channel   String?
+  /// Сколько нужно (play - партий за день, ads - роликов за день)
+  goal      Int      @default(1)
+  reward    Int
+  /// once, daily, perFriend
+  freq      String
+  on        Boolean  @default(true)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  progress TaskProgress[]
+
+  @@map("tasks")
+}
+
+/// Прогресс игрока по заданию: day - день (YYYY-MM-DD по Москве) для ежедневных, '' для разовых
+model TaskProgress {
+  userId    BigInt    @map("user_id")
+  taskId    String    @map("task_id") @db.VarChar(32)
+  day       String    @db.VarChar(10)
+  count     Int       @default(0)
+  claimedAt DateTime? @map("claimed_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task TaskConfig @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@id([userId, taskId, day])
+  @@index([taskId, claimedAt])
+  @@map("task_progress")
+}
+
+/// Покупки за звёзды. id - telegram_payment_charge_id (повторное уведомление ничего не начислит)
+model Purchase {
+  id         String    @id
+  userId     BigInt    @map("user_id")
+  /// coins_s, coins_m, coins_l, adfree
+  product    String
+  stars      Int
+  createdAt  DateTime  @default(now()) @map("created_at")
+  refundedAt DateTime? @map("refunded_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("purchases")
+}
+
+/// Просмотр рекламы: старт выдаёт сервер, засчитывается только досмотренный до конца
+model AdView {
+  id        String    @id @db.VarChar(32)
+  userId    BigInt    @map("user_id")
+  /// forced - после 3 партий, reward - за монеты, topic - тема на 1 игру
+  purpose   String
+  topic     String?
+  startedAt DateTime  @map("started_at")
+  doneAt    DateTime? @map("done_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startedAt])
+  @@index([startedAt])
+  @@map("ad_views")
+}
+
+/// Тема на одну игру за просмотр рекламы
+model TopicPass {
+  id        BigInt    @id @default(autoincrement())
+  userId    BigInt    @map("user_id")
+  topic     String
+  createdAt DateTime  @default(now()) @map("created_at")
+  usedAt    DateTime? @map("used_at")
+  gameId    String?   @map("game_id") @db.VarChar(10)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, topic, usedAt])
+  @@map("topic_passes")
+}
+
+/// Друзья: pending - заявка от user к friend; accepted - дружба (по строке на каждого из двух)
+model Friend {
+  userId    BigInt   @map("user_id")
+  friendId  BigInt   @map("friend_id")
+  status    String
+  /// ref - пришёл по ссылке-приглашению, request - заявка
+  via       String   @default("request")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User @relation("FriendFrom", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("FriendTo", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@id([userId, friendId])
+  @@index([friendId, status])
+  @@map("friends")
+}
+
+/// События для админки: экраны и кнопки (без личных данных, только имя и игрок)
+model Event {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt?  @map("user_id")
+  name      String   @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([name, createdAt])
+  @@map("events")
+}
+
+/// Дни, когда игрок открывал приложение: DAU, MAU, удержание, когорты
+model UserDay {
+  userId BigInt   @map("user_id")
+  day    DateTime @db.Date
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
+  @@index([day])
+  @@map("user_days")
+}
+
+/// Ссылки для рекламы приложения: t.me/<бот>/<app>?startapp=src_<code>
+model Link {
+  code      String   @id @db.VarChar(32)
+  title     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("links")
 }

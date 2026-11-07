@@ -179,6 +179,8 @@ export interface ServerToClientEvents {
   'queue:matched': (event: QueueMatched) => void;
   /** Быстрая игра: за 60 с никого не нашли - игрок больше не в очереди. */
   'queue:timeout': () => void;
+  /** Монеты или купленное изменились не по запросу этого экрана (оплата, награда за друга, партия). */
+  'wallet:changed': () => void;
 }
 
 export interface ClientToServerEvents {

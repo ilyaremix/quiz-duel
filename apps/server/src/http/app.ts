@@ -1,10 +1,19 @@
-import Fastify, { type FastifyServerOptions } from 'fastify';
+import Fastify, { type FastifyReply, type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import {
+  AdDoneRequestSchema,
+  AdStartRequestSchema,
+  BuyRequestSchema,
   CONSENT_DOCS,
   ConsentRequestSchema,
+  EquipRequestSchema,
+  InvoiceRequestSchema,
   SettingsRequestSchema,
+  TaskClaimSchema,
+  type EconomyErrorCode,
+  type InvoiceResponse,
+  type StarsProduct,
   isGameId,
   type ApiError,
   type ConfigResponse,
@@ -13,11 +22,18 @@ import {
   type HealthResponse,
   type SettingsResponse,
 } from '@quiz-duel/shared';
+import { resolveLang } from '@quiz-duel/shared';
 import { docsInfo, webOrigin, type Env } from '../env.js';
 import { InitDataError } from '../auth/initData.js';
 import { authErrorBody, requireTelegramAuth } from '../auth/fastify.js';
 import { toMeResponse, type UsersRepo } from '../users.js';
 import type { StatsRepo } from '../stats.js';
+import type { EcoFailure, EconomyRepo } from '../economy.js';
+
+/** Счёт на оплату звёздами (createInvoiceLink у бота). */
+export interface InvoiceMaker {
+  link(input: { userId: number; product: StarsProduct; lang: 'ru' | 'en' }): Promise<string>;
+}
 
 export interface AppDeps {
   env: Pick<
@@ -41,6 +57,12 @@ export interface AppDeps {
    * идущая партия пересылается ему на новом языке.
    */
   onSettingsChanged?: (userId: number) => Promise<void> | void;
+  /** Обновление 2.0: монеты, магазин, задания, реклама (без него маршруты не регистрируются). */
+  economy?: EconomyRepo;
+  /** Счета на звёзды (нужен бот). */
+  invoices?: InvoiceMaker;
+  /** Часы (тесты подставляют свои). */
+  now?: () => number;
   /** false - без логов (тесты). */
   logger?: FastifyServerOptions['logger'];
 }
@@ -52,7 +74,12 @@ export function parseTrustProxy(value: string): string[] {
     .filter(Boolean);
 }
 
-export async function buildApp({ env, users, stats, botUsername, onSettingsChanged, logger }: AppDeps) {
+/** Отказ экономики: 404 - нет такого, остальное - 409 с причиной для экрана. */
+function ecoStatus(error: EconomyErrorCode) {
+  return error === 'not_found' ? 404 : 409;
+}
+
+export async function buildApp({ env, users, stats, economy, invoices, botUsername, onSettingsChanged, logger, now = Date.now }: AppDeps) {
   const app = Fastify({
     logger: logger ?? {
       level: env.LOG_LEVEL,
@@ -200,6 +227,76 @@ export async function buildApp({ env, users, stats, botUsername, onSettingsChang
       if (!isGameId(request.params.id)) return reply.code(400).send({ error: 'bad_request' } satisfies ApiError);
       const review = await stats.review(request.tg!.user.id, request.params.id);
       return review ?? reply.code(404).send(notFound);
+    });
+  }
+
+  if (economy) {
+    const refused = (reply: FastifyReply, failure: EcoFailure) =>
+      reply.code(ecoStatus(failure.error)).send({ error: failure.error === 'not_found' ? 'not_found' : 'conflict', reason: failure.error } satisfies ApiError);
+    const bad = { error: 'bad_request' } satisfies ApiError;
+
+    app.get('/api/wallet', { onRequest: auth }, async (request, reply) => {
+      const tgUser = request.tg!.user;
+      await users.upsertFromTelegram(tgUser);
+      const wallet = await economy.wallet(tgUser.id, now());
+      return wallet ?? reply.code(404).send({ error: 'not_found' } satisfies ApiError);
+    });
+
+    app.post('/api/daily', { onRequest: auth }, async (request, reply) => {
+      const result = await economy.claimDaily(request.tg!.user.id, now());
+      return result.ok ? { wallet: result.wallet, reward: result.reward } : refused(reply, result);
+    });
+
+    app.post('/api/tasks/claim', { onRequest: auth }, async (request, reply) => {
+      const parsed = TaskClaimSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      // Premium мог появиться после первого входа: берём свежий признак из initData.
+      await users.upsertFromTelegram(request.tg!.user);
+      const result = await economy.claimTask(request.tg!.user.id, parsed.data.id, now());
+      return result.ok ? { wallet: result.wallet, reward: result.reward } : refused(reply, result);
+    });
+
+    app.post('/api/shop/buy', { onRequest: auth }, async (request, reply) => {
+      const parsed = BuyRequestSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      const result = await economy.buy(request.tg!.user.id, parsed.data.kind, parsed.data.item, now());
+      return result.ok ? result.wallet : refused(reply, result);
+    });
+
+    app.post('/api/shop/equip', { onRequest: auth }, async (request, reply) => {
+      const parsed = EquipRequestSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      const result = await economy.equip(request.tg!.user.id, parsed.data.kind, parsed.data.item, now());
+      return result.ok ? result.wallet : refused(reply, result);
+    });
+
+    app.post('/api/ads/start', { onRequest: auth }, async (request, reply) => {
+      const parsed = AdStartRequestSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      const result = await economy.adStart(request.tg!.user.id, parsed.data.purpose, parsed.data.topic, now());
+      return result.ok ? { id: result.id, sec: result.sec, src: result.src } : refused(reply, result);
+    });
+
+    app.post('/api/ads/done', { onRequest: auth }, async (request, reply) => {
+      const parsed = AdDoneRequestSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      const result = await economy.adDone(request.tg!.user.id, parsed.data.id, now());
+      return result.ok ? { wallet: result.wallet, reward: result.reward } : refused(reply, result);
+    });
+
+    app.post('/api/stars/invoice', { onRequest: auth }, async (request, reply) => {
+      const parsed = InvoiceRequestSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      if (!invoices) return reply.code(503).send({ error: 'internal', reason: 'payments_off' } satisfies ApiError);
+      const tgUser = request.tg!.user;
+      const user = await users.upsertFromTelegram(tgUser);
+      if (parsed.data.product === 'adfree') {
+        const wallet = await economy.wallet(tgUser.id, now());
+        if (wallet?.adFree) return refused(reply, { ok: false, error: 'owned' });
+      }
+      const lang = resolveLang(user.language, user.tgLanguage);
+      const url = await invoices.link({ userId: tgUser.id, product: parsed.data.product, lang });
+      return { url } satisfies InvoiceResponse;
     });
   }
 
