@@ -4,7 +4,7 @@ import { ACTIVE_PHASES, FINAL_PHASES, gameIdFromStartParam, TIMINGS, type Config
 import { api, ApiRequestError, queryKeys, setSessionAuth } from './lib/api';
 import { askWriteAccess, closeMiniApp, onBack, setGameGuards, setHapticsEnabled, setThemeSetting, type TelegramSession } from './lib/telegram';
 import { gameActions, useGame } from './lib/game';
-import { setLang } from './i18n';
+import { setLang, useDictionary } from './i18n';
 import { setMotionSetting } from './lib/motion';
 import { useTranslation } from 'react-i18next';
 import { Aurora } from './components/Aurora';
@@ -26,24 +26,28 @@ import { ExitDialog } from './components/ExitDialog';
 import { useServerPassed, useServerSecondsLeft } from './hooks/useServerNow';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import { DocsUpdateScreen } from './screens/DocsUpdateScreen';
-import { ReviewScreen } from './screens/ReviewScreen';
-import { LeaderboardScreen } from './screens/LeaderboardScreen';
-import { ProfileScreen } from './screens/ProfileScreen';
-import { OppSheet } from './screens/OppSheet';
-import { AchievementsScreen } from './screens/AchievementsScreen';
-import { SoloResultScreen } from './screens/SoloResultScreen';
-import { SearchScreen } from './screens/SearchScreen';
-import { SettingsScreen } from './screens/SettingsScreen';
-import { ShopScreen } from './screens/ShopScreen';
-import { FriendsScreen } from './screens/FriendsScreen';
-import { ItemSheet } from './screens/ItemSheet';
-import { AdScreen } from './screens/AdScreen';
 import { InviteBanner } from './components/InviteBanner';
 import { DraftScreen } from './screens/DraftScreen';
 import { shop, useShop, useWallet } from './lib/economy';
 import { adminActions, useAdmin } from './lib/admin';
 import { useTrack } from './lib/track';
+import { lazyOverlay, lazyScreen, preloadScreens } from './lib/lazyScreen';
 import type { EventName } from '@quiz-duel/shared';
+
+// Вторичные экраны - отдельными файлами: стартовая загрузка меньше, а после старта они докачиваются
+// в фоне (preloadScreens) и открываются без ожидания.
+const ReviewScreen = lazyScreen(() => import('./screens/ReviewScreen').then((m) => m.ReviewScreen));
+const LeaderboardScreen = lazyScreen(() => import('./screens/LeaderboardScreen').then((m) => m.LeaderboardScreen));
+const ProfileScreen = lazyScreen(() => import('./screens/ProfileScreen').then((m) => m.ProfileScreen));
+const AchievementsScreen = lazyScreen(() => import('./screens/AchievementsScreen').then((m) => m.AchievementsScreen));
+const SoloResultScreen = lazyScreen(() => import('./screens/SoloResultScreen').then((m) => m.SoloResultScreen));
+const SearchScreen = lazyScreen(() => import('./screens/SearchScreen').then((m) => m.SearchScreen));
+const SettingsScreen = lazyScreen(() => import('./screens/SettingsScreen').then((m) => m.SettingsScreen));
+const ShopScreen = lazyScreen(() => import('./screens/ShopScreen').then((m) => m.ShopScreen));
+const FriendsScreen = lazyScreen(() => import('./screens/FriendsScreen').then((m) => m.FriendsScreen));
+const OppSheet = lazyOverlay(() => import('./screens/OppSheet').then((m) => m.OppSheet));
+const ItemSheet = lazyOverlay(() => import('./screens/ItemSheet').then((m) => m.ItemSheet));
+const AdScreen = lazyOverlay(() => import('./screens/AdScreen').then((m) => m.AdScreen));
 
 /** Админка - отдельным файлом: игрокам, которые не админы, она не скачивается. */
 const AdminScreen = lazy(() => import('./screens/AdminScreen').then((m) => ({ default: m.AdminScreen })));
@@ -240,6 +244,7 @@ function InTelegram({ session }: { session: TelegramSession }) {
     retry: (count, error) => !(error instanceof ApiRequestError && error.isAuth) && count < 2,
   });
   const config = useQuery({ queryKey: ['config'], queryFn: api.config, retry: 2 });
+  const dictionary = useDictionary();
   const conn = useGame((s) => s.conn);
   const net = useGame((s) => s.net);
   const game = useGame((s) => s.game);
@@ -268,11 +273,19 @@ function InTelegram({ session }: { session: TelegramSession }) {
 
   useEffect(() => {
     if (!me.data) return;
-    setLang(me.data.lang);
+    void setLang(me.data.lang);
     setMotionSetting(me.data.reducedMotion);
     setThemeSetting(me.data.theme ?? 'auto');
     setHapticsEnabled(me.data.haptics);
   }, [me.data]);
+
+  // Приложение показало первый экран - в фоне докачиваются остальные.
+  const started = Boolean(me.data && dictionary === 'ready' && conn !== 'connecting');
+  useEffect(() => {
+    if (!started) return;
+    const timer = window.setTimeout(preloadScreens, 300);
+    return () => window.clearTimeout(timer);
+  }, [started]);
 
   const gameOnScreen = Boolean(game && !hidden && !linkError && conn !== 'replaced');
   useGameChrome(game, gameOnScreen);
@@ -308,9 +321,11 @@ function InTelegram({ session }: { session: TelegramSession }) {
   if (conn === 'replaced') return <FallbackScreen kind="otherDevice" onAction={gameActions.takeOver} />;
   // Сокет не принял initData (приложение открыто больше суток) - как и с REST, нужен новый вход.
   if (conn === 'auth') return <FallbackScreen kind="session" onAction={closeMiniApp} />;
-  // Пока не пришло первое приветствие сокета или не решился вход по ссылке, главную не показываем:
-  // игрок может быть в партии.
-  if (conn === 'connecting' || (linkEntry && !linkError && !consent)) return <LoadingScreen />;
+  // Словарь не скачался и после повторов - перезапуск (экраны ошибок и загрузки работают и без него).
+  if (dictionary === 'failed') return <FallbackScreen kind="error" onAction={() => window.location.reload()} />;
+  // Пока не пришло первое приветствие сокета, словарь или не решился вход по ссылке, главную
+  // не показываем: игрок может быть в партии.
+  if (conn === 'connecting' || dictionary === 'loading' || (linkEntry && !linkError && !consent)) return <LoadingScreen />;
 
   // Первый вход (или новая версия документов): онбординг, на 3-м слайде - галочки.
   // Пришедшие по ссылке принимают документы в шторке перед лобби (закрыли шторку - сюда же),
