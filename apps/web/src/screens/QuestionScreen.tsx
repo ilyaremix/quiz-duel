@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TIMINGS, type GameView } from '@quiz-duel/shared';
 import { Answer, type AnswerState } from '../components/Answer';
@@ -39,6 +39,15 @@ const LATE: PillLook = {
 const EDGE = 'var(--qd-glass-edge)';
 const HOT = 'inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 0 0 1.5px var(--qd-opp-ring), 0 0 26px var(--qd-opp-glow), 0 12px 30px rgba(3, 4, 20, 0.3)';
 
+/**
+ * Низкий экран: всё, что выше вариантов, ужимается (вместо плашки «соперник думает» - строка под счётом,
+ * кнопка реакций - в углу карточки вопроса, капсулы ответов 56 px) - иначе на телефонах высотой 640-667 px
+ * (iPhone SE, недорогие Android) вариант D оказывался за экраном.
+ * Решение одно на всю сессию: экран сразу ниже 760 px или обычный вид не поместился хотя бы раз.
+ * Обратно не переключаемся, чтобы вёрстка не прыгала между вопросами.
+ */
+let compactScreen = typeof window !== 'undefined' && window.innerHeight < 760;
+
 /** Что показывает живая зона между таймером и вопросом. */
 type Presence = {
   mode: 'think' | 'done' | 'ball';
@@ -60,7 +69,6 @@ type Presence = {
 export function QuestionScreen({ game }: { game: GameView }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
-  const now = useServerNow(100);
   const reduced = useReducedMotion();
   const offline = useGame((s) => s.conn !== 'online' || !s.net);
   const picked = useGame((s) => s.picked);
@@ -68,28 +76,24 @@ export function QuestionScreen({ game }: { game: GameView }) {
   const opp = game.opponent;
   const solo = game.mode === 'solo';
   const reveal = game.phase === 'reveal' ? game.reveal : null;
+  const [compact, setCompact] = useState(compactScreen);
+  const mainRef = useRef<HTMLElement | null>(null);
+  // До отрисовки: обычный вид выше экрана - сразу компактный (без мигания).
+  useLayoutEffect(() => {
+    const main = mainRef.current;
+    if (compact || !main || main.offsetHeight <= window.innerHeight + 2) return;
+    compactScreen = true;
+    setCompact(true);
+  }, [compact, q.index, game.phase]);
 
   // Мой выбор: из снимка или только что нажатый (ещё летит на сервер).
   const pickedHere = picked && picked.gameId === game.id && picked.index === q.index ? picked.position : null;
   const myPos = reveal ? reveal.me.position : (game.myAnswer?.position ?? pickedHere);
   const answered = myPos !== null;
 
-  // Таймер: по дедлайну сервера. Без анимаций - раз в секунду.
-  // Время на ответ - из настроек партии (5-20 с), по умолчанию 15 с.
-  const totalMs = Math.max(1000, q.endsAt - q.startedAt);
-  const totalSec = Math.round(totalMs / 1000);
-  const leftMs = Math.max(0, q.endsAt - now);
-  const sec = Math.min(totalSec, Math.ceil(leftMs / 1000));
-  const pct = reduced ? (sec / totalSec) * 100 : (leftMs / totalMs) * 100;
-
   // Счёт пересчитывается за 300 мс на раскрытии.
   const meScore = useCountUp(game.me.score, 300, reduced);
   const oppScore = useCountUp(opp?.score ?? 0, 300, reduced);
-
-  // Вибрация: тики на последних 3 секундах, пока не ответил.
-  useEffect(() => {
-    if (!reveal && !answered && sec >= 1 && sec <= 3) haptic.tick();
-  }, [sec, reveal, answered]);
 
   // На раскрытии: success за верный, error за неверный или «время вышло». Один раз на вопрос.
   const buzzed = useRef(-1);
@@ -136,7 +140,8 @@ export function QuestionScreen({ game }: { game: GameView }) {
       : '';
 
   let presence: Presence | null = null;
-  if (!reveal) {
+  // На низком экране плашки живой зоны нет: «Соперник ответил» показывает строка под счётом (ScoreBar).
+  if (!reveal && !compact) {
     if (offline) presence = { mode: 'ball', glyph: 'offline', title: t('s09.offline'), sub: '', edge: EDGE, color: 'var(--qd-gold-text)' };
     else if (solo || !opp) presence = { mode: 'ball', glyph: 'bolt', title: t('s09.fast'), sub: t('s09.soloHint'), edge: EDGE };
     else if (oppOffline) presence = null;
@@ -147,7 +152,7 @@ export function QuestionScreen({ game }: { game: GameView }) {
   }
 
   return (
-    <main className="qd-screen qd-fade-in flex flex-col gap-3">
+    <main ref={mainRef} className={`qd-screen qd-fade-in flex flex-col ${compact ? 'gap-2' : 'gap-3'}`}>
       {offline && (
         <div className="qd-strip-in -mx-4 -mt-4">
           <OfflineStrip title={t('banner.offline.title')} />
@@ -164,7 +169,7 @@ export function QuestionScreen({ game }: { game: GameView }) {
         best={solo ? (game.soloBest ? formatNumber(game.soloBest, lang) : '-') : undefined}
         meGain={meGain}
         oppGain={oppGain}
-        hideNote
+        hideNote={!compact}
       />
 
       <RulesStrip
@@ -176,39 +181,46 @@ export function QuestionScreen({ game }: { game: GameView }) {
         doubled={q.doubled}
       />
 
-      {!reveal && <Timer seconds={sec} total={totalSec} pct={pct} live={!reduced} />}
+      {!reveal && <QuestionTimer startedAt={q.startedAt} endsAt={q.endsAt} reduced={reduced} answered={answered} />}
 
-      {oppOffline && opp?.graceEndsAt != null && (
-        <div className="qd-toast-in">
-          <DisconnectBanner title={t('banner.disconnect.title')} text={t('banner.disconnect.text')} time={formatClock(opp.graceEndsAt - now)} />
+      {oppOffline && opp?.graceEndsAt != null && <GraceBanner graceEndsAt={opp.graceEndsAt} />}
+
+      {/* Живая зона: соперник думает / уже ответил, мой ответ принят; на раскрытии - итог вопроса у обоих.
+          На низком экране во время вопроса её нет - остаётся только точка, откуда всплывают реакции. */}
+      {compact && !reveal ? (
+        <div className="relative -mb-2 h-0">
+          {!solo && <LiveReaction userId={game.me.userId} side="me" />}
+          {!solo && opp && <LiveReaction userId={opp.userId} side="opp" />}
+        </div>
+      ) : (
+        <div className={`relative flex grow flex-col items-center justify-center ${compact ? '' : 'min-h-[72px]'}`}>
+          {presence && <PresencePill key={`${presence.mode}:${presence.title}`} presence={presence} opp={opp ?? null} />}
+
+          {reveal && (
+            <div className={`qd-pop grid w-full gap-2.5 ${opp && reveal.opponent ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <RevealPill side="me" pill={pill(reveal.me.position, reveal.me.points, t('common.you'))} avatar={game.me} />
+              {opp && reveal.opponent && <RevealPill side="opp" pill={pill(reveal.opponent.position, reveal.opponent.points, oppName)} avatar={opp} />}
+            </div>
+          )}
+
+          {!solo && <LiveReaction userId={game.me.userId} side="me" />}
+          {!solo && opp && <LiveReaction userId={opp.userId} side="opp" />}
         </div>
       )}
 
-      {/* Живая зона: соперник думает / уже ответил, мой ответ принят; на раскрытии - итог вопроса у обоих. */}
-      <div className="relative flex min-h-[72px] grow flex-col items-center justify-center">
-        {presence && <PresencePill key={`${presence.mode}:${presence.title}`} presence={presence} opp={opp ?? null} />}
-
-        {reveal && (
-          <div className={`qd-pop grid w-full gap-2.5 ${opp && reveal.opponent ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            <RevealPill side="me" pill={pill(reveal.me.position, reveal.me.points, t('common.you'))} avatar={game.me} />
-            {opp && reveal.opponent && <RevealPill side="opp" pill={pill(reveal.opponent.position, reveal.opponent.points, oppName)} avatar={opp} />}
-          </div>
-        )}
-
-        {!solo && <LiveReaction userId={game.me.userId} side="me" />}
-        {!solo && opp && <LiveReaction userId={opp.userId} side="opp" />}
-      </div>
-
       {/* Реакции - кнопкой над вопросом в любой момент партии; строка всегда на месте, вёрстка не прыгает. */}
-      {opp && !solo && <ReactionPicker />}
+      {opp && !solo && !compact && <ReactionPicker />}
 
-      <section className="qd-card flex flex-col items-center gap-3 rounded-[30px] px-5 pt-5 pb-6 text-center">
+      <section
+        className={`qd-card relative flex flex-col items-center rounded-[30px] px-5 text-center ${compact ? 'gap-2 pt-2.5 pb-3.5' : 'gap-3 pt-5 pb-6'}`}
+      >
+        {opp && !solo && compact && <ReactionPicker variant="corner" />}
         <CategoryChip cat={q.category} />
-        <h1 className="m-0 text-[22px] leading-[1.3] font-semibold tracking-[-0.01em]">{q.text}</h1>
+        <h1 className={`m-0 font-semibold tracking-[-0.01em] ${compact ? 'text-[18px] leading-[1.25]' : 'text-[22px] leading-[1.3]'}`}>{q.text}</h1>
       </section>
 
       {/* Новый вопрос - новые элементы: варианты заново выезжают каскадом по 50 мс. */}
-      <div key={q.index} role="group" aria-label={t('s09.optionsAria')} className="flex flex-col gap-3">
+      <div key={q.index} role="group" aria-label={t('s09.optionsAria')} className={`flex flex-col ${compact ? 'gap-2' : 'gap-3'}`}>
         {options.map((o) => (
           <div key={o.i} className={o.cls} style={o.cls === 'qd-cascade' ? { animationDelay: `${o.i * 50}ms` } : undefined}>
             <Answer
@@ -219,12 +231,42 @@ export function QuestionScreen({ game }: { game: GameView }) {
               me={reveal && o.i === reveal.me.position ? { id: game.me.userId, name: game.me.name, photoUrl: game.me.photoUrl } : undefined}
               opp={reveal && opp && o.i === reveal.opponent?.position ? { id: opp.userId, name: opp.name, photoUrl: opp.photoUrl } : undefined}
               onPress={() => void gameActions.answer(o.i)}
+              compact={compact}
             />
           </div>
         ))}
       </div>
 
     </main>
+  );
+}
+
+/**
+ * Таймер вопроса по дедлайну сервера. Своим компонентом: 10 раз в секунду перерисовывается только он,
+ * а не весь экран с вариантами и счётом. Без анимаций - раз в секунду. Время на ответ - из настроек
+ * партии (5-20 с), по умолчанию 15 с. Вибрация - тики на последних 3 секундах, пока не ответил.
+ */
+function QuestionTimer({ startedAt, endsAt, reduced, answered }: { startedAt: number; endsAt: number; reduced: boolean; answered: boolean }) {
+  const now = useServerNow(reduced ? 250 : 100);
+  const totalMs = Math.max(1000, endsAt - startedAt);
+  const totalSec = Math.round(totalMs / 1000);
+  const leftMs = Math.max(0, endsAt - now);
+  const sec = Math.min(totalSec, Math.ceil(leftMs / 1000));
+  const pct = reduced ? (sec / totalSec) * 100 : (leftMs / totalMs) * 100;
+  useEffect(() => {
+    if (!answered && sec >= 1 && sec <= 3) haptic.tick();
+  }, [sec, answered]);
+  return <Timer seconds={sec} total={totalSec} pct={pct} live={!reduced} />;
+}
+
+/** «Соперник отключился. Техническая победа через 0:24» - обратный отсчёт своим компонентом. */
+function GraceBanner({ graceEndsAt }: { graceEndsAt: number }) {
+  const { t } = useTranslation();
+  const now = useServerNow(250);
+  return (
+    <div className="qd-toast-in">
+      <DisconnectBanner title={t('banner.disconnect.title')} text={t('banner.disconnect.text')} time={formatClock(graceEndsAt - now)} />
+    </div>
   );
 }
 

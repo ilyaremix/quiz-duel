@@ -64,13 +64,16 @@ interface AnswerProps {
   me?: Mark;
   opp?: Mark;
   onPress?: () => void;
+  /** Низкий экран (iPhone SE, 640-667 px): капсула 56 px вместо 64 - все 4 варианта видны без прокрутки. */
+  compact?: boolean;
 }
 
 /**
- * Вариант ответа - стеклянная капсула от 64 px. Выбор - синее стекло со свечением, верно / неверно -
- * зелёное / красное с иконкой ✓ / ✕ (верность не только цветом). При нажатии вариант сразу синеет.
+ * Вариант ответа - стеклянная капсула от 64 px (на низком экране от 56 px - не меньше, как в ТЗ). Выбор -
+ * синее стекло со свечением, верно / неверно - зелёное / красное с иконкой ✓ / ✕ (верность не только цветом).
+ * При нажатии вариант сразу синеет.
  */
-export function Answer({ text, state = 'default', letter = '', disabled = false, points, me, opp, onPress }: AnswerProps) {
+export function Answer({ text, state = 'default', letter = '', disabled = false, points, me, opp, onPress, compact = false }: AnswerProps) {
   const { t } = useTranslation();
   const m = LOOK[state];
   const circle = Boolean(m.glyph || letter);
@@ -79,7 +82,7 @@ export function Answer({ text, state = 'default', letter = '', disabled = false,
       type="button"
       disabled={disabled}
       onClick={onPress}
-      className="qd-press qd-ans box-border flex min-h-16 w-full cursor-pointer items-center gap-3 rounded-[32px] border-0 py-2.5 pr-4 text-left text-[17px] leading-[1.25] font-semibold"
+      className={`qd-press qd-ans box-border flex w-full cursor-pointer items-center gap-3 rounded-[32px] border-0 pr-4 text-left text-[17px] leading-[1.25] font-semibold ${compact ? 'min-h-14 py-2' : 'min-h-16 py-2.5'}`}
       style={{
         paddingLeft: circle ? 10 : 18,
         background: m.bg,

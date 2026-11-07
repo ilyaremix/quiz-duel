@@ -23,7 +23,7 @@ import { VsScreen } from './screens/VsScreen';
 import { QuestionScreen } from './screens/QuestionScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { ExitDialog } from './components/ExitDialog';
-import { useServerNow } from './hooks/useServerNow';
+import { useServerPassed, useServerSecondsLeft } from './hooks/useServerNow';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import { DocsUpdateScreen } from './screens/DocsUpdateScreen';
 import { ReviewScreen } from './screens/ReviewScreen';
@@ -62,12 +62,14 @@ function OutsideTelegram() {
   );
 }
 
-/** Отсчёт: первые 3 с - в лобби («Старт через 3…»), последние 3 с - экран VS с 3-2-1. */
+/**
+ * Отсчёт: первые 3 с - в лобби («Старт через 3…»), последние 3 с - экран VS с 3-2-1.
+ * Перерисовка - на смене цифры, а не 10 раз в секунду.
+ */
 function CountdownRoute({ game }: { game: GameView }) {
-  const now = useServerNow(100);
-  const left = (game.phaseEndsAt ?? now) - now;
-  if (left > TIMINGS.vsMs || !game.opponent) return <LobbyScreen game={game} />;
-  const count = Math.min(3, Math.max(1, Math.ceil(left / 1000))) as 1 | 2 | 3;
+  const left = useServerSecondsLeft(game.phaseEndsAt);
+  if (left > TIMINGS.vsMs / 1000 || !game.opponent) return <LobbyScreen game={game} />;
+  const count = Math.min(3, Math.max(1, left)) as 1 | 2 | 3;
   return <VsScreen game={game} count={count} />;
 }
 
@@ -128,8 +130,9 @@ function useGameChrome(game: GameView | null, onScreen: boolean) {
   }, [active]);
 
   // В лобби-части отсчёта у игрока своя кнопка «Выйти из лобби»; «Назад» - с VS и дальше.
-  const now = useServerNow(active && game?.phase === 'countdown' ? 250 : 60_000);
-  const inVs = game?.phase === 'countdown' && (game.phaseEndsAt ?? 0) - now <= TIMINGS.vsMs;
+  // Момент перехода на VS - одна перерисовка всего приложения, а не четыре в секунду.
+  const vsAt = game?.phase === 'countdown' && game.phaseEndsAt !== null ? game.phaseEndsAt - TIMINGS.vsMs : null;
+  const inVs = useServerPassed(vsAt);
   const back = onScreen && active && (inVs || game?.phase === 'question' || game?.phase === 'reveal');
   useEffect(() => (back ? onBack(gameActions.openExit) : undefined), [back]);
 }
