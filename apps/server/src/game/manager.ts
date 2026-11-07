@@ -317,7 +317,16 @@ export class GameManager {
           // Тренировка «Микс» - из всех тем игрока (базовые + купленные), дуэль - из выбранных в драфте.
           topics: machine.draftTopics(state) ?? (state.category === 'mix' && state.mode === 'solo' ? this.mixPool(state.creator.userId) : undefined),
         }),
-      ...(d.draft ? { draftOffers: (state: GameState) => draftOffers(machine.participants(state).map((p) => this.mixPool(p.userId)), DRAFT.offers, rng) } : {}),
+      ...(d.draft
+        ? {
+            draftOffers: (state: GameState) =>
+              draftOffers(
+                machine.participants(state).map((p) => this.mixPool(p.userId)),
+                DRAFT.offers,
+                rng,
+              ),
+          }
+        : {}),
     };
   }
 
@@ -711,7 +720,15 @@ export class GameManager {
     const invites = this.d.invites;
     entry.invite = (async () => {
       const card = await this.card(userId);
-      return invites.prepare({ userId, gameId, link, category: s.category, rules: machine.rulesOf(s), lang: card?.lang ?? 'en', creatorName: card?.name ?? '' });
+      return invites.prepare({
+        userId,
+        gameId,
+        link,
+        category: s.category,
+        rules: machine.rulesOf(s),
+        lang: card?.lang ?? 'en',
+        creatorName: card?.name ?? '',
+      });
     })().catch((error: unknown) => {
       this.d.log.warn({ err: error, gameId }, 'prepared invite failed');
       return null;
@@ -1138,11 +1155,7 @@ export class GameManager {
     return null;
   }
 
-  private async mutate(
-    userId: number,
-    gameId: string,
-    fn: (entry: Entry) => Promise<Step>,
-  ): Promise<Result<{ game: GameView }>> {
+  private async mutate(userId: number, gameId: string, fn: (entry: Entry) => Promise<Step>): Promise<Result<{ game: GameView }>> {
     const entry = await this.entry(gameId);
     if (!entry) return fail('not_found');
     return this.run(entry, async () => {
@@ -1391,9 +1404,7 @@ export class GameManager {
       }
     }
     try {
-      const previous = state.rematchOf
-        ? (this.games.get(state.rematchOf)?.state ?? (await this.d.repo.load(state.rematchOf)))
-        : null;
+      const previous = state.rematchOf ? (this.games.get(state.rematchOf)?.state ?? (await this.d.repo.load(state.rematchOf))) : null;
       const input = settleInput(state, this.d.bank, losersOf(previous));
       const settlement = await this.d.repo.settle(state, input, this.now());
       // Пока ждали базу, состояние партии не менялось: все изменения идут через эту же очередь.
@@ -1487,10 +1498,13 @@ export class GameManager {
     if (this.stopped) return;
     const at = machine.nextWakeAt(entry.state);
     if (at === null) return;
-    entry.timer = this.clock.setTimeout(() => {
-      entry.timer = null;
-      void this.run(entry, () => this.apply(entry, machine.tick(entry.state, this.now(), this.deps)));
-    }, Math.max(0, at - this.now()));
+    entry.timer = this.clock.setTimeout(
+      () => {
+        entry.timer = null;
+        void this.run(entry, () => this.apply(entry, machine.tick(entry.state, this.now(), this.deps)));
+      },
+      Math.max(0, at - this.now()),
+    );
   }
 
   private scheduleEvict(entry: Entry) {

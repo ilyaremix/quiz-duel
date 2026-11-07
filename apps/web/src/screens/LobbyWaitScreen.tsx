@@ -46,7 +46,13 @@ export function LobbyWaitScreen({ game }: { game: GameView }) {
         <p className="m-0 text-[15px] font-medium text-hint">{t('s05.sub')}</p>
         <span
           className={`qd-chip qd-num ${expiring ? 'qd-chip-gold' : ''}`}
-          style={{ height: 30, padding: '0 12px', borderRadius: 15, transition: 'color 200ms ease', color: expiring ? undefined : 'var(--tg-theme-hint-color)' }}
+          style={{
+            height: 30,
+            padding: '0 12px',
+            borderRadius: 15,
+            transition: 'color 200ms ease',
+            color: expiring ? undefined : 'var(--tg-theme-hint-color)',
+          }}
         >
           <Icon glyph="clock" size={14} stroke={2.5} />
           {expiring ? t('s05.expiring', { t: time }) : t('s05.open', { t: time })}

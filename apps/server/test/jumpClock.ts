@@ -45,10 +45,13 @@ export class JumpClock implements ServerClock {
   }
 
   private arm(id: number, at: number, fn: () => void) {
-    const real = setTimeout(() => {
-      this.tasks.delete(id);
-      fn();
-    }, Math.max(0, at - this.now()));
+    const real = setTimeout(
+      () => {
+        this.tasks.delete(id);
+        fn();
+      },
+      Math.max(0, at - this.now()),
+    );
     real.unref();
     this.tasks.set(id, { at, fn, real });
   }

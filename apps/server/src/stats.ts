@@ -115,11 +115,7 @@ export function createPrismaStatsRepo(prisma: PrismaClient): StatsRepo {
     const ahead = await prisma.user.count({
       where: {
         games: { gte: LEADERBOARD_MIN_GAMES },
-        OR: [
-          { rating: { gt: u.rating } },
-          { rating: u.rating, games: { gt: u.games } },
-          { rating: u.rating, games: u.games, id: { lt: u.id } },
-        ],
+        OR: [{ rating: { gt: u.rating } }, { rating: u.rating, games: { gt: u.games } }, { rating: u.rating, games: u.games, id: { lt: u.id } }],
       },
     });
     return ahead + 1;
@@ -262,7 +258,10 @@ export function createPrismaStatsRepo(prisma: PrismaClient): StatsRepo {
         prisma.userAchievement.findMany({ where: { userId: id }, select: { code: true, unlockedAt: true } }),
       ]);
       const totals: PlayerTotals = { ...u, categoryWins: Object.fromEntries(cats.map((c) => [c.category, c.wins])) };
-      return achievementsView(totals, rows.map((r) => ({ code: r.code as AchievementCode, at: r.unlockedAt.getTime() })));
+      return achievementsView(
+        totals,
+        rows.map((r) => ({ code: r.code as AchievementCode, at: r.unlockedAt.getTime() })),
+      );
     },
 
     async review(viewerId, gameId) {

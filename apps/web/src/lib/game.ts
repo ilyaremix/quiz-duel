@@ -219,12 +219,15 @@ function joinPending() {
 /** Повторное подключение после отказа сервера: 4-7 с, чтобы клиенты не стучались разом. */
 function retryLater() {
   if (retryTimer !== null) return;
-  retryTimer = window.setTimeout(() => {
-    retryTimer = null;
-    const s = socket;
-    const conn = get().conn;
-    if (s && !s.connected && !s.active && conn !== 'replaced' && conn !== 'auth') s.connect();
-  }, 4_000 + Math.random() * 3_000);
+  retryTimer = window.setTimeout(
+    () => {
+      retryTimer = null;
+      const s = socket;
+      const conn = get().conn;
+      if (s && !s.connected && !s.active && conn !== 'replaced' && conn !== 'auth') s.connect();
+    },
+    4_000 + Math.random() * 3_000,
+  );
 }
 
 type EventName = keyof ClientToServerEvents;
@@ -233,12 +236,7 @@ type AckOf<E extends EventName> = Extract<Parameters<ClientToServerEvents[E]>[1]
 type ResultOf<E extends EventName> = Parameters<AckOf<E>>[0];
 
 /** Событие с ответом. Нет связи или сервер молчит 8 с - ошибка internal, кнопка снова активна. */
-async function request<E extends EventName>(
-  event: E,
-  payload: PayloadOf<E>,
-  busyKey: string = event,
-  timeoutMs = 8_000,
-): Promise<ResultOf<E>> {
+async function request<E extends EventName>(event: E, payload: PayloadOf<E>, busyKey: string = event, timeoutMs = 8_000): Promise<ResultOf<E>> {
   const s = socket;
   if (!s) return { ok: false, error: 'internal' } as ResultOf<E>;
   set((st) => ({ pending: { ...st.pending, [busyKey]: true } }));
@@ -877,4 +875,3 @@ export const gameActions = {
     else window.open(url, '_blank', 'noopener');
   },
 };
-

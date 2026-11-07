@@ -28,14 +28,29 @@ export function DraftScreen({ game }: { game: GameView }) {
     <main className="qd-screen qd-fade-in flex flex-col gap-[18px]">
       <header className="qd-in flex flex-col items-center gap-3.5 text-center">
         <span className="qd-chip h-[30px]! rounded-[15px]! pr-3 pl-[5px]">
-          <span aria-hidden="true" className="qd-ball h-5 w-5" style={{ '--qd-ball': '#9B5CFF', color: '#FFFFFF', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.6), 0 0 10px var(--qd-brand-glow)' } as CSSProperties}>
+          <span
+            aria-hidden="true"
+            className="qd-ball h-5 w-5"
+            style={
+              { '--qd-ball': '#9B5CFF', color: '#FFFFFF', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.6), 0 0 10px var(--qd-brand-glow)' } as CSSProperties
+            }
+          >
             <Icon glyph="shuffle" size={12} stroke={2.6} />
           </span>
           {t('s31.badge')}
         </span>
         <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2.5">
           <div className="flex min-w-0 items-center gap-2.5">
-            <Avatar id={game.me.userId} name={game.me.name} photoUrl={game.me.photoUrl} size={44} ring="me" on="none" glow={game.me.glow} badge={pick ? 'ready' : 'none'} />
+            <Avatar
+              id={game.me.userId}
+              name={game.me.name}
+              photoUrl={game.me.photoUrl}
+              size={44}
+              ring="me"
+              on="none"
+              glow={game.me.glow}
+              badge={pick ? 'ready' : 'none'}
+            />
             <span className="text-[14px] font-bold" style={{ color: 'var(--qd-me-text)' }}>
               {t('common.you')}
             </span>
@@ -58,10 +73,24 @@ export function DraftScreen({ game }: { game: GameView }) {
             <span className="qd-num absolute inset-0 flex items-center justify-center text-[22px] font-extrabold">{draft.revealed ? '✓' : sec}</span>
           </div>
           <div className="flex min-w-0 items-center justify-end gap-2.5">
-            <span className="min-w-0 text-right text-[13px] leading-[1.25] font-semibold" style={{ color: draft.oppPicked ? 'var(--qd-correct-text)' : 'var(--qd-opp-text)' }}>
+            <span
+              className="min-w-0 text-right text-[13px] leading-[1.25] font-semibold"
+              style={{ color: draft.oppPicked ? 'var(--qd-correct-text)' : 'var(--qd-opp-text)' }}
+            >
               {draft.oppPicked ? t('s31.chosen', { opp: opp?.name ?? '' }) : t('s31.choosing', { opp: opp?.name ?? '' })}
             </span>
-            {opp && <Avatar id={opp.userId} name={opp.name} photoUrl={opp.photoUrl} size={44} ring="opp" on="none" glow={opp.glow} badge={draft.oppPicked ? 'ready' : 'none'} />}
+            {opp && (
+              <Avatar
+                id={opp.userId}
+                name={opp.name}
+                photoUrl={opp.photoUrl}
+                size={44}
+                ring="opp"
+                on="none"
+                glow={opp.glow}
+                badge={draft.oppPicked ? 'ready' : 'none'}
+              />
+            )}
           </div>
         </div>
       </header>
@@ -93,7 +122,11 @@ export function DraftScreen({ game }: { game: GameView }) {
                     opacity: dim ? 0.45 : 1,
                   }}
                 >
-                  <span aria-hidden="true" className="qd-ball h-14 w-14" style={{ '--qd-ball': l.ball, '--qd-ball-glow': l.glow, color: l.ink } as CSSProperties}>
+                  <span
+                    aria-hidden="true"
+                    className="qd-ball h-14 w-14"
+                    style={{ '--qd-ball': l.ball, '--qd-ball-glow': l.glow, color: l.ink } as CSSProperties}
+                  >
                     <Icon glyph={l.glyph} size={27} stroke={2.2} />
                   </span>
                   <span className="flex min-w-0 grow flex-col gap-[3px]">
@@ -138,7 +171,10 @@ export function DraftScreen({ game }: { game: GameView }) {
                 label: t('s31.reveal.opp'),
                 cls: 'qd-slide-r',
                 color: 'var(--qd-opp-text)',
-                style: { background: 'linear-gradient(155deg, rgba(255,138,61,.3), rgba(255,138,61,.06)), var(--qd-glass)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.4), inset 0 0 0 1.5px rgba(255,138,61,.55), 0 0 30px var(--qd-opp-glow)' },
+                style: {
+                  background: 'linear-gradient(155deg, rgba(255,138,61,.3), rgba(255,138,61,.06)), var(--qd-glass)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,.4), inset 0 0 0 1.5px rgba(255,138,61,.55), 0 0 30px var(--qd-opp-glow)',
+                },
               },
             ].map((side, i) => {
               const l = look(side.id ?? draft.offers[0]!);
@@ -147,14 +183,21 @@ export function DraftScreen({ game }: { game: GameView }) {
                   <span className="text-[12px] font-bold tracking-[0.06em] uppercase" style={{ color: side.color }}>
                     {side.label}
                   </span>
-                  <span aria-hidden="true" className="qd-ball qd-bob h-[72px] w-[72px]" style={{ '--qd-ball': l.ball, '--qd-ball-glow': l.glow, color: l.ink, animationDelay: i ? '-900ms' : undefined } as CSSProperties}>
+                  <span
+                    aria-hidden="true"
+                    className="qd-ball qd-bob h-[72px] w-[72px]"
+                    style={{ '--qd-ball': l.ball, '--qd-ball-glow': l.glow, color: l.ink, animationDelay: i ? '-900ms' : undefined } as CSSProperties}
+                  >
                     <Icon glyph={l.glyph} size={34} stroke={2.1} />
                   </span>
                   <span className="text-[16px] leading-[1.2] font-bold">{l.title}</span>
                 </div>
               );
             })}
-            <span aria-hidden="true" className="qd-vs qd-pop-late absolute top-1/2 left-1/2 z-[2] h-[30px] -translate-x-1/2 -translate-y-1/2 rounded-[15px] px-[11px] text-[13px]">
+            <span
+              aria-hidden="true"
+              className="qd-vs qd-pop-late absolute top-1/2 left-1/2 z-[2] h-[30px] -translate-x-1/2 -translate-y-1/2 rounded-[15px] px-[11px] text-[13px]"
+            >
               +
             </span>
           </div>

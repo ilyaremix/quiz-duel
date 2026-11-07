@@ -33,7 +33,14 @@ describe('Этап 8: поделиться результатом', () => {
     const fin = a.states.at(-1)!;
     const res = await a.socket.emitWithAck('game:share', { gameId });
     expect(res).toEqual({ ok: true, preparedMessageId: 'prep-1', link: 'https://t.me/quiz_test_bot/play' });
-    expect(f.calls[0]).toMatchObject({ userId: ilya.id, lang: 'ru', outcome: fin.result!.outcome, me: fin.me.score, opp: fin.opponent!.score, opponent: 'Марк' });
+    expect(f.calls[0]).toMatchObject({
+      userId: ilya.id,
+      lang: 'ru',
+      outcome: fin.result!.outcome,
+      me: fin.me.score,
+      opp: fin.opponent!.score,
+      opponent: 'Марк',
+    });
     expect(await a.socket.emitWithAck('game:share', { gameId })).toMatchObject({ preparedMessageId: 'prep-1' });
     expect(f.calls).toHaveLength(1);
 
@@ -60,12 +67,30 @@ describe('Этап 8: поделиться результатом', () => {
 
   it('карточка: исход, счёт, соперник (экранирован) и кнопка «Сыграть со мной»', () => {
     const web = 'https://quiz.example.sslip.io';
-    const ru = resultCard({ gameId: 'Abcde12345', lang: 'ru', outcome: 'win', me: 8420, opp: 6100, opponent: '<Марк>', link: 'https://t.me/b/app', webAppUrl: web });
+    const ru = resultCard({
+      gameId: 'Abcde12345',
+      lang: 'ru',
+      outcome: 'win',
+      me: 8420,
+      opp: 6100,
+      opponent: '<Марк>',
+      link: 'https://t.me/b/app',
+      webAppUrl: web,
+    });
     expect(ru).toMatchObject({ type: 'mpeg4_gif', mpeg4_url: `${web}/bot/win-ru.mp4`, thumbnail_url: `${web}/bot/win-ru.jpg` });
     expect(ru.caption).toContain('Победа <b>8 420 : 6 100</b>');
     expect(ru.caption).toContain('Соперник: &lt;Марк&gt;');
     expect(ru.reply_markup.inline_keyboard[0]![0]).toMatchObject({ text: 'Сыграть со мной', url: 'https://t.me/b/app' });
-    const en = resultCard({ gameId: 'Abcde12345', lang: 'en', outcome: 'draw', me: 6200, opp: 6200, opponent: 'Ilya', link: 'https://t.me/b/app', webAppUrl: web });
+    const en = resultCard({
+      gameId: 'Abcde12345',
+      lang: 'en',
+      outcome: 'draw',
+      me: 6200,
+      opp: 6200,
+      opponent: 'Ilya',
+      link: 'https://t.me/b/app',
+      webAppUrl: web,
+    });
     expect(en.mpeg4_url).toBe(`${web}/bot/draw-en.mp4`);
     expect(en.caption).toContain('Draw <b>6,200 : 6,200</b>');
   });

@@ -50,16 +50,40 @@ describe.skipIf(!url)('статистика админки на Postgres', () =>
     await add(2, 'Марк', NOW - 10 * DAY, 'r_1', { games: 1, referrerId: 1n, refRewarded: true, onboarded: true });
     await add(3, 'Аня', NOW - DAY, 'organic', { games: 0 });
     await add(4, 'Старый', NOW - 100 * DAY, 'legacy', { games: 50, banned: true });
-    for (const [id, ago] of [[1, 10], [1, 9], [1, 3], [1, 0], [2, 10], [2, 3], [3, 1], [3, 0], [4, 0]] as const) {
+    for (const [id, ago] of [
+      [1, 10],
+      [1, 9],
+      [1, 3],
+      [1, 0],
+      [2, 10],
+      [2, 3],
+      [3, 1],
+      [3, 0],
+      [4, 0],
+    ] as const) {
       await admin.touchDay(id, NOW - ago * DAY);
     }
     await admin.touchDay(1, NOW); // повтор за день ничего не добавляет
     await prisma.purchase.create({ data: { id: 'c1', userId: 1n, product: 'coins_m', stars: 75, createdAt: new Date(NOW - 2 * DAY) } });
     await prisma.purchase.create({ data: { id: 'c2', userId: 2n, product: 'adfree', stars: 100, createdAt: new Date(NOW - DAY) } });
-    await prisma.adView.create({ data: { id: 'ad1xxxxxxxxx', userId: 1n, purpose: 'forced', startedAt: new Date(NOW - DAY), doneAt: new Date(NOW - DAY + 15_000) } });
+    await prisma.adView.create({
+      data: { id: 'ad1xxxxxxxxx', userId: 1n, purpose: 'forced', startedAt: new Date(NOW - DAY), doneAt: new Date(NOW - DAY + 15_000) },
+    });
     await prisma.adView.create({ data: { id: 'ad2xxxxxxxxx', userId: 3n, purpose: 'forced', startedAt: new Date(NOW - DAY) } });
     await prisma.game.create({
-      data: { id: 'adm0000001', mode: 'link', phase: 'finished', category: 'mix', creatorId: 1n, opponentId: 2n, questionIds: [], rev: 1, snapshot: {}, finishedAt: new Date(NOW - 3 * DAY), variant: 'lives' },
+      data: {
+        id: 'adm0000001',
+        mode: 'link',
+        phase: 'finished',
+        category: 'mix',
+        creatorId: 1n,
+        opponentId: 2n,
+        questionIds: [],
+        rev: 1,
+        snapshot: {},
+        finishedAt: new Date(NOW - 3 * DAY),
+        variant: 'lives',
+      },
     });
     await admin.track(1, ['home', 'quick', 'quick', 'shop'], NOW - DAY);
     await admin.track(2, ['quick'], NOW - DAY);

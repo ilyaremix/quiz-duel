@@ -45,11 +45,7 @@ export function FallbackScreen({ kind, onAction, actionDisabled }: FallbackScree
       </div>
       <div className="grow" />
       <div className="qd-in qd-d2">
-        <Button
-          onClick={onAction}
-          disabled={actionDisabled}
-          icon={look.action ? <Icon glyph={look.action} size={22} stroke={2.4} /> : undefined}
-        >
+        <Button onClick={onAction} disabled={actionDisabled} icon={look.action ? <Icon glyph={look.action} size={22} stroke={2.4} /> : undefined}>
           {t(`s24.${kind}.action`)}
         </Button>
       </div>

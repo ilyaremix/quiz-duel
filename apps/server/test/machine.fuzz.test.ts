@@ -36,7 +36,7 @@ describe('случайные партии (fuzz)', () => {
         pickQuestions: (s) => pickQuestions({ bank, category: s.category, rng }),
       };
       const users = [1, 2, 3];
-      const pick = <T,>(xs: readonly T[]) => xs[Math.floor(rng() * xs.length)]!;
+      const pick = <T>(xs: readonly T[]) => xs[Math.floor(rng() * xs.length)]!;
       let now = 1_800_000_000_000;
       let s: GameState = createGame({ id: `f${seed}`, mode: 'link', category: pick(['mix', 'sport', 'tech']), creatorId: 1 }, now, deps);
 

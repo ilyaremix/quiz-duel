@@ -26,15 +26,7 @@ export function LobbyScreen({ game }: { game: GameView }) {
   const iAmCreator = game.creatorId === me.userId;
 
   const countdown = game.phase === 'countdown';
-  const state: LobbyState = countdown
-    ? 'both'
-    : !opp.online
-      ? 'oppOffline'
-      : me.ready
-        ? 'meReady'
-        : opp.ready
-          ? 'oppReady'
-          : 'none';
+  const state: LobbyState = countdown ? 'both' : !opp.online ? 'oppOffline' : me.ready ? 'meReady' : opp.ready ? 'oppReady' : 'none';
 
   // Лобби-часть отсчёта: после неё ещё 3 с экрана VS.
   const startIn = Math.max(1, Math.ceil(((game.phaseEndsAt ?? now) - TIMINGS.vsMs - now) / 1000));

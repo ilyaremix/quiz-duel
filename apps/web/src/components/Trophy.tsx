@@ -3,9 +3,33 @@ import { Icon, type IconGlyph } from './Icon';
 
 /** Сфера итога: золотой кубок (победа, рекорд), красный крестик (поражение), фиолетовые мечи (ничья) или мишень (тренировка). */
 export const TROPHY = {
-  gold: { glyph: 'rating', stroke: 2, ink: 'var(--qd-gold-text)', core: 'rgba(255, 211, 107, 0.75)', halo: 'rgba(255, 211, 107, 0.32)', glowA: 'rgba(255, 211, 107, 0.28)', glowB: 'rgba(255, 211, 107, 0.6)' },
-  red: { glyph: 'close', stroke: 3, ink: 'var(--qd-wrong-text)', core: 'rgba(255, 90, 122, 0.7)', halo: 'rgba(255, 90, 122, 0.22)', glowA: 'rgba(255, 90, 122, 0.22)', glowB: 'rgba(255, 90, 122, 0.42)' },
-  violet: { glyph: 'duel', stroke: 2, ink: 'var(--qd-brand-text)', core: 'rgba(155, 92, 255, 0.75)', halo: 'rgba(155, 92, 255, 0.28)', glowA: 'rgba(155, 92, 255, 0.25)', glowB: 'rgba(155, 92, 255, 0.5)' },
+  gold: {
+    glyph: 'rating',
+    stroke: 2,
+    ink: 'var(--qd-gold-text)',
+    core: 'rgba(255, 211, 107, 0.75)',
+    halo: 'rgba(255, 211, 107, 0.32)',
+    glowA: 'rgba(255, 211, 107, 0.28)',
+    glowB: 'rgba(255, 211, 107, 0.6)',
+  },
+  red: {
+    glyph: 'close',
+    stroke: 3,
+    ink: 'var(--qd-wrong-text)',
+    core: 'rgba(255, 90, 122, 0.7)',
+    halo: 'rgba(255, 90, 122, 0.22)',
+    glowA: 'rgba(255, 90, 122, 0.22)',
+    glowB: 'rgba(255, 90, 122, 0.42)',
+  },
+  violet: {
+    glyph: 'duel',
+    stroke: 2,
+    ink: 'var(--qd-brand-text)',
+    core: 'rgba(155, 92, 255, 0.75)',
+    halo: 'rgba(155, 92, 255, 0.28)',
+    glowA: 'rgba(155, 92, 255, 0.25)',
+    glowB: 'rgba(155, 92, 255, 0.5)',
+  },
 } satisfies Record<string, { glyph: IconGlyph; stroke: number; ink: string; core: string; halo: string; glowA: string; glowB: string }>;
 
 export type TrophyTone = keyof typeof TROPHY;

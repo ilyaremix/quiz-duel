@@ -70,8 +70,7 @@ export function AchievementsScreen() {
                 goal={a.goal}
               />
             ))
-          : list.isPending &&
-            Array.from({ length: 6 }, (_, i) => <div key={i} aria-hidden="true" className="qd-skel qd-glass h-[172px] rounded-[26px]" />)}
+          : list.isPending && Array.from({ length: 6 }, (_, i) => <div key={i} aria-hidden="true" className="qd-skel qd-glass h-[172px] rounded-[26px]" />)}
       </section>
     </main>
   );

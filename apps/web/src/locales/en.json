@@ -350,10 +350,7 @@
     "other": "Oxygen",
     "fast": "Answered in 1.4 s",
     "rating": "Rating {{r}} (+16)",
-    "podium": [
-      "Anya",
-      "Dima"
-    ],
+    "podium": ["Anya", "Dima"],
     "slides": [
       {
         "title": "Challenge a friend",
@@ -627,39 +624,11 @@
   "reactions": {
     "aria": "Reactions to opponent",
     "prefix": "Reaction: ",
-    "list": [
-      "Nice",
-      "Funny",
-      "Wow",
-      "Just you wait",
-      "Fire",
-      "Bravo"
-    ],
+    "list": ["Nice", "Funny", "Wow", "Just you wait", "Fire", "Bravo"],
     "from": "Reaction: {{r}}",
-    "bold": [
-      "Cool",
-      "Clown",
-      "Skull",
-      "Salute",
-      "Frozen",
-      "Mind blown"
-    ],
-    "warm": [
-      "In love",
-      "Hugs",
-      "Heart",
-      "Deal",
-      "Thank you",
-      "Touched"
-    ],
-    "party": [
-      "Popper",
-      "Party",
-      "Champagne",
-      "Bullseye",
-      "Genius",
-      "Crown"
-    ],
+    "bold": ["Cool", "Clown", "Skull", "Salute", "Frozen", "Mind blown"],
+    "warm": ["In love", "Hugs", "Heart", "Deal", "Thank you", "Touched"],
+    "party": ["Popper", "Party", "Champagne", "Bullseye", "Genius", "Crown"],
     "open": "Send a reaction",
     "close": "Hide reactions"
   },

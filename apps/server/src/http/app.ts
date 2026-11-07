@@ -52,15 +52,7 @@ export interface InvoiceMaker {
 export interface AppDeps {
   env: Pick<
     Env,
-    | 'BOT_TOKEN'
-    | 'INIT_DATA_MAX_AGE_SEC'
-    | 'WEB_APP_URL'
-    | 'APP_SHORT_NAME'
-    | 'TRUST_PROXY'
-    | 'LOG_LEVEL'
-    | 'DOCS_VERSION'
-    | 'TERMS_URL'
-    | 'PRIVACY_URL'
+    'BOT_TOKEN' | 'INIT_DATA_MAX_AGE_SEC' | 'WEB_APP_URL' | 'APP_SHORT_NAME' | 'TRUST_PROXY' | 'LOG_LEVEL' | 'DOCS_VERSION' | 'TERMS_URL' | 'PRIVACY_URL'
   >;
   users: UsersRepo;
   /** Профиль, лидерборд, разбор (без него маршруты этапа 7 не регистрируются - тесты авторизации). */

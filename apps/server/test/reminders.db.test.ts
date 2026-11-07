@@ -35,7 +35,14 @@ describe.skipIf(!url)('напоминание о ежедневной награ
       return { message_id: sent.length };
     },
   };
-  const reminders = dailyReminders({ prisma, users, api, cards: cardMedia('https://quiz.example.sslip.io'), appUrl: 'https://t.me/q_battle_bot/QuizDuel', log: { warn: () => undefined } });
+  const reminders = dailyReminders({
+    prisma,
+    users,
+    api,
+    cards: cardMedia('https://quiz.example.sslip.io'),
+    appUrl: 'https://t.me/q_battle_bot/QuizDuel',
+    log: { warn: () => undefined },
+  });
 
   beforeAll(async () => {
     unlock = await lockDb(url!);

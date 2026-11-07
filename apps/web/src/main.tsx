@@ -16,7 +16,6 @@ const session = setupTelegram();
 // после /api/me его уточняет настройка профиля.
 initI18n(cachedLang() ?? langFromTelegram(session ? session.languageCode : navigator.language));
 
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

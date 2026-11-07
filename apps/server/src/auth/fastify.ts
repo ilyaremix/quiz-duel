@@ -30,7 +30,5 @@ export function requireTelegramAuth(botToken: string, maxAgeSec: number): onRequ
 }
 
 export function authErrorBody(error: InitDataError) {
-  return error.reason === 'missing'
-    ? { error: 'unauthorized' as const }
-    : { error: 'invalid_init_data' as const, reason: error.reason };
+  return error.reason === 'missing' ? { error: 'unauthorized' as const } : { error: 'invalid_init_data' as const, reason: error.reason };
 }

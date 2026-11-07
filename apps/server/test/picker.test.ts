@@ -48,7 +48,12 @@ describe('подбор вопросов', () => {
       ['sci-06', 100],
     ]);
     const picked = pickQuestions({ bank, category: 'science', seen, rng: seededRng(7) });
-    expect(picked.slice(0, 3).map((p) => p.id).sort()).toEqual(['sci-04', 'sci-05', 'sci-06']);
+    expect(
+      picked
+        .slice(0, 3)
+        .map((p) => p.id)
+        .sort(),
+    ).toEqual(['sci-04', 'sci-05', 'sci-06']);
   });
 
   it('всё уже видели - партия всё равно из 10 вопросов', () => {

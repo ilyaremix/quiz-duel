@@ -291,7 +291,8 @@ export function createAdminRepo({ prisma, economy, channels, live, botUsername, 
       });
       // Ссылки без игроков за период тоже видны (их только что создали).
       for (const l of links) {
-        if (!out.some((s) => s.id === l.code)) out.push({ id: l.code, title: l.title, users: 0, first: null, d7: null, stars: 0, auto: false, url: `${appLink}?startapp=src_${l.code}` });
+        if (!out.some((s) => s.id === l.code))
+          out.push({ id: l.code, title: l.title, users: 0, first: null, d7: null, stars: 0, auto: false, url: `${appLink}?startapp=src_${l.code}` });
       }
       const top = await prisma.$queryRaw<{ id: bigint; name: string; invited: bigint }[]>`
         SELECT r.id, r.first_name AS name, COUNT(*)::bigint AS invited FROM users u JOIN users r ON r.id = u.referrer_id
@@ -424,12 +425,25 @@ export function createAdminRepo({ prisma, economy, channels, live, botUsername, 
       const q = query.trim().replace(/^@/, '');
       const id = /^\d{1,16}$/.test(q) ? BigInt(q) : null;
       const where = {
-        ...(q ? { OR: [...(id ? [{ id }] : []), { firstName: { contains: q, mode: 'insensitive' as const } }, { username: { contains: q, mode: 'insensitive' as const } }] } : {}),
+        ...(q
+          ? {
+              OR: [
+                ...(id ? [{ id }] : []),
+                { firstName: { contains: q, mode: 'insensitive' as const } },
+                { username: { contains: q, mode: 'insensitive' as const } },
+              ],
+            }
+          : {}),
         ...(filter === 'new' ? { createdAt: { gte: new Date(now - 7 * DAY) } } : {}),
         ...(filter === 'banned' ? { banned: true } : {}),
         ...(filter === 'paying' ? { purchases: { some: { refundedAt: null } } } : {}),
       };
-      const rows = await prisma.user.findMany({ where, orderBy: { lastSeenAt: 'desc' }, take: 50, include: { purchases: { where: { refundedAt: null }, select: { stars: true } } } });
+      const rows = await prisma.user.findMany({
+        where,
+        orderBy: { lastSeenAt: 'desc' },
+        take: 50,
+        include: { purchases: { where: { refundedAt: null }, select: { stars: true } } },
+      });
       return rows.map((u) => ({
         id: Number(u.id),
         name: u.firstName,
@@ -476,7 +490,9 @@ export function createAdminRepo({ prisma, economy, channels, live, botUsername, 
         if (!u) return null;
         const change = Math.max(-u.coins, delta);
         const row = await tx.user.update({ where: { id: BigInt(userId) }, data: { coins: { increment: change } }, select: { coins: true } });
-        await tx.coinTx.create({ data: { userId: BigInt(userId), delta: change, balance: row.coins, reason: 'admin', ref: String(adminId), createdAt: new Date(now) } });
+        await tx.coinTx.create({
+          data: { userId: BigInt(userId), delta: change, balance: row.coins, reason: 'admin', ref: String(adminId), createdAt: new Date(now) },
+        });
         return row.coins;
       });
     },

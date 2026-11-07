@@ -22,7 +22,8 @@ export function OppSheet({ me }: { me: MeResponse }) {
 
   // Пока профиль грузится, показываем то, что уже известно из снимка партии.
   const known = game?.opponent?.userId === userId ? game.opponent : null;
-  const player = q.data?.player ?? (known ? { id: known.userId, name: known.name, username: known.username, photoUrl: known.photoUrl, rating: known.rating } : null);
+  const player =
+    q.data?.player ?? (known ? { id: known.userId, name: known.name, username: known.username, photoUrl: known.photoUrl, rating: known.rating } : null);
   const h = q.data?.headToHead;
   const tiles = statTiles(q.data?.stats ?? null, t, lang).filter((s) => ['games', 'winrate', 'accuracy', 'avgTime'].includes(s.key));
 
@@ -67,7 +68,13 @@ export function OppSheet({ me }: { me: MeResponse }) {
               <Avatar id={player.id} name={player.name} photoUrl={player.photoUrl} size={38} ring="opp" on="none" />
             </div>
             <span className="text-[13px] font-medium text-hint">
-              {q.isError ? t('s17.error') : !h ? ' ' : h.games === 0 || h.lastAt === null ? t('s17.first') : t('s17.meta', { count: h.games, when: formatWhen(h.lastAt, t, lang) })}
+              {q.isError
+                ? t('s17.error')
+                : !h
+                  ? ' '
+                  : h.games === 0 || h.lastAt === null
+                    ? t('s17.first')
+                    : t('s17.meta', { count: h.games, when: formatWhen(h.lastAt, t, lang) })}
             </span>
           </div>
 

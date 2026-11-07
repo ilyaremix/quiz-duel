@@ -94,20 +94,13 @@ export function ResultScreen({ game }: { game: GameView }) {
   const result = game.result;
   const opp = game.opponent;
 
-  const look: Look | null = !result
-    ? null
-    : result.technical
-      ? result.outcome === 'win'
-        ? 'techWin'
-        : 'techLoss'
-      : result.outcome;
+  const look: Look | null = !result ? null : result.technical ? (result.outcome === 'win' ? 'techWin' : 'techLoss') : result.outcome;
 
   // Режимы с жизнями: партия кончилась досрочно - почему.
   const meOut = game.me.lives === 0;
   const oppOut = opp?.lives === 0;
   const livesKind = game.rules.variant === 'sudden' ? 'sudden' : 'lives';
-  const livesReason =
-    result && !result.technical && meOut !== oppOut ? (meOut ? `${livesKind}Loss` : `${livesKind}Win`) : null;
+  const livesReason = result && !result.technical && meOut !== oppOut ? (meOut ? `${livesKind}Loss` : `${livesKind}Win`) : null;
 
   // Сильная вибрация на победу - один раз.
   const buzzed = useRef(false);

@@ -52,9 +52,7 @@ export function botInvoices(api: Api): InvoiceMaker {
       const what = starsProduct(product);
       const pack = COIN_PACKS.find((p) => `coins_${p.id}` === product);
       const text = product === 'adfree' ? t.adFree : t.coins(pack!.coins);
-      return api.createInvoiceLink(text.title, text.description, invoicePayload(product, userId), '', 'XTR', [
-        { label: text.title, amount: what.stars },
-      ]);
+      return api.createInvoiceLink(text.title, text.description, invoicePayload(product, userId), '', 'XTR', [{ label: text.title, amount: what.stars }]);
     },
   };
 }
@@ -98,8 +96,7 @@ export function attachPayments(bot: QuizBot, economy: EconomyRepo, hooks: Paymen
     const parsed = parsePayload(q.invoice_payload);
     const lang = await hooks.lang(q.from.id).catch(() => 'en' as const);
     const t = invoiceTexts[lang];
-    const valid =
-      parsed !== null && parsed.userId === q.from.id && q.currency === 'XTR' && q.total_amount === starsProduct(parsed.product).stars;
+    const valid = parsed !== null && parsed.userId === q.from.id && q.currency === 'XTR' && q.total_amount === starsProduct(parsed.product).stars;
     if (!valid) {
       await ctx.answerPreCheckoutQuery(false, { error_message: t.badInvoice });
       return;

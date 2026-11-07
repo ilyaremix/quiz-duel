@@ -150,7 +150,13 @@ describe('Этап 8: когда бот пишет игроку', () => {
   }, 15_000);
 
   it('сбой отправки не мешает партии', async () => {
-    const w = await world({ alerts: { send: () => { throw new Error('boom'); } } });
+    const w = await world({
+      alerts: {
+        send: () => {
+          throw new Error('boom');
+        },
+      },
+    });
     const a = await player(w, ilya);
     const b = await player(w, mark);
     const gameId = await lobby(a, b);
@@ -206,9 +212,18 @@ describe('Этап 8: отправка уведомлений', () => {
     animated.send(1, { kind: 'rematch', gameId: 'Abcde12345', opponent: 'Mark' });
     await animated.flush();
     animated.send(1, { kind: 'rematch', gameId: 'Abcde12345', opponent: 'Mark' });
-    animated.send(2, { kind: 'result', gameId: 'Abcde12345', opponent: 'Илья', result: { outcome: 'draw', technical: false, me: 5000, opp: 5000, ratingAfter: 1000, delta: 0 } });
+    animated.send(2, {
+      kind: 'result',
+      gameId: 'Abcde12345',
+      opponent: 'Илья',
+      result: { outcome: 'draw', technical: false, me: 5000, opp: 5000, ratingAfter: 1000, delta: 0 },
+    });
     await animated.flush();
-    expect(calls.map((c) => c.media)).toEqual(['https://quiz.example.sslip.io/bot/rematch-ru.mp4', 'file-rematch-ru.mp4', 'https://quiz.example.sslip.io/bot/draw-en.mp4']);
+    expect(calls.map((c) => c.media)).toEqual([
+      'https://quiz.example.sslip.io/bot/rematch-ru.mp4',
+      'file-rematch-ru.mp4',
+      'https://quiz.example.sslip.io/bot/draw-en.mp4',
+    ]);
     expect(calls[0]).toMatchObject({ button: 'Ответить', url: 'https://t.me/q_battle_bot/QuizDuel?startapp=g_Abcde12345' });
     expect(calls[0]!.text).toContain('предлагает реванш');
 
@@ -222,7 +237,13 @@ describe('Этап 8: отправка уведомлений', () => {
 
   it('друг зовёт: тема и режим партии в тексте', async () => {
     const { calls, animated } = await setup();
-    animated.send(1, { kind: 'friendInvite', gameId: 'Abcde12345', opponent: 'Mark', category: 'history', rules: { variant: 'lives', timeSec: 10, count: 15 } });
+    animated.send(1, {
+      kind: 'friendInvite',
+      gameId: 'Abcde12345',
+      opponent: 'Mark',
+      category: 'history',
+      rules: { variant: 'lives', timeSec: 10, count: 15 },
+    });
     await animated.flush();
     expect(calls[0]!.media).toBe('https://quiz.example.sslip.io/bot/friend-ru.mp4');
     expect(calls[0]!.text).toContain('История и география · Три жизни · 15 вопросов по 10 секунд');
@@ -231,7 +252,12 @@ describe('Этап 8: отправка уведомлений', () => {
   it('на языке получателя, с кнопкой прямо в партию; имя экранируется', async () => {
     const { calls, sender } = await setup();
     sender.send(1, { kind: 'joined', gameId: 'Abcde12345', opponent: '<Mark>' });
-    sender.send(2, { kind: 'result', gameId: 'Abcde12345', opponent: 'Илья', result: { outcome: 'win', technical: false, me: 6224, opp: 5027, ratingAfter: 1016, delta: 16 } });
+    sender.send(2, {
+      kind: 'result',
+      gameId: 'Abcde12345',
+      opponent: 'Илья',
+      result: { outcome: 'win', technical: false, me: 6224, opp: 5027, ratingAfter: 1016, delta: 16 },
+    });
     await sender.flush();
     expect(calls[0]).toMatchObject({ chatId: 1, url: 'https://t.me/q_battle_bot/QuizDuel?startapp=g_Abcde12345', button: 'Открыть лобби' });
     expect(calls[0]!.text).toContain('&lt;Mark&gt;');

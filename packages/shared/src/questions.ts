@@ -54,7 +54,10 @@ export const QuestionSchema = z.strictObject({
   category: z.enum(ALL_CATEGORIES),
   difficulty: z.enum(DIFFICULTIES),
   /** Индекс верного варианта, общий для обоих языков. */
-  correct: z.int().min(0).max(BANK_RULES.optionsCount - 1),
+  correct: z
+    .int()
+    .min(0)
+    .max(BANK_RULES.optionsCount - 1),
   ru: LocalizedSchema,
   en: LocalizedSchema,
 });

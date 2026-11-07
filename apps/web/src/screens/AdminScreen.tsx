@@ -311,7 +311,8 @@ function SourcesTab({ days }: { days: AdminPeriod }) {
   const pct = (v: number | null) => (v === null ? '-' : `${num(v, 0)}%`);
   // Своя ссылка - её метка; рефералы, дуэли и «без метки» считаются сами - у них только пометка.
   const codeOf = (id: string, url: string | null) => (url ? `src_${id}` : isAutoSource(id) ? null : id);
-  const nameOf = (id: string, title: string | null) => title ?? (['aidpost', 'tgads', 'ref', 'duel', 'inline', 'organic'].includes(id) ? t(`adm.src.names.${id}`) : id);
+  const nameOf = (id: string, title: string | null) =>
+    title ?? (['aidpost', 'tgads', 'ref', 'duel', 'inline', 'organic'].includes(id) ? t(`adm.src.names.${id}`) : id);
   const copy = async (url: string) => {
     try {
       await copyText(url);
@@ -379,7 +380,13 @@ function SourcesTab({ days }: { days: AdminPeriod }) {
                 </span>
               </>
             );
-            const rowStyle: CSSProperties = { ...cols, alignItems: 'center', minHeight: 56, borderTop: '1px solid var(--tg-theme-section-separator-color, rgba(140,150,200,.16))', padding: '8px 0' };
+            const rowStyle: CSSProperties = {
+              ...cols,
+              alignItems: 'center',
+              minHeight: 56,
+              borderTop: '1px solid var(--tg-theme-section-separator-color, rgba(140,150,200,.16))',
+              padding: '8px 0',
+            };
             return s.url ? (
               <button
                 key={s.id}
@@ -538,7 +545,16 @@ function TasksTab() {
     const next = !task.on;
     queryClient.setQueryData<AdminTask[]>(adminKeys.tasks, (list) => list?.map((x) => (x.id === task.id ? { ...x, on: next } : x)));
     try {
-      await api.admin.saveTask({ id: task.id, type: task.type, channel: task.channel, goal: task.goal, reward: task.reward, on: next, titleRu: task.titleRu ?? null, titleEn: task.titleEn ?? null });
+      await api.admin.saveTask({
+        id: task.id,
+        type: task.type,
+        channel: task.channel,
+        goal: task.goal,
+        reward: task.reward,
+        on: next,
+        titleRu: task.titleRu ?? null,
+        titleEn: task.titleEn ?? null,
+      });
       void queryClient.invalidateQueries({ queryKey: ['wallet'] });
     } catch {
       showToast('error', 'adm.task.saveError');
@@ -554,7 +570,12 @@ function TasksTab() {
       {q.data.map((task) => {
         const look = TASK_LOOK[task.type];
         const title = taskTitle(task, t, i18n.language);
-        const goal = task.type === 'play' ? ` · ${t('adm.tasks.goalPlay', { n: task.goal })}` : task.type === 'ads' ? ` · ${t('adm.tasks.goalAds', { n: task.goal })}` : '';
+        const goal =
+          task.type === 'play'
+            ? ` · ${t('adm.tasks.goalPlay', { n: task.goal })}`
+            : task.type === 'ads'
+              ? ` · ${t('adm.tasks.goalAds', { n: task.goal })}`
+              : '';
         return (
           <div key={task.id} className="qd-card flex items-center gap-2.5 rounded-[24px] py-2.5 pr-2.5 pl-3" style={{ opacity: task.on ? 1 : 0.62 }}>
             <button
@@ -564,7 +585,11 @@ function TasksTab() {
               className="qd-press flex min-w-0 grow cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left text-text"
               style={{ fontFamily: 'inherit' }}
             >
-              <span aria-hidden="true" className="qd-ball h-[42px] w-[42px]" style={{ '--qd-ball': look.ball, '--qd-ball-glow': look.glow, color: look.ink } as CSSProperties}>
+              <span
+                aria-hidden="true"
+                className="qd-ball h-[42px] w-[42px]"
+                style={{ '--qd-ball': look.ball, '--qd-ball-glow': look.glow, color: look.ink } as CSSProperties}
+              >
                 <Icon glyph={look.glyph} size={20} stroke={2.3} />
               </span>
               <span className="flex min-w-0 flex-col gap-0.5">
@@ -630,10 +655,17 @@ function PlayersTab() {
           {q.data.length ? t('adm.pl.count', { n: num(q.data.length), players: pw(t, q.data.length, 'player') }) : t('adm.pl.none')}
         </span>
       )}
-      {!q.data && (q.isError ? <Pending q={q} /> : [0, 1, 2, 3].map((i) => <div key={i} aria-hidden="true" className="qd-skel qd-glass h-[66px] rounded-[22px]" />))}
+      {!q.data &&
+        (q.isError ? <Pending q={q} /> : [0, 1, 2, 3].map((i) => <div key={i} aria-hidden="true" className="qd-skel qd-glass h-[66px] rounded-[22px]" />))}
       {q.data?.map((u) => {
         const fresh = now - u.createdAt < WEEK;
-        const tag = u.banned ? ['adm.pl.banned', 'qd-chip-bad'] : u.stars > 0 ? ['adm.pl.payer', 'qd-chip-gold'] : fresh ? ['adm.pl.fresh', 'qd-chip-brand'] : null;
+        const tag = u.banned
+          ? ['adm.pl.banned', 'qd-chip-bad']
+          : u.stars > 0
+            ? ['adm.pl.payer', 'qd-chip-gold']
+            : fresh
+              ? ['adm.pl.fresh', 'qd-chip-brand']
+              : null;
         return (
           <button
             key={u.id}

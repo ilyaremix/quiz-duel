@@ -28,7 +28,15 @@ const post = (app: Awaited<ReturnType<typeof makeApp>>['app'], body: unknown, us
 describe('этап 9: язык - POST /api/settings { language }', () => {
   it('«Авто» по language_code: ru, uk, be, kk - русский, остальное и пустое - английский', async () => {
     const { app } = await makeApp();
-    for (const [code, lang] of [['ru', 'ru'], ['uk', 'ru'], ['be', 'ru'], ['kk', 'ru'], ['en', 'en'], ['de', 'en'], ['pt-br', 'en']] as const) {
+    for (const [code, lang] of [
+      ['ru', 'ru'],
+      ['uk', 'ru'],
+      ['be', 'ru'],
+      ['kk', 'ru'],
+      ['en', 'en'],
+      ['de', 'en'],
+      ['pt-br', 'en'],
+    ] as const) {
       const body = await me(app, { ...ilya, language_code: code });
       expect(body, code).toMatchObject({ language: 'auto', lang, autoLang: lang });
     }

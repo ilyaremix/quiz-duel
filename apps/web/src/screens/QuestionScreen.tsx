@@ -25,7 +25,14 @@ type Pill = PillLook & { text: string; label: string };
 
 /** Плашки итога вопроса: верно - зелёное стекло, неверно - красное, не успел - простое стекло. */
 const OK: PillLook = { bg: 'var(--qd-ok-glass)', edge: 'var(--qd-ok-edge)', fg: 'var(--tg-theme-text-color)', ic: '#3BE58B', icFg: '#04261A', glyph: 'check' };
-const BAD: PillLook = { bg: 'var(--qd-bad-glass)', edge: 'var(--qd-bad-edge)', fg: 'var(--tg-theme-text-color)', ic: '#FF5A7A', icFg: '#2E0310', glyph: 'close' };
+const BAD: PillLook = {
+  bg: 'var(--qd-bad-glass)',
+  edge: 'var(--qd-bad-edge)',
+  fg: 'var(--tg-theme-text-color)',
+  ic: '#FF5A7A',
+  icFg: '#2E0310',
+  glyph: 'close',
+};
 const LATE: PillLook = {
   bg: 'var(--qd-sheen), var(--qd-glass)',
   edge: 'var(--qd-glass-edge-flat)',
@@ -211,9 +218,7 @@ export function QuestionScreen({ game }: { game: GameView }) {
       {/* Реакции - кнопкой над вопросом в любой момент партии; строка всегда на месте, вёрстка не прыгает. */}
       {opp && !solo && !compact && <ReactionPicker />}
 
-      <section
-        className={`qd-card relative flex flex-col items-center rounded-[30px] px-5 text-center ${compact ? 'gap-2 pt-2.5 pb-3.5' : 'gap-3 pt-5 pb-6'}`}
-      >
+      <section className={`qd-card relative flex flex-col items-center rounded-[30px] px-5 text-center ${compact ? 'gap-2 pt-2.5 pb-3.5' : 'gap-3 pt-5 pb-6'}`}>
         {opp && !solo && compact && <ReactionPicker variant="corner" />}
         <CategoryChip cat={q.category} />
         <h1 className={`m-0 font-semibold tracking-[-0.01em] ${compact ? 'text-[18px] leading-[1.25]' : 'text-[22px] leading-[1.3]'}`}>{q.text}</h1>
@@ -236,7 +241,6 @@ export function QuestionScreen({ game }: { game: GameView }) {
           </div>
         ))}
       </div>
-
     </main>
   );
 }

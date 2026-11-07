@@ -47,8 +47,7 @@ export function DisconnectBanner({ title, text, time }: { title: string; text: s
       <div className="flex min-w-0 flex-col gap-0.5">
         <span className="text-[15px] font-bold">{title}</span>
         <span className="text-[13px] font-medium">
-          {text}{' '}
-          <b className="qd-num font-bold text-gold-text">{time}</b>
+          {text} <b className="qd-num font-bold text-gold-text">{time}</b>
         </span>
       </div>
     </div>

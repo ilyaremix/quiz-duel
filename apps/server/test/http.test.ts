@@ -292,13 +292,7 @@ describe('этап 7: профиль, лидерборд, соперник, ра
     expect((await app.inject({ method: 'GET', url: '/api/games/Abcde12345/review', headers: auth() })).statusCode).toBe(404);
     expect((await app.inject({ method: 'GET', url: '/api/games/bad/review', headers: auth() })).statusCode).toBe(400);
     expect((await app.inject({ method: 'GET', url: '/api/achievements?userId=1', headers: auth() })).json()).toMatchObject({ total: 12 });
-    expect(calls).toEqual([
-      `leaderboard:${ilya.id}`,
-      `profile:${ilya.id}`,
-      `player:${ilya.id}:42`,
-      `review:${ilya.id}:Abcde12345`,
-      `achievements:${ilya.id}`,
-    ]);
+    expect(calls).toEqual([`leaderboard:${ilya.id}`, `profile:${ilya.id}`, `player:${ilya.id}:42`, `review:${ilya.id}:Abcde12345`, `achievements:${ilya.id}`]);
   });
 });
 

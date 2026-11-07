@@ -15,7 +15,10 @@ interface SegmentedProps<T extends string> {
 export function Segmented<T extends string>({ label, options, value, onPick, disabled }: SegmentedProps<T>) {
   const n = Math.max(1, options.length);
   const small = n > 3;
-  const active = Math.max(0, options.findIndex((o) => o.value === value));
+  const active = Math.max(
+    0,
+    options.findIndex((o) => o.value === value),
+  );
   return (
     <div
       role="radiogroup"

@@ -59,8 +59,7 @@ export interface SoloFacts {
 
 export type GameFacts = DuelFacts | SoloFacts;
 
-export const correctCount = (answers: readonly (AnswerFact | null)[]): number =>
-  answers.filter((a) => a?.correct).length;
+export const correctCount = (answers: readonly (AnswerFact | null)[]): number => answers.filter((a) => a?.correct).length;
 
 /** Сводные цифры после дуэли. Техническое поражение считается обычным (иначе от проигрыша можно сбежать). */
 export function applyDuel(totals: PlayerTotals, facts: DuelFacts, ratingDelta: number): PlayerTotals {
@@ -164,23 +163,13 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
  * Новые ачивки по итогу партии. totals - цифры уже ПОСЛЕ этой партии.
  * Тренировки и технические исходы дают только «Эрудита» (по ТЗ).
  */
-export function newAchievements(
-  totals: PlayerTotals,
-  facts: GameFacts,
-  unlocked: ReadonlySet<AchievementCode>,
-): AchievementCode[] {
+export function newAchievements(totals: PlayerTotals, facts: GameFacts, unlocked: ReadonlySet<AchievementCode>): AchievementCode[] {
   const onlyErudite = facts.kind === 'solo' || facts.technical;
-  return ACHIEVEMENTS.filter(
-    (a) => !unlocked.has(a.code) && (!onlyErudite || a.code === 'erudite') && a.earned(totals, facts),
-  ).map((a) => a.code);
+  return ACHIEVEMENTS.filter((a) => !unlocked.has(a.code) && (!onlyErudite || a.code === 'erudite') && a.earned(totals, facts)).map((a) => a.code);
 }
 
 /** Прогресс для экрана ачивок: { current, goal }. Разовые - 0 или 1. */
-export function achievementProgress(
-  code: AchievementCode,
-  totals: PlayerTotals,
-  unlocked: ReadonlySet<AchievementCode>,
-): { current: number; goal: number } {
+export function achievementProgress(code: AchievementCode, totals: PlayerTotals, unlocked: ReadonlySet<AchievementCode>): { current: number; goal: number } {
   const def = ACHIEVEMENTS.find((a) => a.code === code)!;
   if (unlocked.has(code)) return { current: def.goal, goal: def.goal };
   const current = def.progress ? Math.min(def.goal, Math.max(0, def.progress(totals))) : 0;

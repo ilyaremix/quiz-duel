@@ -127,7 +127,11 @@ export function SoloResultScreen({ game }: { game: GameView }) {
 
       <section className="qd-in qd-d4 flex flex-wrap justify-center gap-2">
         {chip && (
-          <span className={`qd-chip qd-num ${rec ? 'qd-chip-gold' : ''}`} aria-busy={!solo} style={{ ...CHIP, color: rec ? undefined : 'var(--tg-theme-hint-color)' }}>
+          <span
+            className={`qd-chip qd-num ${rec ? 'qd-chip-gold' : ''}`}
+            aria-busy={!solo}
+            style={{ ...CHIP, color: rec ? undefined : 'var(--tg-theme-hint-color)' }}
+          >
             {chip}
           </span>
         )}

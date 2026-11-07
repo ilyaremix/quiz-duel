@@ -94,7 +94,14 @@ export function ReviewScreen({ gameId }: { gameId: string }) {
       <div className="qd-in qd-d1 grid grid-cols-2 gap-2.5">
         {[
           { p: r.me, label: you, ring: 'me' as const, n: qs.filter((q) => q.me.correct).length, fg: 'var(--qd-me-text)', glow: 'var(--qd-me-glow)' },
-          { p: r.opponent, label: r.opponent.name, ring: 'opp' as const, n: qs.filter((q) => q.opp.correct).length, fg: 'var(--qd-opp-text)', glow: 'var(--qd-opp-glow)' },
+          {
+            p: r.opponent,
+            label: r.opponent.name,
+            ring: 'opp' as const,
+            n: qs.filter((q) => q.opp.correct).length,
+            fg: 'var(--qd-opp-text)',
+            glow: 'var(--qd-opp-glow)',
+          },
         ].map((x) => (
           <div key={x.ring} className="qd-card box-border flex h-[52px] items-center gap-2.5 rounded-[26px] pr-4 pl-[9px]">
             <Avatar id={x.p.id} name={x.p.name} photoUrl={x.p.photoUrl} size={34} ring={x.ring} on="none" />

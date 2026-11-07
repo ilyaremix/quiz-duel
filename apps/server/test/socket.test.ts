@@ -68,11 +68,7 @@ describe('Socket.IO: авторизация по initData', () => {
     ['без initData', undefined, { error: 'unauthorized' }],
     ['не строка', { user: 1 }, { error: 'unauthorized' }],
     ['чужой токен', makeInitData({ token: '1:AAH-some-other-bot-token-000000000' }), { error: 'invalid_init_data', reason: 'bad_hash' }],
-    [
-      'устаревший',
-      makeInitData({ authDateSec: Math.floor(Date.now() / 1000) - 3 * 86_400 }),
-      { error: 'invalid_init_data', reason: 'expired' },
-    ],
+    ['устаревший', makeInitData({ authDateSec: Math.floor(Date.now() / 1000) - 3 * 86_400 }), { error: 'invalid_init_data', reason: 'expired' }],
   ])('%s - отказ при подключении', async (_name, initData, expected) => {
     const url = await startServer();
     const socket = client(url, initData);

@@ -295,7 +295,8 @@ function InTelegram({ session }: { session: TelegramSession }) {
   // когда ответил и /api/me (см. profileReady в lib/game.ts).
   useEffect(() => {
     gameActions.start(session.initDataRaw, gameIdFromStartParam(session.startParam), async () => {
-      const docs = queryClient.getQueryData<ConfigResponse>(['config'])?.docs ?? (await queryClient.fetchQuery({ queryKey: ['config'], queryFn: api.config })).docs;
+      const docs =
+        queryClient.getQueryData<ConfigResponse>(['config'])?.docs ?? (await queryClient.fetchQuery({ queryKey: ['config'], queryFn: api.config })).docs;
       await api.consents(session.initDataRaw, { docs: ['terms', 'privacy'], version: docs.version });
       queryClient.setQueryData<MeResponse>(['me'], (prev) => (prev ? { ...prev, docsAccepted: true } : prev));
     });
@@ -311,11 +312,7 @@ function InTelegram({ session }: { session: TelegramSession }) {
   if (me.isPending || (me.isFetching && me.isError)) return <LoadingScreen />;
   if (me.isError) {
     const isAuth = me.error instanceof ApiRequestError && me.error.isAuth;
-    return isAuth ? (
-      <FallbackScreen kind="session" onAction={closeMiniApp} />
-    ) : (
-      <FallbackScreen kind="error" onAction={() => void me.refetch()} />
-    );
+    return isAuth ? <FallbackScreen kind="session" onAction={closeMiniApp} /> : <FallbackScreen kind="error" onAction={() => void me.refetch()} />;
   }
   if (me.data.banned) return <FallbackScreen kind="banned" onAction={closeMiniApp} />;
   if (conn === 'replaced') return <FallbackScreen kind="otherDevice" onAction={gameActions.takeOver} />;

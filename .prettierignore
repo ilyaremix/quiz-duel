@@ -1,0 +1,9 @@
+node_modules
+**/dist
+**/coverage
+apps/server/src/generated
+package-lock.json
+# Оформлены руками: таблицы в документах, база вопросов, шаблоны карточек бота
+*.md
+data/
+tools/bot-cards/*.html

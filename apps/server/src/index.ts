@@ -5,7 +5,19 @@ import { createPrismaUsersRepo } from './users.js';
 import { createPrismaStatsRepo } from './stats.js';
 import { buildApp } from './http/app.js';
 import { attachSocket, socketNotifier, socketPush, type IoServer } from './socket.js';
-import { attachInline, botHealth, botInvites, botReferrals, botResults, configureBot, createBot, startBot, syncChatCommands, type BotTrouble, type QuizBot } from './bot/index.js';
+import {
+  attachInline,
+  botHealth,
+  botInvites,
+  botReferrals,
+  botResults,
+  configureBot,
+  createBot,
+  startBot,
+  syncChatCommands,
+  type BotTrouble,
+  type QuizBot,
+} from './bot/index.js';
 import { botAlerts } from './bot/alerts.js';
 import { cardMedia } from './bot/cards.js';
 import { dailyReminders } from './bot/reminders.js';

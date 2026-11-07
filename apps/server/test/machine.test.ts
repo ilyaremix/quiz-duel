@@ -395,11 +395,7 @@ describe('отключения и возврат', () => {
 
 describe('реванш и тренировка', () => {
   it('реванш: согласие обоих уже есть - сразу отсчёт', () => {
-    const s = createGame(
-      { id: 'g2', mode: 'rematch', category: 'tech', creatorId: MARK, opponentId: ILYA, startNow: true, rematchOf: 'g1' },
-      T0,
-      deps,
-    );
+    const s = createGame({ id: 'g2', mode: 'rematch', category: 'tech', creatorId: MARK, opponentId: ILYA, startNow: true, rematchOf: 'g1' }, T0, deps);
     expect(s.phase).toBe('countdown');
     expect(s.questions).toHaveLength(10);
     expect(s.rematchOf).toBe('g1');

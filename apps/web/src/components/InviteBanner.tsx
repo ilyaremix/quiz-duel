@@ -39,7 +39,10 @@ export function InviteBanner() {
   });
 
   return (
-    <div className="qd-toast-in fixed right-4 left-4 z-40" style={{ top: 'calc(var(--tg-viewport-safe-area-inset-top, 0px) + var(--tg-viewport-content-safe-area-inset-top, 0px) + 12px)' }}>
+    <div
+      className="qd-toast-in fixed right-4 left-4 z-40"
+      style={{ top: 'calc(var(--tg-viewport-safe-area-inset-top, 0px) + var(--tg-viewport-content-safe-area-inset-top, 0px) + 12px)' }}
+    >
       <section
         role="alertdialog"
         aria-label={t('s26.aria')}
@@ -51,7 +54,11 @@ export function InviteBanner() {
           <div className="flex min-w-0 grow flex-col gap-[3px]">
             <span className="text-[16px] leading-[1.25] font-bold tracking-[-0.01em]">{t('s26.duelTitle', { name: invite.from.name })}</span>
             <span className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium text-hint">
-              <span aria-hidden="true" className="qd-ball h-[18px] w-[18px]" style={{ '--qd-ball': look.ball, '--qd-ball-glow': look.glow, color: look.ink } as CSSProperties}>
+              <span
+                aria-hidden="true"
+                className="qd-ball h-[18px] w-[18px]"
+                style={{ '--qd-ball': look.ball, '--qd-ball-glow': look.glow, color: look.ink } as CSSProperties}
+              >
                 <Icon glyph={look.glyph} size={10} stroke={2.8} />
               </span>
               <span className="min-w-0 truncate">{meta}</span>
@@ -59,8 +66,24 @@ export function InviteBanner() {
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <div role="progressbar" aria-label={t('s26.progress', { t: `${mm}:${String(ss).padStart(2, '0')}` })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: 'var(--qd-track)' }}>
-            <div className="h-[5px] rounded-[3px]" style={{ width: `${pct}%`, transition: 'width 1000ms linear', background: 'linear-gradient(90deg, #FF8A3D, #FF6A88)', boxShadow: '0 0 8px rgba(255,138,61,.6)' }} />
+          <div
+            role="progressbar"
+            aria-label={t('s26.progress', { t: `${mm}:${String(ss).padStart(2, '0')}` })}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={pct}
+            className="h-[5px] overflow-hidden rounded-[3px]"
+            style={{ background: 'var(--qd-track)' }}
+          >
+            <div
+              className="h-[5px] rounded-[3px]"
+              style={{
+                width: `${pct}%`,
+                transition: 'width 1000ms linear',
+                background: 'linear-gradient(90deg, #FF8A3D, #FF6A88)',
+                boxShadow: '0 0 8px rgba(255,138,61,.6)',
+              }}
+            />
           </div>
           <span className="qd-num text-[12px] font-semibold text-hint">{t('s26.progress', { t: `${mm}:${String(ss).padStart(2, '0')}` })}</span>
         </div>

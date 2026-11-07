@@ -1,13 +1,4 @@
-import {
-  BANK_RULES,
-  CATEGORIES,
-  DIFFICULTIES,
-  QUESTIONS_PER_GAME,
-  type Category,
-  type Difficulty,
-  type GameCategory,
-  type Question,
-} from '@quiz-duel/shared';
+import { BANK_RULES, CATEGORIES, DIFFICULTIES, QUESTIONS_PER_GAME, type Category, type Difficulty, type GameCategory, type Question } from '@quiz-duel/shared';
 import type { QuestionBank } from '../questions/bank.js';
 import { secureRng, shuffle, type Rng } from './rng.js';
 
@@ -81,7 +72,13 @@ export function pickQuestions({ bank, category, seen = new Map(), rng = secureRn
     picked.push(...chosen);
   }
 
-  return picked.map((q) => ({ id: q.id, order: shuffle(Array.from({ length: BANK_RULES.optionsCount }, (_, i) => i), rng) }));
+  return picked.map((q) => ({
+    id: q.id,
+    order: shuffle(
+      Array.from({ length: BANK_RULES.optionsCount }, (_, i) => i),
+      rng,
+    ),
+  }));
 }
 
 function candidates(bank: QuestionBank, category: GameCategory, difficulty: Difficulty, pool: readonly Category[] | null): Question[] {

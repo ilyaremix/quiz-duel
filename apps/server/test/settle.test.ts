@@ -30,28 +30,28 @@ describe('computeSettlement', () => {
   });
 
   it('рейтинг считается от сохранённых значений: у каждого свой K', () => {
-    const [a, b] = computeSettlement(
-      [memoryPlayer(1, { rating: 1016, games: 24 }), memoryPlayer(2, { rating: 1004, games: 31 })],
-      { gameId: 'x', players: [input(1, facts('win', 'science')), input(2, facts('loss', 'science'))] },
-    );
+    const [a, b] = computeSettlement([memoryPlayer(1, { rating: 1016, games: 24 }), memoryPlayer(2, { rating: 1004, games: 31 })], {
+      gameId: 'x',
+      players: [input(1, facts('win', 'science')), input(2, facts('loss', 'science'))],
+    });
     expect([a.before, a.delta, a.totals.rating]).toEqual([1016, 12, 1028]);
     expect([b.before, b.delta, b.totals.rating]).toEqual([1004, -12, 992]);
     expect(a.categoryAdd.science?.wins).toBe(1);
   });
 
   it('уже полученная ачивка второй раз не выдаётся', () => {
-    const [a] = computeSettlement(
-      [memoryPlayer(1, { unlocked: new Set(['first_blood']) }), memoryPlayer(2)],
-      { gameId: 'x', players: [input(1, facts('win')), input(2, facts('loss'))] },
-    );
+    const [a] = computeSettlement([memoryPlayer(1, { unlocked: new Set(['first_blood']) }), memoryPlayer(2)], {
+      gameId: 'x',
+      players: [input(1, facts('win')), input(2, facts('loss'))],
+    });
     expect(a.achievements).not.toContain('first_blood');
   });
 
   it('техническая победа: рейтинг и статистика как за победу, ачивки - только «Эрудит»', () => {
-    const [a] = computeSettlement(
-      [memoryPlayer(1, { totalCorrect: 97 }), memoryPlayer(2)],
-      { gameId: 'x', players: [input(1, facts('win', 'mix', true)), input(2, facts('loss', 'mix', true))] },
-    );
+    const [a] = computeSettlement([memoryPlayer(1, { totalCorrect: 97 }), memoryPlayer(2)], {
+      gameId: 'x',
+      players: [input(1, facts('win', 'mix', true)), input(2, facts('loss', 'mix', true))],
+    });
     expect(a.delta).toBe(20);
     expect(a.totals.wins).toBe(1);
     expect(a.achievements).toEqual(['erudite']);

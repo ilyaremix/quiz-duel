@@ -5,47 +5,45 @@ import type { GameAlert } from '../game/manager.js';
 export const botTexts: Record<Lang, { start: string; play: string; startCommand: string }> = {
   ru: {
     start:
-      'Привет! Это Quiz Duel - викторина 1 на 1 в реальном времени.\n\n' +
-      'Вызовите друга, отвечайте быстрее и поднимайтесь в рейтинге. Нажмите «Играть».',
+      'Привет! Это Quiz Duel - викторина 1 на 1 в реальном времени.\n\n' + 'Вызовите друга, отвечайте быстрее и поднимайтесь в рейтинге. Нажмите «Играть».',
     play: 'Играть',
     startCommand: 'Открыть игру',
   },
   en: {
-    start:
-      'Hi! This is Quiz Duel - a real-time 1v1 quiz.\n\n' +
-      'Challenge a friend, answer faster and climb the leaderboard. Tap “Play”.',
+    start: 'Hi! This is Quiz Duel - a real-time 1v1 quiz.\n\n' + 'Challenge a friend, answer faster and climb the leaderboard. Tap “Play”.',
     play: 'Play',
     startCommand: 'Open the game',
   },
 };
 
 /** Команды /paysupport (помощь с оплатой звёздами - её требует Telegram) и /terms. */
-export const supportTexts: Record<Lang, { pay: string; payCommand: string; terms: string; termsCommand: string; termsButton: string; privacyButton: string }> = {
-  ru: {
-    pay:
-      '💳 Помощь с оплатой\n\n' +
-      'Если покупка за звёзды не пришла, списалась дважды или что-то пошло не так, напишите @ilyaremix. ' +
-      'Укажите, что покупали и когда, и приложите ID операции: Telegram → Настройки → Мои звёзды → нужная покупка.\n\n' +
-      'Отвечаем в течение 24 часов. Если товар не выдан, вернём звёзды.',
-    payCommand: 'Помощь с оплатой',
-    terms: 'Правила использования и Политика конфиденциальности Quiz Duel:',
-    termsCommand: 'Правила и конфиденциальность',
-    termsButton: 'Правила использования',
-    privacyButton: 'Политика конфиденциальности',
-  },
-  en: {
-    pay:
-      '💳 Payment support\n\n' +
-      'If a Stars purchase did not arrive, was charged twice or something else went wrong, message @ilyaremix. ' +
-      'Tell us what you bought and when, and attach the transaction ID: Telegram → Settings → My Stars → the purchase.\n\n' +
-      'We reply within 24 hours. If the item was not delivered, we refund the Stars.',
-    payCommand: 'Payment support',
-    terms: 'Quiz Duel Terms of Use and Privacy Policy:',
-    termsCommand: 'Terms and privacy',
-    termsButton: 'Terms of Use',
-    privacyButton: 'Privacy Policy',
-  },
-};
+export const supportTexts: Record<Lang, { pay: string; payCommand: string; terms: string; termsCommand: string; termsButton: string; privacyButton: string }> =
+  {
+    ru: {
+      pay:
+        '💳 Помощь с оплатой\n\n' +
+        'Если покупка за звёзды не пришла, списалась дважды или что-то пошло не так, напишите @ilyaremix. ' +
+        'Укажите, что покупали и когда, и приложите ID операции: Telegram → Настройки → Мои звёзды → нужная покупка.\n\n' +
+        'Отвечаем в течение 24 часов. Если товар не выдан, вернём звёзды.',
+      payCommand: 'Помощь с оплатой',
+      terms: 'Правила использования и Политика конфиденциальности Quiz Duel:',
+      termsCommand: 'Правила и конфиденциальность',
+      termsButton: 'Правила использования',
+      privacyButton: 'Политика конфиденциальности',
+    },
+    en: {
+      pay:
+        '💳 Payment support\n\n' +
+        'If a Stars purchase did not arrive, was charged twice or something else went wrong, message @ilyaremix. ' +
+        'Tell us what you bought and when, and attach the transaction ID: Telegram → Settings → My Stars → the purchase.\n\n' +
+        'We reply within 24 hours. If the item was not delivered, we refund the Stars.',
+      payCommand: 'Payment support',
+      terms: 'Quiz Duel Terms of Use and Privacy Policy:',
+      termsCommand: 'Terms and privacy',
+      termsButton: 'Terms of Use',
+      privacyButton: 'Privacy Policy',
+    },
+  };
 
 /** Карточка «Вызов на дуэль» для shareMessage. Язык - создателя игры. */
 export const inviteTexts: Record<
@@ -74,7 +72,8 @@ export const inviteTexts: Record<
         'Кто первым нажмёт «Принять», тот и соперник.'
       );
     },
-    rules: (category, r) => `${category} · ${inviteTexts.ru.modes[r.variant]} · ${r.count} ${ruPlural(r.count, 'вопрос', 'вопроса', 'вопросов')} по ${r.timeSec} ${ruPlural(r.timeSec, 'секунде', 'секунды', 'секунд')}`,
+    rules: (category, r) =>
+      `${category} · ${inviteTexts.ru.modes[r.variant]} · ${r.count} ${ruPlural(r.count, 'вопрос', 'вопроса', 'вопросов')} по ${r.timeSec} ${ruPlural(r.timeSec, 'секунде', 'секунды', 'секунд')}`,
     modes: { classic: 'Классика', lives: 'Три жизни', sudden: 'Внезапная смерть', final: 'Финал ×2' },
     accept: 'Принять',
     inlineConsent: 'Откройте Quiz Duel и примите документы',
@@ -163,7 +162,15 @@ export const alertTexts: Record<Lang, { render: (a: GameAlert) => { text: string
         case 'result': {
           const r = a.result!;
           const head =
-            r.outcome === 'win' ? (r.technical ? '🏆 Техническая победа' : '🏆 Победа') : r.outcome === 'loss' ? (r.technical ? '😔 Техническое поражение' : '😔 Поражение') : '🤝 Ничья';
+            r.outcome === 'win'
+              ? r.technical
+                ? '🏆 Техническая победа'
+                : '🏆 Победа'
+              : r.outcome === 'loss'
+                ? r.technical
+                  ? '😔 Техническое поражение'
+                  : '😔 Поражение'
+                : '🤝 Ничья';
           const rating = r.ratingAfter !== null && r.delta !== null ? `\nРейтинг ${ru(r.ratingAfter)} (${signed(r.delta, ru)})` : '';
           return { text: `${head} - вы против ${opp}: ${ru(r.me)} : ${ru(r.opp)}${rating}`, button: 'Итоги' };
         }
@@ -184,7 +191,10 @@ export const alertTexts: Record<Lang, { render: (a: GameAlert) => { text: string
           return { text: `⏳ ${opp} is ready and waiting for you in the lobby.`, button: 'Return' };
         case 'waitingGame': {
           const n = secondsLeft(a.until);
-          return { text: `⏳ Your game is on and ${opp} is waiting. Come back within ${n} ${n === 1 ? 'second' : 'seconds'} or it counts as a technical loss.`, button: 'Back to the game' };
+          return {
+            text: `⏳ Your game is on and ${opp} is waiting. Come back within ${n} ${n === 1 ? 'second' : 'seconds'} or it counts as a technical loss.`,
+            button: 'Back to the game',
+          };
         }
         case 'rematch': {
           const n = secondsLeft(a.until);
@@ -193,7 +203,15 @@ export const alertTexts: Record<Lang, { render: (a: GameAlert) => { text: string
         case 'result': {
           const r = a.result!;
           const head =
-            r.outcome === 'win' ? (r.technical ? '🏆 Technical win' : '🏆 Victory') : r.outcome === 'loss' ? (r.technical ? '😔 Technical loss' : '😔 Defeat') : '🤝 Draw';
+            r.outcome === 'win'
+              ? r.technical
+                ? '🏆 Technical win'
+                : '🏆 Victory'
+              : r.outcome === 'loss'
+                ? r.technical
+                  ? '😔 Technical loss'
+                  : '😔 Defeat'
+                : '🤝 Draw';
           const rating = r.ratingAfter !== null && r.delta !== null ? `\nRating ${en(r.ratingAfter)} (${signed(r.delta, en)})` : '';
           return { text: `${head} - you vs ${opp}: ${en(r.me)} : ${en(r.opp)}${rating}`, button: 'Results' };
         }
@@ -207,7 +225,10 @@ export const alertTexts: Record<Lang, { render: (a: GameAlert) => { text: string
 };
 
 /** Карточка «Поделиться результатом». Язык - того, кто делится. Нейтрально, без склонения имён. */
-export const shareTexts: Record<Lang, { title: string; play: string; body: (outcome: 'win' | 'loss' | 'draw', me: number, opp: number, opponent: string) => string }> = {
+export const shareTexts: Record<
+  Lang,
+  { title: string; play: string; body: (outcome: 'win' | 'loss' | 'draw', me: number, opp: number, opponent: string) => string }
+> = {
   ru: {
     title: 'Мой результат в Quiz Duel',
     play: 'Сыграть со мной',
@@ -225,7 +246,8 @@ export const shareTexts: Record<Lang, { title: string; play: string; body: (outc
 /** Напоминание о ежедневной награде: серия прервётся, если не зайти сегодня. */
 export const dailyTexts: Record<Lang, { text: (day: number, reward: number) => string; button: string }> = {
   ru: {
-    text: (day, reward) => `🎁 Ежедневная награда ждёт: день ${day}, +${ru(reward)} ${ruPlural(reward, 'монета', 'монеты', 'монет')}. Зайдите сегодня - серия не прервётся.`,
+    text: (day, reward) =>
+      `🎁 Ежедневная награда ждёт: день ${day}, +${ru(reward)} ${ruPlural(reward, 'монета', 'монеты', 'монет')}. Зайдите сегодня - серия не прервётся.`,
     button: 'Забрать',
   },
   en: {
@@ -242,7 +264,9 @@ export const profileTexts: Record<Lang, { description: (bot: string) => string; 
   ru: {
     description: (bot) =>
       '⚔️ Quiz Duel - викторина 1 на 1 в реальном времени.\n\n' +
-      '• Вызывайте друзей прямо из любого чата: напишите @' + bot + ' и отправьте вызов\n' +
+      '• Вызывайте друзей прямо из любого чата: напишите @' +
+      bot +
+      ' и отправьте вызов\n' +
       '• Отвечайте точнее и быстрее соперника - за скорость больше очков\n' +
       '• Наука, история, культура, спорт, технологии и «Микс»\n' +
       '• Рейтинг, друзья, достижения и тренировка в одиночку\n\n' +
@@ -252,7 +276,9 @@ export const profileTexts: Record<Lang, { description: (bot: string) => string; 
   en: {
     description: (bot) =>
       '⚔️ Quiz Duel - a real-time 1v1 quiz.\n\n' +
-      '• Challenge friends from any chat: type @' + bot + ' and send the invite\n' +
+      '• Challenge friends from any chat: type @' +
+      bot +
+      ' and send the invite\n' +
       '• Answer more accurately and faster than your rival - speed earns extra points\n' +
       '• Science, history, culture, sport, tech and Mix\n' +
       '• Leaderboard, friends, achievements and solo practice\n\n' +
@@ -266,15 +292,12 @@ export const referralTexts: Record<Lang, { title: string; body: (name: string) =
   ru: {
     title: 'Сыграем в Quiz Duel?',
     body: (name) =>
-      `<b>${name}</b> зовёт вас в Quiz Duel - викторину 1 на 1 в реальном времени.\n\n` +
-      `🎁 +${REFERRAL.friend} монет после первой партии по этой ссылке.`,
+      `<b>${name}</b> зовёт вас в Quiz Duel - викторину 1 на 1 в реальном времени.\n\n` + `🎁 +${REFERRAL.friend} монет после первой партии по этой ссылке.`,
     play: 'Играть',
   },
   en: {
     title: 'Play Quiz Duel?',
-    body: (name) =>
-      `<b>${name}</b> invites you to Quiz Duel - a real-time 1v1 quiz.\n\n` +
-      `🎁 +${REFERRAL.friend} coins after your first game via this link.`,
+    body: (name) => `<b>${name}</b> invites you to Quiz Duel - a real-time 1v1 quiz.\n\n` + `🎁 +${REFERRAL.friend} coins after your first game via this link.`,
     play: 'Play',
   },
 };

@@ -140,7 +140,13 @@ export function ProfileScreen({ me }: { me: MeResponse }) {
                   return (
                     <div key={c.category} className="flex flex-col gap-[7px]">
                       <div className="flex items-center gap-[9px] text-[14px] font-semibold">
-                        <Ball size={22} color={look.ball} glow={look.glow} ink={look.ink} style={{ boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 10px ${look.glow}` }}>
+                        <Ball
+                          size={22}
+                          color={look.ball}
+                          glow={look.glow}
+                          ink={look.ink}
+                          style={{ boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 10px ${look.glow}` }}
+                        >
                           <Icon glyph={look.glyph} size={12} stroke={2.6} />
                         </Ball>
                         <span className="min-w-0 grow truncate">{label}</span>

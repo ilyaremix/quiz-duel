@@ -7,7 +7,21 @@ import { CATEGORIES, DEFAULT_RULES, DRAFT, TIMINGS, pointsFor, type GameRules } 
 import { loadQuestionBank } from '../src/questions/bank.js';
 import { pickQuestions, splitFor } from '../src/game/picker.js';
 import { draftOffers, seededRng } from '../src/game/rng.js';
-import { answer, createGame, draftTopics, forfeit, livesLeft, pickTopic, setReady, tick, join, rulesOf, type GameState, type MachineDeps, type Step } from '../src/game/machine.js';
+import {
+  answer,
+  createGame,
+  draftTopics,
+  forfeit,
+  livesLeft,
+  pickTopic,
+  setReady,
+  tick,
+  join,
+  rulesOf,
+  type GameState,
+  type MachineDeps,
+  type Step,
+} from '../src/game/machine.js';
 import { computeSettlement, settleInput } from '../src/game/settle.js';
 import { memoryPlayer } from '../src/game/repo.js';
 import { viewFor } from '../src/game/view.js';
@@ -194,7 +208,13 @@ describe('«Микс»: выбор темы', () => {
     const now = T0 + 3000;
     expect(s.phase).toBe('draft');
     expect(s.phaseEndsAt).toBe(now + DRAFT.pickMs);
-    expect(viewFor(s, A, 'ru', bank, now)!.draft).toEqual({ offers: ['science', 'history', 'sport'], myPick: null, oppPicked: false, revealed: false, oppPick: null });
+    expect(viewFor(s, A, 'ru', bank, now)!.draft).toEqual({
+      offers: ['science', 'history', 'sport'],
+      myPick: null,
+      oppPicked: false,
+      revealed: false,
+      oppPick: null,
+    });
     expect(pickTopic(s, A, 'tech', now + 500)).toEqual({ ok: false, error: 'bad_option' });
     s = ok(pickTopic(s, A, 'history', now + 1000));
     expect(pickTopic(s, A, 'science', now + 1100)).toEqual({ ok: false, error: 'already_answered' });

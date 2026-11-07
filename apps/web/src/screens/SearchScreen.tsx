@@ -49,7 +49,8 @@ export function SearchScreen({ me }: { me: MeResponse }) {
             style={{
               background:
                 'linear-gradient(155deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.06) 55%), radial-gradient(circle at 50% 118%, var(--qd-brand-glow), rgba(155, 92, 255, 0) 64%), var(--qd-glass)',
-              boxShadow: 'inset 0 1.5px 0 rgba(255, 255, 255, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 0 60px var(--qd-brand-glow), 0 18px 36px rgba(3, 4, 20, 0.3)',
+              boxShadow:
+                'inset 0 1.5px 0 rgba(255, 255, 255, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 0 60px var(--qd-brand-glow), 0 18px 36px rgba(3, 4, 20, 0.3)',
               color: 'var(--qd-brand-text)',
             }}
           >
@@ -105,7 +106,10 @@ export function SearchScreen({ me }: { me: MeResponse }) {
 
       {notFound ? (
         <div className="qd-in qd-d1 flex flex-col gap-3">
-          <Button icon={<Icon glyph="duel" size={22} stroke={2.4} />} onClick={() => (track('create'), gameActions.quickLeave(), gameActions.openCreate(me.docsAccepted))}>
+          <Button
+            icon={<Icon glyph="duel" size={22} stroke={2.4} />}
+            onClick={() => (track('create'), gameActions.quickLeave(), gameActions.openCreate(me.docsAccepted))}
+          >
             {t('s07.create')}
           </Button>
           <Button

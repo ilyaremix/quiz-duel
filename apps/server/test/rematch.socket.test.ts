@@ -175,10 +175,7 @@ describe('Этап 7: реванш с двумя настоящими клиен
 
   it('оба нажали «Реванш» одновременно - одна новая партия', async () => {
     const { w, a, b, gameId } = await finishedDuel();
-    const [ra, rb] = await Promise.all([
-      a.socket.emitWithAck('rematch:offer', { gameId }),
-      b.socket.emitWithAck('rematch:offer', { gameId }),
-    ]);
+    const [ra, rb] = await Promise.all([a.socket.emitWithAck('rematch:offer', { gameId }), b.socket.emitWithAck('rematch:offer', { gameId })]);
     expect(ra.ok && rb.ok).toBe(true);
     const nextA = await stateWhere(a, 'новая партия у Ильи', (v) => v.rematchOf === gameId);
     const nextB = await stateWhere(b, 'новая партия у Марка', (v) => v.rematchOf === gameId);

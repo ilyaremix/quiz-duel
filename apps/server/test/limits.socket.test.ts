@@ -48,7 +48,13 @@ async function startServer() {
 
 /** Подключение: hello - вошли, иначе - ошибка от сервера. */
 function join(url: string, user = ilya): Promise<{ socket: ClientSocket; error: (Error & { data?: unknown }) | null }> {
-  const socket: ClientSocket = connect(url, { path: SOCKET_PATH, auth: { initData: makeInitData({ user }) }, transports: ['websocket'], reconnection: false, forceNew: true });
+  const socket: ClientSocket = connect(url, {
+    path: SOCKET_PATH,
+    auth: { initData: makeInitData({ user }) },
+    transports: ['websocket'],
+    reconnection: false,
+    forceNew: true,
+  });
   clients.push(socket);
   return new Promise((resolve) => {
     socket.once('session:hello', () => resolve({ socket, error: null }));

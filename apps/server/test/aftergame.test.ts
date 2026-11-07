@@ -24,7 +24,11 @@ async function setup(options: { repo?: Repo } = {}) {
   const users = memoryUsers();
   const repo = options.repo ?? memoryGamesRepo();
   const pushes: Push[] = [];
-  for (const [id, name] of [[A, 'Илья'], [B, 'Марк'], [C, 'Аня']] as const) {
+  for (const [id, name] of [
+    [A, 'Илья'],
+    [B, 'Марк'],
+    [C, 'Аня'],
+  ] as const) {
     const tg: TelegramUser = { id, first_name: name, language_code: id === B ? 'en' : 'ru' };
     await users.upsertFromTelegram(tg);
     users.rows.get(id)!.docsVersion = DOCS_VERSION;
@@ -55,8 +59,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const last = (pushes: Push[], userId: number, gameId?: string) =>
-  pushes.filter((p) => p.userId === userId && (!gameId || p.view.id === gameId)).at(-1)!.view;
+const last = (pushes: Push[], userId: number, gameId?: string) => pushes.filter((p) => p.userId === userId && (!gameId || p.view.id === gameId)).at(-1)!.view;
 
 function correctPos(repo: Repo, id: string, index: number) {
   const q = repo.rows.get(id)!.state.questions[index]!;
@@ -109,7 +112,17 @@ describe('итоги партии', () => {
     expect(a.opponent?.rating).toBe(980);
 
     const pa = repo.players.get(A)!;
-    expect(pa).toMatchObject({ rating: 1020, games: 1, wins: 1, losses: 0, currentStreak: 1, bestStreak: 1, questionsPlayed: 10, duelCorrect: 7, totalCorrect: 7 });
+    expect(pa).toMatchObject({
+      rating: 1020,
+      games: 1,
+      wins: 1,
+      losses: 0,
+      currentStreak: 1,
+      bestStreak: 1,
+      questionsPlayed: 10,
+      duelCorrect: 7,
+      totalCorrect: 7,
+    });
     expect(pa.correctTimeMs).toBe(7 * 1_500);
     expect(pa.categories.science).toEqual({ answered: 10, correct: 7, wins: 1 });
     expect(repo.players.get(B)).toMatchObject({ rating: 980, games: 1, losses: 1, currentStreak: 0, duelCorrect: 4 });

@@ -90,8 +90,7 @@ export function createPrismaFriendsRepo(prisma: PrismaClient): FriendsRepo {
       // source заполняется один раз - при первом входе после обновления (у старых игроков - legacy).
       const source = sourceOf(startParam);
       const inviter = referrerOf(startParam);
-      const validInviter =
-        inviter !== null && inviter !== userId && (await prisma.user.count({ where: { id: BigInt(inviter) } })) > 0 ? inviter : null;
+      const validInviter = inviter !== null && inviter !== userId && (await prisma.user.count({ where: { id: BigInt(inviter) } })) > 0 ? inviter : null;
       const done = await prisma.user.updateMany({
         where: { id: BigInt(userId), source: null },
         data: { source, ...(validInviter ? { referrerId: BigInt(validInviter) } : {}) },
@@ -118,10 +117,11 @@ export function createPrismaFriendsRepo(prisma: PrismaClient): FriendsRepo {
       const friendIds = new Set(rows.map((r) => Number(r.friendId)));
       const incomingIds = new Set(incoming.map((r) => Number(r.userId)));
       const sentIds = new Set(outgoing.map((r) => Number(r.friendId)));
-      const recentIds = recentGames.map((r) => Number(r.other)).filter((id) => !friendIds.has(id) && !incomingIds.has(id)).slice(0, 10);
-      const recentUsers = recentIds.length
-        ? await prisma.user.findMany({ where: { id: { in: recentIds.map((id) => BigInt(id)) } }, select: BRIEF })
-        : [];
+      const recentIds = recentGames
+        .map((r) => Number(r.other))
+        .filter((id) => !friendIds.has(id) && !incomingIds.has(id))
+        .slice(0, 10);
+      const recentUsers = recentIds.length ? await prisma.user.findMany({ where: { id: { in: recentIds.map((id) => BigInt(id)) } }, select: BRIEF }) : [];
       const rank = (s: FriendStatus) => (s === 'online' ? 0 : s === 'ingame' ? 1 : 2);
       const friends = rows
         .map((r) => view(r.friend, presence, null))
@@ -162,8 +162,16 @@ export function createPrismaFriendsRepo(prisma: PrismaClient): FriendsRepo {
         const theirs = await tx.friend.findUnique({ where: key(targetId, userId) });
         if (theirs?.status === 'pending' || theirs?.status === 'accepted') {
           const via = theirs.via;
-          await tx.friend.upsert({ where: key(userId, targetId), create: { userId: BigInt(userId), friendId: BigInt(targetId), status: 'accepted', via }, update: { status: 'accepted' } });
-          await tx.friend.upsert({ where: key(targetId, userId), create: { userId: BigInt(targetId), friendId: BigInt(userId), status: 'accepted', via }, update: { status: 'accepted' } });
+          await tx.friend.upsert({
+            where: key(userId, targetId),
+            create: { userId: BigInt(userId), friendId: BigInt(targetId), status: 'accepted', via },
+            update: { status: 'accepted' },
+          });
+          await tx.friend.upsert({
+            where: key(targetId, userId),
+            create: { userId: BigInt(targetId), friendId: BigInt(userId), status: 'accepted', via },
+            update: { status: 'accepted' },
+          });
           return 'accepted' as const;
         }
         if (mine?.status === 'pending') return 'sent' as const;

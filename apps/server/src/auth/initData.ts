@@ -27,13 +27,7 @@ export interface VerifiedInitData {
   queryId: string | null;
 }
 
-export type InitDataFailure =
-  | 'missing'
-  | 'malformed'
-  | 'bad_hash'
-  | 'expired'
-  | 'from_future'
-  | 'no_user';
+export type InitDataFailure = 'missing' | 'malformed' | 'bad_hash' | 'expired' | 'from_future' | 'no_user';
 
 export class InitDataError extends Error {
   constructor(readonly reason: InitDataFailure) {

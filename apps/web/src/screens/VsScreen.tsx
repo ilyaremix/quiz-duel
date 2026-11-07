@@ -37,7 +37,15 @@ export function VsScreen({ game, count }: { game: GameView; count: 1 | 2 | 3 }) 
 
       <div className="relative grid grid-cols-2 gap-3">
         <div className="qd-slide-l">
-          <PlayerCard id={game.me.userId} name={game.me.name} photoUrl={game.me.photoUrl} glow={game.me.glow} rating={game.me.rating} side="me" status="ready" />
+          <PlayerCard
+            id={game.me.userId}
+            name={game.me.name}
+            photoUrl={game.me.photoUrl}
+            glow={game.me.glow}
+            rating={game.me.rating}
+            side="me"
+            status="ready"
+          />
         </div>
         <div className="qd-slide-r">
           <PlayerCard id={opp.userId} name={opp.name} photoUrl={opp.photoUrl} glow={opp.glow} rating={opp.rating} side="opp" status="ready" />
@@ -48,7 +56,8 @@ export function VsScreen({ game, count }: { game: GameView; count: 1 | 2 | 3 }) 
           className="qd-pop-late absolute top-[22px] left-1/2 z-[2] -ml-8 flex h-16 w-16 items-center justify-center rounded-full text-[20px] font-extrabold tracking-[0.02em]"
           style={{
             background: 'radial-gradient(circle at 32% 25%, #FFFFFF, #E4E8FF 60%, #C9D0FF)',
-            boxShadow: 'inset 0 -3px 8px rgba(60, 70, 160, 0.25), 0 0 0 4px var(--qd-ring-gap), 0 0 34px rgba(255, 255, 255, 0.5), 0 10px 26px rgba(0, 0, 0, 0.35)',
+            boxShadow:
+              'inset 0 -3px 8px rgba(60, 70, 160, 0.25), 0 0 0 4px var(--qd-ring-gap), 0 0 34px rgba(255, 255, 255, 0.5), 0 10px 26px rgba(0, 0, 0, 0.35)',
             color: '#0B0D24',
           }}
         >
@@ -74,7 +83,8 @@ export function VsScreen({ game, count }: { game: GameView; count: 1 | 2 | 3 }) 
             style={{
               background:
                 'linear-gradient(155deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.06) 55%), radial-gradient(circle at 50% 118%, rgba(155, 92, 255, 0.7), rgba(155, 92, 255, 0) 62%), var(--qd-glass)',
-              boxShadow: 'inset 0 1.5px 0 rgba(255, 255, 255, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 0 60px var(--qd-brand-glow), 0 20px 40px rgba(3, 4, 20, 0.35)',
+              boxShadow:
+                'inset 0 1.5px 0 rgba(255, 255, 255, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 0 60px var(--qd-brand-glow), 0 20px 40px rgba(3, 4, 20, 0.35)',
               color: 'var(--tg-theme-text-color)',
               textShadow: 'var(--qd-text-glow)',
             }}

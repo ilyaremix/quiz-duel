@@ -43,7 +43,13 @@ describe.skipIf(!url)('итоги на Postgres', () => {
    * Сыгранная партия через машину состояний: right[i] - верно ли ответил игрок на вопрос i,
    * creator отвечает за 2,5 с, opponent - за 4 с. forfeitAfter - opponent сдаётся после N вопросов.
    */
-  function played(id: string, creator: number, opponent: number, right: [boolean[], boolean[]], opts: { category?: GameCategory; forfeitAfter?: number; at?: number } = {}): GameState {
+  function played(
+    id: string,
+    creator: number,
+    opponent: number,
+    right: [boolean[], boolean[]],
+    opts: { category?: GameCategory; forfeitAfter?: number; at?: number } = {},
+  ): GameState {
     const d = deps();
     let now = opts.at ?? T0;
     let s = machine.createGame({ id, mode: 'link', category: opts.category ?? 'science', creatorId: creator, opponentId: opponent, startNow: true }, now, d);
@@ -83,7 +89,11 @@ describe.skipIf(!url)('итоги на Postgres', () => {
 
   beforeEach(async () => {
     await prisma.$executeRawUnsafe('TRUNCATE answers, user_achievements, category_stats, consents, games, users CASCADE');
-    for (const [id, name] of [[A, 'Илья'], [B, 'Марк'], [C, 'Аня']] as const) {
+    for (const [id, name] of [
+      [A, 'Илья'],
+      [B, 'Марк'],
+      [C, 'Аня'],
+    ] as const) {
       await prisma.user.create({ data: { id: BigInt(id), firstName: name, tgLanguage: id === B ? 'en' : 'ru' } });
     }
   });
@@ -100,7 +110,17 @@ describe.skipIf(!url)('итоги на Postgres', () => {
     const settlement = await finish(s);
     expect(settlement.players.find((p) => p.userId === A)).toMatchObject({ before: 1000, delta: 20, after: 1020 });
 
-    expect(await user(A)).toMatchObject({ rating: 1020, games: 1, wins: 1, currentStreak: 1, bestStreak: 1, questionsPlayed: 10, duelCorrect: 7, totalCorrect: 7, correctTimeMs: 7n * 2_500n });
+    expect(await user(A)).toMatchObject({
+      rating: 1020,
+      games: 1,
+      wins: 1,
+      currentStreak: 1,
+      bestStreak: 1,
+      questionsPlayed: 10,
+      duelCorrect: 7,
+      totalCorrect: 7,
+      correctTimeMs: 7n * 2_500n,
+    });
     expect(await user(B)).toMatchObject({ rating: 980, games: 1, losses: 1, duelCorrect: 4 });
     const cats = await prisma.categoryStat.findMany({ orderBy: { userId: 'asc' } });
     expect(cats.map((c) => [Number(c.userId), c.category, c.answered, c.correct, c.wins])).toEqual([
@@ -110,7 +130,14 @@ describe.skipIf(!url)('итоги на Postgres', () => {
     const ach = await prisma.userAchievement.findMany({ where: { userId: BigInt(A) } });
     expect(ach.map((a) => a.code)).toEqual(['first_blood']);
     const game = await prisma.game.findUniqueOrThrow({ where: { id: s.id } });
-    expect(game).toMatchObject({ phase: 'finished', creatorRatingBefore: 1000, creatorRatingDelta: 20, opponentRatingBefore: 1000, opponentRatingDelta: -20, winnerId: BigInt(A) });
+    expect(game).toMatchObject({
+      phase: 'finished',
+      creatorRatingBefore: 1000,
+      creatorRatingDelta: 20,
+      opponentRatingBefore: 1000,
+      opponentRatingDelta: -20,
+      winnerId: BigInt(A),
+    });
     expect(game.settledAt).not.toBeNull();
     expect((game.snapshot as unknown as GameState).settlement?.players).toHaveLength(2);
   });
@@ -220,7 +247,12 @@ describe.skipIf(!url)('итоги на Postgres', () => {
     await users.acceptDocs({ ...input, version: '2026-12-01' });
     const rows = await prisma.consent.findMany({ where: { userId: BigInt(A) }, orderBy: { id: 'asc' } });
     expect(rows.map((r) => `${r.doc}@${r.docVersion}`)).toEqual([
-      'terms@2026-11-07', 'privacy@2026-11-07', 'terms@2026-12-01', 'privacy@2026-12-01', 'terms@2026-12-01', 'privacy@2026-12-01',
+      'terms@2026-11-07',
+      'privacy@2026-11-07',
+      'terms@2026-12-01',
+      'privacy@2026-12-01',
+      'terms@2026-12-01',
+      'privacy@2026-12-01',
     ]);
     expect(rows[0]).toMatchObject({ ip: '203.0.113.7', userAgent: 'Telegram-Android/11.2' });
     expect((await user(A)).docsVersion).toBe('2026-12-01');

@@ -91,7 +91,14 @@ export function HomeScreen({ me }: { me: MeResponse }) {
                 <span
                   aria-hidden="true"
                   className="qd-ball h-[22px] w-[22px]"
-                  style={{ '--qd-ball': '#FFD36B', '--qd-ball-glow': 'var(--qd-gold-glow)', color: '#3A2600', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.6), 0 0 10px var(--qd-gold-glow)' } as CSSProperties}
+                  style={
+                    {
+                      '--qd-ball': '#FFD36B',
+                      '--qd-ball-glow': 'var(--qd-gold-glow)',
+                      color: '#3A2600',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.6), 0 0 10px var(--qd-gold-glow)',
+                    } as CSSProperties
+                  }
                 >
                   <Icon glyph="coin" size={12} stroke={2.8} />
                 </span>
@@ -108,8 +115,16 @@ export function HomeScreen({ me }: { me: MeResponse }) {
         </header>
 
         {w && !w.daily.claimed && (
-          <div role="region" aria-label={t('s03.daily.title')} className="qd-card-gold qd-glint qd-in qd-d1 flex items-center gap-3 rounded-[26px] py-2.5 pr-2.5 pl-3">
-            <span aria-hidden="true" className="qd-ball qd-bob h-11 w-11" style={{ '--qd-ball': '#FFD36B', '--qd-ball-glow': 'var(--qd-gold-glow)', color: '#3A2600' } as CSSProperties}>
+          <div
+            role="region"
+            aria-label={t('s03.daily.title')}
+            className="qd-card-gold qd-glint qd-in qd-d1 flex items-center gap-3 rounded-[26px] py-2.5 pr-2.5 pl-3"
+          >
+            <span
+              aria-hidden="true"
+              className="qd-ball qd-bob h-11 w-11"
+              style={{ '--qd-ball': '#FFD36B', '--qd-ball-glow': 'var(--qd-gold-glow)', color: '#3A2600' } as CSSProperties}
+            >
               <Icon glyph="gift" size={22} stroke={2.3} />
             </span>
             <div className="flex min-w-0 grow flex-col gap-0.5">
@@ -132,22 +147,25 @@ export function HomeScreen({ me }: { me: MeResponse }) {
 
         {resume && (
           <div className="qd-in qd-d1">
-          <ResumeBanner
-            title={ended ? t('banner.resume.endedTitle') : t('banner.resume.title')}
-            text={
-              ended
-                ? game.result
-                  ? t(`banner.resume.ended.${game.result.outcome}`, { me: formatNumber(game.me.score, i18n.language), opp: formatNumber(game.opponent?.score ?? 0, i18n.language) })
-                  : ''
-                : game.opponent
-                  ? ['waiting', 'lobby'].includes(game.phase)
-                    ? t('banner.resume.textLobby', { opp: game.opponent.name })
-                    : t('banner.resume.text', { opp: game.opponent.name, n: qn })
-                  : ''
-            }
-            action={ended ? t('banner.resume.endedAction') : t('banner.resume.action')}
-            onAction={gameActions.returnToGame}
-          />
+            <ResumeBanner
+              title={ended ? t('banner.resume.endedTitle') : t('banner.resume.title')}
+              text={
+                ended
+                  ? game.result
+                    ? t(`banner.resume.ended.${game.result.outcome}`, {
+                        me: formatNumber(game.me.score, i18n.language),
+                        opp: formatNumber(game.opponent?.score ?? 0, i18n.language),
+                      })
+                    : ''
+                  : game.opponent
+                    ? ['waiting', 'lobby'].includes(game.phase)
+                      ? t('banner.resume.textLobby', { opp: game.opponent.name })
+                      : t('banner.resume.text', { opp: game.opponent.name, n: qn })
+                    : ''
+              }
+              action={ended ? t('banner.resume.endedAction') : t('banner.resume.action')}
+              onAction={gameActions.returnToGame}
+            />
           </div>
         )}
 
@@ -192,8 +210,20 @@ export function HomeScreen({ me }: { me: MeResponse }) {
         </section>
 
         <section className="qd-in qd-d2 grid grid-cols-2 gap-3">
-          <ModeCard glyph="bolt" tone="brand" title={t('s03.quick')} hint={t('s03.quickHint')} onPress={() => (track('quick'), void gameActions.quickJoin(me.docsAccepted))} />
-          <ModeCard glyph="target" tone="gold" title={t('s03.training')} hint={t('s03.trainingHint')} onPress={() => (track('solo'), gameActions.openSolo(me.docsAccepted))} />
+          <ModeCard
+            glyph="bolt"
+            tone="brand"
+            title={t('s03.quick')}
+            hint={t('s03.quickHint')}
+            onPress={() => (track('quick'), void gameActions.quickJoin(me.docsAccepted))}
+          />
+          <ModeCard
+            glyph="target"
+            tone="gold"
+            title={t('s03.training')}
+            hint={t('s03.trainingHint')}
+            onPress={() => (track('solo'), gameActions.openSolo(me.docsAccepted))}
+          />
         </section>
 
         <section className="qd-in qd-d3 mt-1 flex flex-col gap-2.5">
@@ -230,8 +260,7 @@ export function HomeScreen({ me }: { me: MeResponse }) {
               <span className="max-w-[280px] text-[13px] leading-[1.4] font-medium text-hint">{t('s03.emptyText')}</span>
             </div>
           )}
-          {profile.isPending &&
-            [0, 1, 2].map((i) => <div key={i} aria-hidden="true" className="qd-skel qd-glass h-[58px] rounded-[24px]" />)}
+          {profile.isPending && [0, 1, 2].map((i) => <div key={i} aria-hidden="true" className="qd-skel qd-glass h-[58px] rounded-[24px]" />)}
         </section>
       </main>
     </div>

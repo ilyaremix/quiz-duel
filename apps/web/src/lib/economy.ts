@@ -6,15 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { create } from 'zustand';
 import { invoice, openTelegramLink, shareStory } from '@tma.js/sdk-react';
 import type { TFunction } from 'i18next';
-import {
-  isPremiumTopic,
-  type AdPurpose,
-  type PremiumTopic,
-  type ShopKind,
-  type StarsProduct,
-  type TaskView,
-  type WalletResponse,
-} from '@quiz-duel/shared';
+import { isPremiumTopic, type AdPurpose, type PremiumTopic, type ShopKind, type StarsProduct, type TaskView, type WalletResponse } from '@quiz-duel/shared';
 import i18n from 'i18next';
 import { api, ApiRequestError, queryKeys } from './api';
 import { queryClient } from './queryClient';

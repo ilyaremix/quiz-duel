@@ -3,7 +3,17 @@
  */
 import type { CSSProperties, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { COIN_PACKS, GLOW_PRICES, PACK_PRICES, REACTION_PACKS, TOPIC_PRICE, type GlowId, type PackId, type PremiumTopic, type TaskView } from '@quiz-duel/shared';
+import {
+  COIN_PACKS,
+  GLOW_PRICES,
+  PACK_PRICES,
+  REACTION_PACKS,
+  TOPIC_PRICE,
+  type GlowId,
+  type PackId,
+  type PremiumTopic,
+  type TaskView,
+} from '@quiz-duel/shared';
 import { formatNumber } from '../i18n';
 import { pw } from '../lib/economy';
 import { Avatar } from './Avatar';
@@ -79,7 +89,21 @@ function priceText(t: (k: string) => string, lang: string, state: ItemState, pri
   return { state: 'buy' as const, text: formatNumber(price, lang) };
 }
 
-function Tile({ label, onPress, equipped, badge, minH, children }: { label: string; onPress: () => void; equipped: boolean; badge?: string; minH: number; children: ReactNode }) {
+function Tile({
+  label,
+  onPress,
+  equipped,
+  badge,
+  minH,
+  children,
+}: {
+  label: string;
+  onPress: () => void;
+  equipped: boolean;
+  badge?: string;
+  minH: number;
+  children: ReactNode;
+}) {
   return (
     <button
       type="button"
@@ -109,7 +133,21 @@ function BigBall({ glyph, ball, glow, ink }: { glyph: IconGlyph; ball: string; g
   );
 }
 
-export function GlowTile({ id, state, meId, meName, mePhoto, onPress }: { id: GlowId; state: ItemState; meId: number; meName: string; mePhoto: string | null; onPress: () => void }) {
+export function GlowTile({
+  id,
+  state,
+  meId,
+  meName,
+  mePhoto,
+  onPress,
+}: {
+  id: GlowId;
+  state: ItemState;
+  meId: number;
+  meName: string;
+  mePhoto: string | null;
+  onPress: () => void;
+}) {
   const { t, i18n } = useTranslation();
   const price = priceText(t, i18n.language, state, GLOW_PRICES[id], 'glow');
   const title = t(`s27.glows.${id}`);
@@ -240,7 +278,10 @@ export function TaskRow({ task, state, onAction, busy }: { task: TaskView; state
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="line-clamp-2 min-w-0 text-[15px] leading-[1.2] font-bold tracking-[-0.01em]">{title}</span>
           {task.type === 'story' && (
-            <span className="box-border inline-flex h-5 shrink-0 items-center gap-[3px] rounded-[10px] pr-[7px] pl-[5px] text-[11px] font-bold text-white" style={{ background: 'linear-gradient(120deg, #9B5CFF, #4F8DFF)' }}>
+            <span
+              className="box-border inline-flex h-5 shrink-0 items-center gap-[3px] rounded-[10px] pr-[7px] pl-[5px] text-[11px] font-bold text-white"
+              style={{ background: 'linear-gradient(120deg, #9B5CFF, #4F8DFF)' }}
+            >
               <Icon glyph="star" size={11} stroke={2.6} />
               {t('s27.premium')}
             </span>
@@ -256,18 +297,41 @@ export function TaskRow({ task, state, onAction, busy }: { task: TaskView; state
           <span className="line-clamp-2 min-w-0">{sub}</span>
         </span>
         {progress && (
-          <div role="progressbar" aria-label={title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: 'var(--qd-track)' }}>
-            <div className="h-[5px] rounded-[3px]" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #FFD36B, #F2B230)', boxShadow: '0 0 8px rgba(255,211,107,.6)' }} />
+          <div
+            role="progressbar"
+            aria-label={title}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={pct}
+            className="h-[5px] overflow-hidden rounded-[3px]"
+            style={{ background: 'var(--qd-track)' }}
+          >
+            <div
+              className="h-[5px] rounded-[3px]"
+              style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #FFD36B, #F2B230)', boxShadow: '0 0 8px rgba(255,211,107,.6)' }}
+            />
           </div>
         )}
       </div>
       {state === 'go' && (
-        <button type="button" onClick={onAction} disabled={busy} className={btn} style={{ background: 'var(--qd-glass)', boxShadow: 'var(--qd-glass-edge-flat)', color: 'var(--tg-theme-text-color)' }}>
+        <button
+          type="button"
+          onClick={onAction}
+          disabled={busy}
+          className={btn}
+          style={{ background: 'var(--qd-glass)', boxShadow: 'var(--qd-glass-edge-flat)', color: 'var(--tg-theme-text-color)' }}
+        >
           {label}
         </button>
       )}
       {state === 'check' && (
-        <button type="button" onClick={onAction} disabled={busy} className={btn} style={{ background: 'var(--qd-brand-glass)', boxShadow: 'var(--qd-brand-edge)', color: 'var(--qd-brand-text)' }}>
+        <button
+          type="button"
+          onClick={onAction}
+          disabled={busy}
+          className={btn}
+          style={{ background: 'var(--qd-brand-glass)', boxShadow: 'var(--qd-brand-edge)', color: 'var(--qd-brand-text)' }}
+        >
           {label}
         </button>
       )}
@@ -277,7 +341,12 @@ export function TaskRow({ task, state, onAction, busy }: { task: TaskView; state
         </button>
       )}
       {state === 'done' && (
-        <span role="img" aria-label={label} className="qd-ball h-10 w-10" style={{ '--qd-ball': '#3BE58B', '--qd-ball-glow': 'rgba(59,229,139,.5)', color: '#04261A' } as CSSProperties}>
+        <span
+          role="img"
+          aria-label={label}
+          className="qd-ball h-10 w-10"
+          style={{ '--qd-ball': '#3BE58B', '--qd-ball-glow': 'rgba(59,229,139,.5)', color: '#04261A' } as CSSProperties}
+        >
           <Icon glyph="check" size={18} stroke={3.2} />
         </span>
       )}

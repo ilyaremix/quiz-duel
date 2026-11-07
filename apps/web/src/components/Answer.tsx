@@ -16,10 +16,7 @@ const BASE = {
   icEdge: CHIP_EDGE,
 };
 
-const LOOK: Record<
-  AnswerState,
-  { bg: string; edge: string; op: number; glyph: 'check' | 'close' | undefined; icBg: string; icFg: string; icEdge: string }
-> = {
+const LOOK: Record<AnswerState, { bg: string; edge: string; op: number; glyph: 'check' | 'close' | undefined; icBg: string; icFg: string; icEdge: string }> = {
   default: BASE,
   selected: {
     bg: 'var(--qd-me-glass)',
@@ -89,8 +86,7 @@ export function Answer({ text, state = 'default', letter = '', disabled = false,
         boxShadow: m.edge,
         color: 'var(--tg-theme-text-color)',
         opacity: disabled && state === 'default' ? 0.4 : m.op,
-        transition:
-          'transform var(--qd-dur-press) var(--qd-ease-ui), color 200ms ease, box-shadow 200ms ease, opacity 200ms ease, filter 160ms ease',
+        transition: 'transform var(--qd-dur-press) var(--qd-ease-ui), color 200ms ease, box-shadow 200ms ease, opacity 200ms ease, filter 160ms ease',
       }}
     >
       {circle && (

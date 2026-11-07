@@ -41,7 +41,10 @@ export function draftOffers<T>(pools: readonly (readonly T[])[], per: number, rn
     const sets: T[][] = pools.map(() => []);
     const used = new Set<T>();
     for (let round = 0; round < per; round++) {
-      for (const i of shuffle(orders.map((_, k) => k), rng)) {
+      for (const i of shuffle(
+        orders.map((_, k) => k),
+        rng,
+      )) {
         const own = sets[i]!;
         const order = orders[i]!;
         const pick = order.find((c) => !used.has(c) && !own.includes(c)) ?? order.find((c) => !own.includes(c));

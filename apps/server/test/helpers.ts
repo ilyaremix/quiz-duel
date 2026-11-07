@@ -14,9 +14,7 @@ export const ilya: TelegramUser = {
 };
 
 /** initData, подписанный тем же способом, что и Telegram. */
-export function makeInitData(
-  options: { user?: TelegramUser | null; authDateSec?: number; token?: string; extra?: Record<string, string> } = {},
-): string {
+export function makeInitData(options: { user?: TelegramUser | null; authDateSec?: number; token?: string; extra?: Record<string, string> } = {}): string {
   const fields: Record<string, string> = {
     query_id: 'AAHdF6IQAAAAAN0XohDhrOrc',
     auth_date: String(options.authDateSec ?? Math.floor(Date.now() / 1000)),

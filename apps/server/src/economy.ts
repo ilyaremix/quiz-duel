@@ -106,8 +106,7 @@ function refuse(code: EconomyErrorCode): never {
   throw new Refusal(code);
 }
 
-const isUniqueViolation = (error: unknown) =>
-  error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+const isUniqueViolation = (error: unknown) => error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 
 function asTask(row: {
   id: string;
@@ -496,9 +495,7 @@ export function createPrismaEconomyRepo(prisma: PrismaClient, checker?: ChannelC
         where: { id: { in: ids.map((id) => BigInt(id)) } },
         select: { id: true, glow: true, reactionPack: true },
       });
-      return new Map(
-        rows.map((r) => [Number(r.id), { glow: isGlow(r.glow) ? r.glow : 'none', pack: isPack(r.reactionPack) ? r.reactionPack : 'base' }]),
-      );
+      return new Map(rows.map((r) => [Number(r.id), { glow: isGlow(r.glow) ? r.glow : 'none', pack: isPack(r.reactionPack) ? r.reactionPack : 'base' }]));
     },
 
     async topicAccess(userId, topic) {

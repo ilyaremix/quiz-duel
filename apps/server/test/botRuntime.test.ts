@@ -9,7 +9,8 @@ import { ilya, mark, silentLog, world } from './socketWorld.js';
 const WEB = 'https://quiz.example.sslip.io';
 
 /** Ошибка Bot API, как её бросает grammY. */
-const apiError = (code: number, description: string) => Object.assign(new Error(`Call to 'x' failed! (${code}: ${description})`), { error_code: code, description });
+const apiError = (code: number, description: string) =>
+  Object.assign(new Error(`Call to 'x' failed! (${code}: ${description})`), { error_code: code, description });
 
 /** Подделка бота: start() по очереди отдаёт заготовленные исходы, stop() завершает текущий. */
 function fakePollingBot(outcomes: Array<'fail409' | 'run'>) {
@@ -134,7 +135,11 @@ describe('меню команд по языку игрока', () => {
     expect(calls[1]).toEqual(['del', { scope: { type: 'chat', chat_id: 42 } }]);
     expect(botCommands('en')[0]).toMatchObject({ command: 'start' });
     // Ошибка Telegram (игрок не запускал бота) не роняет сохранение настроек.
-    const failing = { setMyCommands: async () => { throw new Error('chat not found'); } };
+    const failing = {
+      setMyCommands: async () => {
+        throw new Error('chat not found');
+      },
+    };
     await expect(syncChatCommands({ api: failing } as never, 1, 'ru')).resolves.toBeUndefined();
   });
 });

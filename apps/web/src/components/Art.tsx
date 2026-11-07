@@ -33,9 +33,21 @@ function Svg({ size, label, live, children, className = '' }: { size: number; la
 }
 
 /** Блик сверху слева - как у глянцевых шаров интерфейса. */
-const Shine = ({ cx = 24, cy = 20, rx = 11, ry = 6.5, o = 0.55, rot = -24 }: { cx?: number; cy?: number; rx?: number; ry?: number; o?: number; rot?: number }) => (
-  <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="#fff" opacity={o} transform={`rotate(${rot} ${cx} ${cy})`} />
-);
+const Shine = ({
+  cx = 24,
+  cy = 20,
+  rx = 11,
+  ry = 6.5,
+  o = 0.55,
+  rot = -24,
+}: {
+  cx?: number;
+  cy?: number;
+  rx?: number;
+  ry?: number;
+  o?: number;
+  rot?: number;
+}) => <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="#fff" opacity={o} transform={`rotate(${rot} ${cx} ${cy})`} />;
 
 /** Четырёхлучевая искра. */
 const Spark = ({ x, y, r, fill = '#fff', className }: { x: number; y: number; r: number; fill?: string; className?: string }) => (
@@ -222,7 +234,13 @@ function Cool({ id }: { id: string }) {
       </defs>
       {/* очки */}
       <path d="M9 26.5h46" stroke="#22D3EE" strokeWidth="2.8" strokeLinecap="round" />
-      <path d="M11 27h18c0 6-3 10-9 10s-9-4-9-10zM35 27h18c0 6-3 10-9 10s-9-4-9-10z" fill={`url(#${id}g)`} stroke="#22D3EE" strokeWidth="2" strokeLinejoin="round" />
+      <path
+        d="M11 27h18c0 6-3 10-9 10s-9-4-9-10zM35 27h18c0 6-3 10-9 10s-9-4-9-10z"
+        fill={`url(#${id}g)`}
+        stroke="#22D3EE"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
       <path d="M14 29.5h5" stroke="#5EEBFF" strokeWidth="1.6" strokeLinecap="round" opacity="0.8" />
       <path d="M38 29.5h5" stroke="#5EEBFF" strokeWidth="1.6" strokeLinecap="round" opacity="0.8" />
       <g clipPath={`url(#${id}k)`}>
@@ -279,7 +297,12 @@ function Skull({ id }: { id: string }) {
         </radialGradient>
       </defs>
       {/* череп */}
-      <path d="M32 7c-13 0-22 9-22 21 0 6 2.6 10.5 6.5 13.4V47h31v-5.6C51.4 38.5 54 34 54 28 54 16 45 7 32 7z" fill={`url(#${id}b)`} stroke={EDGE} strokeWidth="1.2" />
+      <path
+        d="M32 7c-13 0-22 9-22 21 0 6 2.6 10.5 6.5 13.4V47h31v-5.6C51.4 38.5 54 34 54 28 54 16 45 7 32 7z"
+        fill={`url(#${id}b)`}
+        stroke={EDGE}
+        strokeWidth="1.2"
+      />
       {/* глазницы */}
       <path d="M17 27c0-4 3-7 7-7s7 3 7 7-2.5 7-7 7-7-3-7-7zM33 27c0-4 3-7 7-7s7 3 7 7-2.5 7-7 7-7-3-7-7z" fill="#23193F" />
       <circle cx="24" cy="27.5" r="2.4" fill="#FF4FD8" className="qd-art-tw" />
@@ -330,7 +353,14 @@ function Frozen({ id }: { id: string }) {
       <g className="qd-art-shiver">
         <Face id={id} from="#B8F2FF" to="#3E8BFF" shade="#0B3A9E" />
         {/* сосульки */}
-        <path d="M13 22c2-7 9-13 19-13s17 6 19 13l-2 3-1.6 6-1.8-6-2.4 2-1.6 7-2-7-2.6 1.6L36 38l-2-8-2.6 1-2 9-1.6-9-2.8.6-1.6 6.6-1.4-7-2.6-.8-1.4 5-1.3-6z" fill="#EAFBFF" stroke="#7FC8F5" strokeWidth="1" strokeLinejoin="round" opacity="0.96" />
+        <path
+          d="M13 22c2-7 9-13 19-13s17 6 19 13l-2 3-1.6 6-1.8-6-2.4 2-1.6 7-2-7-2.6 1.6L36 38l-2-8-2.6 1-2 9-1.6-9-2.8.6-1.6 6.6-1.4-7-2.6-.8-1.4 5-1.3-6z"
+          fill="#EAFBFF"
+          stroke="#7FC8F5"
+          strokeWidth="1"
+          strokeLinejoin="round"
+          opacity="0.96"
+        />
         {/* глаза */}
         <circle cx="23" cy="34" r="2.8" fill="#0B2A66" />
         <circle cx="41" cy="34" r="2.8" fill="#0B2A66" />
@@ -457,9 +487,21 @@ function Deal({ id }: { id: string }) {
         <path d="M62 41l-9-12-9 7 8 11z" fill="#FF8A3D" stroke="#B14E0C" strokeWidth="1.3" strokeLinejoin="round" />
         <path d="M9.5 31l8.6 6.6M54.5 31l-8.6 6.6" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity="0.45" />
         {/* кисть снизу (моя) */}
-        <path d="M18 36c4-6 10-9 16-8l9 1.6c2 .4 2.4 3 .6 4l-7 3.6 5.6 4.4c1.6 1.2.8 3.8-1.2 3.8H29c-4 0-7.6-1.6-10.4-4.4z" fill={`url(#${id}k)`} stroke="#B2481A" strokeWidth="1.3" strokeLinejoin="round" />
+        <path
+          d="M18 36c4-6 10-9 16-8l9 1.6c2 .4 2.4 3 .6 4l-7 3.6 5.6 4.4c1.6 1.2.8 3.8-1.2 3.8H29c-4 0-7.6-1.6-10.4-4.4z"
+          fill={`url(#${id}k)`}
+          stroke="#B2481A"
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+        />
         {/* кисть сверху (соперника) - пальцы обхватывают */}
-        <path d="M46 36c-3-6-9-9.6-15-9.6-2.4 0-4.6 1-6.2 2.6l-3.4 3.6c-1.2 1.4.4 3.4 2 2.6l5.2-2.4c3 4 6.4 7 10.4 8.4l2.6.8z" fill={`url(#${id}k)`} stroke="#B2481A" strokeWidth="1.3" strokeLinejoin="round" />
+        <path
+          d="M46 36c-3-6-9-9.6-15-9.6-2.4 0-4.6 1-6.2 2.6l-3.4 3.6c-1.2 1.4.4 3.4 2 2.6l5.2-2.4c3 4 6.4 7 10.4 8.4l2.6.8z"
+          fill={`url(#${id}k)`}
+          stroke="#B2481A"
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+        />
         <path d="M33.4 32.4l4.6 3.8M36.4 30.4l4.8 3.8M39.4 28.8l4 3.4" stroke="#B2481A" strokeWidth="1.2" strokeLinecap="round" opacity="0.65" />
         <ellipse cx="30" cy="29" rx="4.4" ry="1.4" fill="#fff" opacity="0.6" transform="rotate(-14 30 29)" />
       </g>
@@ -488,8 +530,20 @@ function Thanks({ id }: { id: string }) {
       </g>
       <circle cx="32" cy="30" r="18" fill={`url(#${id}r)`} />
       {/* ладони */}
-      <path d="M31 12c-2 0-3.4 1.6-3.6 3.6L25 37l-6 6c-1.4 1.4-1.4 3.6 0 5l5 5c1.4 1.4 3.6 1.4 5 0l3-3z" fill={`url(#${id}p)`} stroke="#B2481A" strokeWidth="1.3" strokeLinejoin="round" />
-      <path d="M33 12c2 0 3.4 1.6 3.6 3.6L39 37l6 6c1.4 1.4 1.4 3.6 0 5l-5 5c-1.4 1.4-3.6 1.4-5 0l-3-3z" fill={`url(#${id}p)`} stroke="#B2481A" strokeWidth="1.3" strokeLinejoin="round" />
+      <path
+        d="M31 12c-2 0-3.4 1.6-3.6 3.6L25 37l-6 6c-1.4 1.4-1.4 3.6 0 5l5 5c1.4 1.4 3.6 1.4 5 0l3-3z"
+        fill={`url(#${id}p)`}
+        stroke="#B2481A"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M33 12c2 0 3.4 1.6 3.6 3.6L39 37l6 6c1.4 1.4 1.4 3.6 0 5l-5 5c-1.4 1.4-3.6 1.4-5 0l-3-3z"
+        fill={`url(#${id}p)`}
+        stroke="#B2481A"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
       <path d="M32 14v36" stroke="#B2481A" strokeWidth="1.2" opacity="0.7" />
       <ellipse cx="28.6" cy="22" rx="1.4" ry="4.4" fill="#fff" opacity="0.55" />
     </>
@@ -642,12 +696,26 @@ function Genius({ id }: { id: string }) {
           strokeWidth="1.3"
           strokeLinejoin="round"
         />
-        <path d="M20 18c3 1 4 3 3.4 6M15 28c3-1 6 0 7 3M25 36c-2-2-5-2-7 0M44 18c-3 1-4 3-3.4 6M49 28c-3-1-6 0-7 3M39 36c2-2 5-2 7 0" fill="none" stroke="#A0175A" strokeWidth="1.6" strokeLinecap="round" opacity="0.75" />
+        <path
+          d="M20 18c3 1 4 3 3.4 6M15 28c3-1 6 0 7 3M25 36c-2-2-5-2-7 0M44 18c-3 1-4 3-3.4 6M49 28c-3-1-6 0-7 3M39 36c2-2 5-2 7 0"
+          fill="none"
+          stroke="#A0175A"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          opacity="0.75"
+        />
         <ellipse cx="21" cy="17" rx="4" ry="2.2" fill="#fff" opacity="0.6" transform="rotate(-20 21 17)" />
       </g>
       {/* искры */}
       <path className="qd-art-tw" d="M55 46l-5 6h4l-3 6 7-8h-4l2-4z" fill="#FFD36B" stroke="#B87511" strokeWidth="0.8" strokeLinejoin="round" />
-      <path className="qd-art-tw qd-art-d2" d="M9 46l-4 5h3l-2.4 5 5.6-6.4h-3.2l1.6-3.6z" fill="#FFD36B" stroke="#B87511" strokeWidth="0.8" strokeLinejoin="round" />
+      <path
+        className="qd-art-tw qd-art-d2"
+        d="M9 46l-4 5h3l-2.4 5 5.6-6.4h-3.2l1.6-3.6z"
+        fill="#FFD36B"
+        stroke="#B87511"
+        strokeWidth="0.8"
+        strokeLinejoin="round"
+      />
       <path d="M32 12v32" stroke="#A0175A" strokeWidth="1.2" opacity="0.6" />
     </>
   );

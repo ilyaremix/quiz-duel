@@ -57,7 +57,12 @@ export function ScoreBar({ me, opp, current, total, oppState, meState, best, meG
             </span>
           </div>
           {meGain && (
-            <span key={meGain} aria-hidden="true" className={`${GAIN} left-[58px]`} style={{ color: 'var(--qd-me-text)', textShadow: '0 0 14px var(--qd-me-glow)' }}>
+            <span
+              key={meGain}
+              aria-hidden="true"
+              className={`${GAIN} left-[58px]`}
+              style={{ color: 'var(--qd-me-text)', textShadow: '0 0 14px var(--qd-me-glow)' }}
+            >
               {meGain}
             </span>
           )}
@@ -87,7 +92,12 @@ export function ScoreBar({ me, opp, current, total, oppState, meState, best, meG
         {opp && (
           <div className="relative flex min-w-0 flex-1 items-center justify-end gap-2.5">
             {oppGain && (
-              <span key={oppGain} aria-hidden="true" className={`${GAIN} right-[58px]`} style={{ color: 'var(--qd-opp-text)', textShadow: '0 0 14px var(--qd-opp-glow)' }}>
+              <span
+                key={oppGain}
+                aria-hidden="true"
+                className={`${GAIN} right-[58px]`}
+                style={{ color: 'var(--qd-opp-text)', textShadow: '0 0 14px var(--qd-opp-glow)' }}
+              >
                 {oppGain}
               </span>
             )}

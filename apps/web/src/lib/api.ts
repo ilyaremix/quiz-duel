@@ -102,8 +102,7 @@ export const api = {
   claimTask: (id: string) => request<ClaimResponse>('/api/tasks/claim', sessionAuth, { id }),
   buy: (kind: ShopKind, item: string) => request<WalletResponse>('/api/shop/buy', sessionAuth, { kind, item }),
   equip: (kind: 'glow' | 'pack', item: string) => request<WalletResponse>('/api/shop/equip', sessionAuth, { kind, item }),
-  adStart: (purpose: AdPurpose, topic?: PremiumTopic) =>
-    request<AdStartResponse>('/api/ads/start', sessionAuth, topic ? { purpose, topic } : { purpose }),
+  adStart: (purpose: AdPurpose, topic?: PremiumTopic) => request<AdStartResponse>('/api/ads/start', sessionAuth, topic ? { purpose, topic } : { purpose }),
   adDone: (id: string) => request<AdDoneResponse>('/api/ads/done', sessionAuth, { id }),
   invoice: (product: StarsProduct) => request<{ url: string }>('/api/stars/invoice', sessionAuth, { product }),
   // Друзья

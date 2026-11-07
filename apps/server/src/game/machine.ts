@@ -340,14 +340,7 @@ export function setPresence(prev: GameState, userId: number, online: boolean, no
 // Партия
 
 /** Ответ на вопрос. Принимается один раз; повтор (двойной тап, реконнект) - already_answered. */
-export function answer(
-  prev: GameState,
-  userId: number,
-  questionIndex: number,
-  position: number,
-  now: number,
-  deps: MachineDeps,
-): Step {
+export function answer(prev: GameState, userId: number, questionIndex: number, position: number, now: number, deps: MachineDeps): Step {
   const me = playerOf(prev, userId);
   if (!me) return fail('not_participant');
   if (prev.phase !== 'question') return fail('wrong_phase');

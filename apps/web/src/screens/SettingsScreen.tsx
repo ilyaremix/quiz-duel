@@ -48,7 +48,11 @@ function DocRow({ glyph, title, onOpen, disabled }: { glyph: IconGlyph; title: s
       disabled={disabled}
       className="qd-press box-border flex min-h-[54px] w-full cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left text-text disabled:opacity-50"
     >
-      <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-hint" style={{ background: 'var(--qd-glass)', boxShadow: 'var(--qd-glass-edge-flat)' }}>
+      <span
+        aria-hidden="true"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-hint"
+        style={{ background: 'var(--qd-glass)', boxShadow: 'var(--qd-glass-edge-flat)' }}
+      >
         <Icon glyph={glyph} size={17} stroke={2.2} />
       </span>
       <span className="grow text-[15px] font-semibold">{title}</span>
@@ -183,7 +187,9 @@ export function SettingsScreen({ me }: { me: MeResponse }) {
                 }}
               />
               <p className="m-0 mx-1.5 text-[13px] leading-[1.4] font-medium text-hint">
-                {(me.theme ?? 'auto') === 'auto' ? t('s20.themeAuto', { name: t(`s20.themeNames.${telegramIsDark() ? 'dark' : 'light'}`) }) : t('s20.themeFixed')}
+                {(me.theme ?? 'auto') === 'auto'
+                  ? t('s20.themeAuto', { name: t(`s20.themeNames.${telegramIsDark() ? 'dark' : 'light'}`) })
+                  : t('s20.themeFixed')}
               </p>
             </div>
           </Group>
@@ -230,7 +236,11 @@ export function SettingsScreen({ me }: { me: MeResponse }) {
                     aria-label={t('s20.adsBuyAria', { n: AD_FREE_STARS })}
                     onClick={() => shop.openItem({ kind: 'adFree', id: 'adfree' })}
                     className="qd-press qd-num box-border flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-[20px] border-0 pr-3.5 pl-[5px] text-[14px] font-bold"
-                    style={{ background: 'var(--qd-gold-glass)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.4), inset 0 0 0 1px var(--qd-gold-ring)', color: 'var(--qd-gold-text)' }}
+                    style={{
+                      background: 'var(--qd-gold-glass)',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.4), inset 0 0 0 1px var(--qd-gold-ring)',
+                      color: 'var(--qd-gold-text)',
+                    }}
                   >
                     <CoinDot size={30} star />
                     {AD_FREE_STARS}

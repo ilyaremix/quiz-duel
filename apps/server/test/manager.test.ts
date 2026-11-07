@@ -18,7 +18,11 @@ async function setup(options: { consent?: number[]; invites?: InviteMaker; repo?
   const repo = options.repo ?? memoryGamesRepo();
   const pushes: Push[] = [];
   const consent = options.consent ?? [A, B, C];
-  for (const [id, name] of [[A, 'Илья'], [B, 'Марк'], [C, 'Аня']] as const) {
+  for (const [id, name] of [
+    [A, 'Илья'],
+    [B, 'Марк'],
+    [C, 'Аня'],
+  ] as const) {
     const tg: TelegramUser = { id, first_name: name, language_code: id === B ? 'en' : 'ru' };
     await users.upsertFromTelegram(tg);
     if (consent.includes(id)) users.rows.get(id)!.docsVersion = DOCS_VERSION;
@@ -100,7 +104,7 @@ describe('создание и ссылка', () => {
   });
 
   it('приглашение: ссылка startapp=g_<id> и подготовленное сообщение (кэшируется)', async () => {
-    const prepare = vi.fn<InviteMaker["prepare"]>(async () => ({ id: "prep-1", expiresAt: Date.now() + 24 * 3600_000 }));
+    const prepare = vi.fn<InviteMaker['prepare']>(async () => ({ id: 'prep-1', expiresAt: Date.now() + 24 * 3600_000 }));
     const { games } = await setup({ invites: { prepare } });
     const res = await games.create(A, 'tech');
     if (!res.ok) throw new Error(res.error);

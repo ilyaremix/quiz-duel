@@ -14,7 +14,11 @@ type Tuple<T> = readonly [T, ...T[]];
 
 const gameId = z.string().regex(GAME_ID_RE);
 
-const userId = z.number().int().positive().max(2 ** 52);
+const userId = z
+  .number()
+  .int()
+  .positive()
+  .max(2 ** 52);
 
 export const RulesSchema = z.strictObject({
   variant: z.enum(VARIANTS),
@@ -34,7 +38,11 @@ export const SyncPayloadSchema = z.strictObject({ gameId: gameId.optional() });
 
 export const AnswerPayloadSchema = z.strictObject({
   gameId,
-  questionIndex: z.number().int().min(0).max(MAX_QUESTIONS - 1),
+  questionIndex: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_QUESTIONS - 1),
   optionIndex: z.number().int().min(0).max(3),
 });
 
@@ -71,20 +79,36 @@ export const EmptyPayloadSchema = z.strictObject({});
 // ---------------------------------------------------------------------------
 // Обновление 2.0: магазин, задания, реклама, звёзды
 
-const shopItem = z.string().min(1).max(16).regex(/^[a-z]+$/);
+const shopItem = z
+  .string()
+  .min(1)
+  .max(16)
+  .regex(/^[a-z]+$/);
 
 export const BuyRequestSchema = z.strictObject({ kind: z.enum(['glow', 'pack', 'topic']), item: shopItem });
 
 export const EquipRequestSchema = z.strictObject({ kind: z.enum(['glow', 'pack']), item: shopItem });
 
-export const TaskClaimSchema = z.strictObject({ id: z.string().min(1).max(32).regex(/^[a-z0-9_-]+$/) });
+export const TaskClaimSchema = z.strictObject({
+  id: z
+    .string()
+    .min(1)
+    .max(32)
+    .regex(/^[a-z0-9_-]+$/),
+});
 
 export const AdStartRequestSchema = z.strictObject({
   purpose: z.enum(['forced', 'reward', 'topic']),
   topic: z.enum(PREMIUM_TOPICS as unknown as Tuple<PremiumTopic>).optional(),
 });
 
-export const AdDoneRequestSchema = z.strictObject({ id: z.string().min(8).max(32).regex(/^[A-Za-z0-9_-]+$/) });
+export const AdDoneRequestSchema = z.strictObject({
+  id: z
+    .string()
+    .min(8)
+    .max(32)
+    .regex(/^[A-Za-z0-9_-]+$/),
+});
 
 export const InvoiceRequestSchema = z.strictObject({ product: z.enum(STARS_PRODUCTS as unknown as Tuple<StarsProduct>) });
 
@@ -96,13 +120,24 @@ export const FriendRespondSchema = z.strictObject({ id: userId, accept: z.boolea
 // Обновление 2.0: аналитика и админка
 
 export const TrackRequestSchema = z.strictObject({
-  events: z.array(z.enum(ALL_EVENT_NAMES as unknown as Tuple<string>)).min(1).max(50),
+  events: z
+    .array(z.enum(ALL_EVENT_NAMES as unknown as Tuple<string>))
+    .min(1)
+    .max(50),
 });
 
 export const AdminTaskSaveSchema = z.strictObject({
-  id: z.string().min(1).max(32).regex(/^[a-z0-9_-]+$/).optional(),
+  id: z
+    .string()
+    .min(1)
+    .max(32)
+    .regex(/^[a-z0-9_-]+$/)
+    .optional(),
   type: z.enum(['channel', 'play', 'ads', 'story', 'invite']),
-  channel: z.string().regex(/^@[A-Za-z0-9_]{4,32}$/).nullable(),
+  channel: z
+    .string()
+    .regex(/^@[A-Za-z0-9_]{4,32}$/)
+    .nullable(),
   goal: z.number().int().min(1).max(50),
   reward: z.number().int().min(1).max(10_000),
   on: z.boolean(),
@@ -119,7 +154,14 @@ export const AdminLinkSchema = z.strictObject({
   title: z.string().trim().min(1).max(60),
 });
 
-export const AdminCoinsSchema = z.strictObject({ delta: z.number().int().min(-1_000_000).max(1_000_000).refine((n) => n !== 0) });
+export const AdminCoinsSchema = z.strictObject({
+  delta: z
+    .number()
+    .int()
+    .min(-1_000_000)
+    .max(1_000_000)
+    .refine((n) => n !== 0),
+});
 
 export const AdminBanSchema = z.strictObject({ banned: z.boolean() });
 

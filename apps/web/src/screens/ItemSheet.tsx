@@ -65,7 +65,14 @@ export function ItemSheet({ me }: { me: MeResponse }) {
       halo: id === 'gold' ? 'rgba(255,211,107,.32)' : id === 'fire' ? 'rgba(255,106,61,.3)' : id === 'ice' ? 'rgba(160,220,255,.28)' : 'rgba(34,211,238,.26)',
     };
   } else if (item?.kind === 'pack' && isPack(item.id)) {
-    look = { title: t(`s27.packs.${item.id}`), sub: t('s27.sec.packs'), stage: t('s28.packStage'), price: PACK_PRICES[item.id], stars: false, halo: 'rgba(255,138,61,.24)' };
+    look = {
+      title: t(`s27.packs.${item.id}`),
+      sub: t('s27.sec.packs'),
+      stage: t('s28.packStage'),
+      price: PACK_PRICES[item.id],
+      stars: false,
+      halo: 'rgba(255,138,61,.24)',
+    };
   } else if (item?.kind === 'topic' && isPremiumTopic(item.id)) {
     const c = CATEGORY_LOOK[item.id];
     look = {
@@ -169,7 +176,11 @@ export function ItemSheet({ me }: { me: MeResponse }) {
                   <span
                     key={e}
                     className="qd-bob flex h-[62px] w-[62px] items-center justify-center rounded-full"
-                    style={{ background: 'var(--qd-sheen), var(--qd-glass)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.45), 0 0 0 2px var(--qd-ring-gap)', animationDelay: `${i * 160}ms` }}
+                    style={{
+                      background: 'var(--qd-sheen), var(--qd-glass)',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.45), 0 0 0 2px var(--qd-ring-gap)',
+                      animationDelay: `${i * 160}ms`,
+                    }}
                   >
                     <ReactionGlyph r={e} size={44} live />
                   </span>
@@ -194,7 +205,11 @@ export function ItemSheet({ me }: { me: MeResponse }) {
             {look.sample && <span className="relative max-w-[300px] text-[14px] leading-[1.4] font-medium italic">{look.sample}</span>}
           </div>
 
-          <div role="status" className="flex items-center justify-center gap-1.5 text-[14px] font-semibold" style={{ color: state === 'short' ? 'var(--qd-wrong-text)' : 'var(--tg-theme-hint-color)' }}>
+          <div
+            role="status"
+            className="flex items-center justify-center gap-1.5 text-[14px] font-semibold"
+            style={{ color: state === 'short' ? 'var(--qd-wrong-text)' : 'var(--tg-theme-hint-color)' }}
+          >
             <CoinDot size={20} star={look.stars} />
             {look.stars
               ? t('s29.aria')

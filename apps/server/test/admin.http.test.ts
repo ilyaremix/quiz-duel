@@ -99,7 +99,8 @@ describe('бан', () => {
 
   it('заблокированному - 403 на награды, покупки, друзей и аналитику, как ни пиши адрес', async () => {
     const { app, calls } = await bannedApp();
-    const post = (url: string, body: unknown = {}, user: TelegramUser = mark) => app.inject({ method: 'POST', url, headers: auth(user), payload: JSON.stringify(body) });
+    const post = (url: string, body: unknown = {}, user: TelegramUser = mark) =>
+      app.inject({ method: 'POST', url, headers: auth(user), payload: JSON.stringify(body) });
     // «?x» и %64 (= «d») раньше проходили мимо проверки по адресу.
     for (const url of ['/api/daily', '/api/daily?x', '/api/%64aily', '/api/daily?a=1&b=2']) {
       expect((await post(url)).statusCode, url).toBe(403);

@@ -152,8 +152,7 @@ async function until<T>(fn: () => T | undefined | null | false, what: string, ti
 }
 
 const last = (p: Player) => p.states.at(-1);
-const stateWhere = (p: Player, what: string, pred: (v: GameView) => boolean, from = 0) =>
-  until(() => p.states.slice(from).find(pred), what);
+const stateWhere = (p: Player, what: string, pred: (v: GameView) => boolean, from = 0) => until(() => p.states.slice(from).find(pred), what);
 
 async function sync(p: Player, gameId?: string): Promise<GameView> {
   const res = await p.socket.emitWithAck('game:sync', gameId ? { gameId } : {});

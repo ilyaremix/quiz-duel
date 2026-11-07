@@ -44,7 +44,12 @@ function Frame({ open, label, onClose, children }: { open: boolean; label: strin
   if (!mounted) return null;
   return (
     <div className="fixed inset-0 z-30">
-      <div aria-hidden="true" className={`${leaving ? 'qd-backdrop-out' : 'qd-backdrop-in'} absolute inset-0`} style={{ background: 'var(--qd-scrim)' }} onClick={onClose} />
+      <div
+        aria-hidden="true"
+        className={`${leaving ? 'qd-backdrop-out' : 'qd-backdrop-in'} absolute inset-0`}
+        style={{ background: 'var(--qd-scrim)' }}
+        onClick={onClose}
+      />
       <section
         role="dialog"
         aria-modal="true"
@@ -84,20 +89,48 @@ function Field({ label, hint, error, children }: { label: string; hint?: string;
 
 const INPUT = 'qd-glass qd-field box-border h-12 w-full min-w-0 rounded-[16px] border-0 px-3.5 text-[15px] font-semibold text-text';
 
-function Stepper({ label, text, onMinus, onPlus, canMinus, canPlus }: { label: string; text: string; onMinus: () => void; onPlus: () => void; canMinus: boolean; canPlus: boolean }) {
+function Stepper({
+  label,
+  text,
+  onMinus,
+  onPlus,
+  canMinus,
+  canPlus,
+}: {
+  label: string;
+  text: string;
+  onMinus: () => void;
+  onPlus: () => void;
+  canMinus: boolean;
+  canPlus: boolean;
+}) {
   const { t } = useTranslation();
   const btn = { width: 40, height: 40 };
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className="text-[12px] font-semibold text-hint">{label}</span>
       <div role="group" aria-label={label} className="qd-glass flex h-12 items-center justify-between rounded-[16px] px-1">
-        <button type="button" className="qd-press qd-icon-btn disabled:opacity-40" aria-label={t('adm.task.minus')} onClick={onMinus} disabled={!canMinus} style={btn}>
+        <button
+          type="button"
+          className="qd-press qd-icon-btn disabled:opacity-40"
+          aria-label={t('adm.task.minus')}
+          onClick={onMinus}
+          disabled={!canMinus}
+          style={btn}
+        >
           <Icon glyph="minus" size={18} stroke={2.6} />
         </button>
         <span className="qd-num text-[17px] font-bold" aria-live="polite">
           {text}
         </span>
-        <button type="button" className="qd-press qd-icon-btn disabled:opacity-40" aria-label={t('adm.task.plus')} onClick={onPlus} disabled={!canPlus} style={btn}>
+        <button
+          type="button"
+          className="qd-press qd-icon-btn disabled:opacity-40"
+          aria-label={t('adm.task.plus')}
+          onClick={onPlus}
+          disabled={!canPlus}
+          style={btn}
+        >
           <Icon glyph="plus" size={18} stroke={2.6} />
         </button>
       </div>
@@ -366,7 +399,14 @@ function LinkForm({ days }: { days: AdminPeriod }) {
           <input
             className="h-full min-w-0 grow border-0 bg-transparent p-0 font-mono text-[14px] font-semibold text-text outline-none"
             value={code}
-            onChange={(e) => setCode(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24))}
+            onChange={(e) =>
+              setCode(
+                e.target.value
+                  .toLowerCase()
+                  .replace(/[^a-z0-9_]/g, '')
+                  .slice(0, 24),
+              )
+            }
             placeholder={t('adm.link.codeVal').replace(/^src_/, '')}
             aria-label={t('adm.link.code')}
             autoCapitalize="off"
@@ -377,7 +417,10 @@ function LinkForm({ days }: { days: AdminPeriod }) {
       </Field>
       <div className="flex shrink-0 flex-col gap-1.5">
         <span className="text-[12px] font-semibold text-hint">{t('adm.link.url')}</span>
-        <div className="qd-card-brand box-border min-h-12 rounded-[16px] px-3.5 py-3 font-mono text-[13px] leading-[1.4] font-semibold break-all" style={{ opacity: code ? 1 : 0.6 }}>
+        <div
+          className="qd-card-brand box-border min-h-12 rounded-[16px] px-3.5 py-3 font-mono text-[13px] leading-[1.4] font-semibold break-all"
+          style={{ opacity: code ? 1 : 0.6 }}
+        >
           {url || '…'}
         </div>
       </div>
@@ -415,7 +458,14 @@ function PlayerForm({ row }: { row: AdminPlayerRow }) {
   const lang = tr.language;
   const date = (ms: number) => new Intl.DateTimeFormat(lang, { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(ms));
   const source = q.data?.source ?? null;
-  const sourceName = !source || source === 'organic' ? t('adm.src.names.organic') : source.startsWith('r_') ? t('adm.src.names.ref') : source.startsWith('g_') ? t('adm.src.names.duel') : source.replace(/^src_/, '');
+  const sourceName =
+    !source || source === 'organic'
+      ? t('adm.src.names.organic')
+      : source.startsWith('r_')
+        ? t('adm.src.names.ref')
+        : source.startsWith('g_')
+          ? t('adm.src.names.duel')
+          : source.replace(/^src_/, '');
 
   const save = async () => {
     setBusy(true);
@@ -434,7 +484,10 @@ function PlayerForm({ row }: { row: AdminPlayerRow }) {
           throw error;
         }
       }
-      await Promise.all([queryClient.invalidateQueries({ queryKey: ['admin', 'players'] }), queryClient.invalidateQueries({ queryKey: adminKeys.player(u.id) })]);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin', 'players'] }),
+        queryClient.invalidateQueries({ queryKey: adminKeys.player(u.id) }),
+      ]);
       haptic.success();
       adminActions.closeSheet();
       showToast('success', 'adm.player.saved', undefined, 'check');
@@ -460,7 +513,9 @@ function PlayerForm({ row }: { row: AdminPlayerRow }) {
         <Avatar id={u.id} name={u.name} photoUrl={u.photoUrl} size={56} on="none" glow={u.glow} />
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate text-[18px] font-bold">{u.name}</span>
-          <span className="qd-num truncate text-[13px] font-medium text-hint">{[u.username ? `@${u.username}` : null, `${t('adm.player.id')} ${u.id}`].filter(Boolean).join(' · ')}</span>
+          <span className="qd-num truncate text-[13px] font-medium text-hint">
+            {[u.username ? `@${u.username}` : null, `${t('adm.player.id')} ${u.id}`].filter(Boolean).join(' · ')}
+          </span>
         </div>
       </div>
       <div className="grid shrink-0 grid-cols-3 gap-2">
@@ -491,7 +546,11 @@ function PlayerForm({ row }: { row: AdminPlayerRow }) {
         <div className="flex flex-wrap gap-1.5">
           {q.data?.purchases.length ? (
             q.data.purchases.map((p, i) => (
-              <span key={i} className="qd-chip qd-chip-gold qd-num" style={{ opacity: p.refunded ? 0.5 : 1, textDecoration: p.refunded ? 'line-through' : 'none' }}>
+              <span
+                key={i}
+                className="qd-chip qd-chip-gold qd-num"
+                style={{ opacity: p.refunded ? 0.5 : 1, textDecoration: p.refunded ? 'line-through' : 'none' }}
+              >
                 {`${t(`adm.money.products.${PRODUCT_KEY[p.product]}`)} · ${num(p.stars)} ⭐ · ${date(p.at)}`}
               </span>
             ))

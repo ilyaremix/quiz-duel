@@ -25,9 +25,18 @@ describe('data/questions.json', () => {
     for (const category of CATEGORIES) {
       const inCategory = bank.filter((q) => q.category === category);
       expect(inCategory, category).toHaveLength(20);
-      expect(inCategory.filter((q) => q.difficulty === 'easy'), category).toHaveLength(6);
-      expect(inCategory.filter((q) => q.difficulty === 'medium'), category).toHaveLength(8);
-      expect(inCategory.filter((q) => q.difficulty === 'hard'), category).toHaveLength(6);
+      expect(
+        inCategory.filter((q) => q.difficulty === 'easy'),
+        category,
+      ).toHaveLength(6);
+      expect(
+        inCategory.filter((q) => q.difficulty === 'medium'),
+        category,
+      ).toHaveLength(8);
+      expect(
+        inCategory.filter((q) => q.difficulty === 'hard'),
+        category,
+      ).toHaveLength(6);
     }
   });
 
@@ -109,9 +118,7 @@ describe('validateQuestionBank ловит ошибки', () => {
   it('лишнее поле, пробел по краям, нет «?»', () => {
     expect(broken((b) => (b[0].answer = 0)).some((e) => e.startsWith('sci-01: (вопрос)'))).toBe(true);
     expect(broken((b) => (b[0].ru.options[0] = ' Меркурий'))).toContain('sci-01: ru.options.0 - пробелы по краям');
-    expect(broken((b) => (b[0].en.text = 'Closest planet to the Sun'))).toContain(
-      'sci-01: en.text - вопрос должен заканчиваться «?»',
-    );
+    expect(broken((b) => (b[0].en.text = 'Closest planet to the Sun'))).toContain('sci-01: en.text - вопрос должен заканчиваться «?»');
   });
 
   it('слишком длинный вариант не влезет в кнопку', () => {

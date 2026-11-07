@@ -137,14 +137,7 @@ export function Sheet({ open, label, onClose, children, footer }: SheetProps) {
         style={{ background: 'var(--qd-scrim)' }}
         onClick={onClose}
       />
-      <div
-        ref={dragEl}
-        className="qd-sheet-drag absolute inset-x-0 bottom-0"
-        onPointerDown={down}
-        onPointerMove={move}
-        onPointerUp={up}
-        onPointerCancel={up}
-      >
+      <div ref={dragEl} className="qd-sheet-drag absolute inset-x-0 bottom-0" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
         <section
           role="dialog"
           aria-modal="true"

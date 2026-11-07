@@ -142,9 +142,19 @@ export function ReactionPicker({ variant = 'row' }: { variant?: 'row' | 'corner'
   return (
     <div
       ref={box}
-      className={variant === 'corner' ? 'absolute top-2 right-2 left-2 z-[3] flex h-10 items-center justify-end' : 'relative flex h-10 w-full shrink-0 items-center justify-end'}
+      className={
+        variant === 'corner'
+          ? 'absolute top-2 right-2 left-2 z-[3] flex h-10 items-center justify-end'
+          : 'relative flex h-10 w-full shrink-0 items-center justify-end'
+      }
     >
-      <div role="group" aria-label={t('reactions.aria')} inert={!open} data-open={open} className="qd-react-tray absolute top-0 right-12 bottom-0 left-0 flex items-center justify-end gap-1.5 pr-1.5">
+      <div
+        role="group"
+        aria-label={t('reactions.aria')}
+        inert={!open}
+        data-open={open}
+        className="qd-react-tray absolute top-0 right-12 bottom-0 left-0 flex items-center justify-end gap-1.5 pr-1.5"
+      >
         {emojis.map((emoji: Reaction, i) => (
           <button
             key={emoji}

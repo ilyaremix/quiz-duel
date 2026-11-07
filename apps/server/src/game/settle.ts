@@ -3,16 +3,7 @@
  * Чистая функция - без базы. Хранилище (repo.settle) читает цифры игроков под блокировкой,
  * вызывает её и записывает результат в той же транзакции.
  */
-import {
-  applyDuel,
-  CATEGORIES,
-  newAchievements,
-  rateGame,
-  type AchievementCode,
-  type Category,
-  type DuelFacts,
-  type PlayerTotals,
-} from '@quiz-duel/shared';
+import { applyDuel, CATEGORIES, newAchievements, rateGame, type AchievementCode, type Category, type DuelFacts, type PlayerTotals } from '@quiz-duel/shared';
 import type { QuestionBank } from '../questions/bank.js';
 import { duelFacts } from './facts.js';
 import { changesRating, outcomeFor, participants, playerOf, type GameState, type Settlement } from './machine.js';

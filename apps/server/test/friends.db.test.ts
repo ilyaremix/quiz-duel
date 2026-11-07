@@ -64,7 +64,11 @@ describe.skipIf(!url)('друзья на Postgres', () => {
       'TRUNCATE friends, coin_ledger, inventory, task_progress, purchases, ad_views, topic_passes, tasks, answers, user_achievements, category_stats, consents, games, users CASCADE',
     );
     await eco.ensureTasks();
-    for (const [id, name] of [[A, 'Илья'], [B, 'Марк'], [C, 'Аня']] as const) {
+    for (const [id, name] of [
+      [A, 'Илья'],
+      [B, 'Марк'],
+      [C, 'Аня'],
+    ] as const) {
       await prisma.user.create({ data: { id: BigInt(id), firstName: name, source: 'legacy' } });
     }
     online.clear();

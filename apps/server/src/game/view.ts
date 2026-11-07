@@ -38,9 +38,7 @@ const UNKNOWN: PlayerProfile = { name: '', username: null, photoUrl: null, ratin
 const playerView = (state: GameState, p: PlayerState, profileOf: ProfileLookup): PlayerView => ({
   ...(profileOf(p.userId) ?? UNKNOWN),
   // После подсчёта итогов - рейтинг именно после этой партии (а не из кэша карточек).
-  ...(state.settlement?.players.some((s) => s.userId === p.userId)
-    ? { rating: state.settlement.players.find((s) => s.userId === p.userId)!.after }
-    : {}),
+  ...(state.settlement?.players.some((s) => s.userId === p.userId) ? { rating: state.settlement.players.find((s) => s.userId === p.userId)!.after } : {}),
   userId: p.userId,
   ready: p.ready,
   online: p.online,

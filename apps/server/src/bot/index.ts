@@ -258,7 +258,15 @@ function animatedCard(webAppUrl: string, kind: CardKind, lang: Lang, card: { id:
 }
 
 /** Карточка «Вызов на дуэль» с кнопкой «Принять» (shareMessage и inline-режим). */
-export function inviteCard(input: { gameId: string; link: string; category: GameCategory; rules: GameRules; lang: Lang; creatorName: string; webAppUrl: string }) {
+export function inviteCard(input: {
+  gameId: string;
+  link: string;
+  category: GameCategory;
+  rules: GameRules;
+  lang: Lang;
+  creatorName: string;
+  webAppUrl: string;
+}) {
   const t = inviteTexts[input.lang];
   return animatedCard(input.webAppUrl, 'invite', input.lang, {
     id: `g_${input.gameId}`,
@@ -301,7 +309,15 @@ export async function inlineAnswer(
  * Та же карточка «Вызов на дуэль» строкой списка: обложка, название, правила; в чат уходит
  * текст с кнопкой «Принять». Запасной вариант, если Telegram не принял ролик.
  */
-export function inviteArticle(input: { gameId: string; link: string; category: GameCategory; rules: GameRules; lang: Lang; creatorName: string; webAppUrl: string }) {
+export function inviteArticle(input: {
+  gameId: string;
+  link: string;
+  category: GameCategory;
+  rules: GameRules;
+  lang: Lang;
+  creatorName: string;
+  webAppUrl: string;
+}) {
   const t = inviteTexts[input.lang];
   return {
     type: 'article' as const,
@@ -327,11 +343,11 @@ export function inviteArticle(input: { gameId: string; link: string; category: G
 export function botInvites(bot: QuizBot, webAppUrl: string): InviteMaker {
   return {
     async prepare({ userId, gameId, link, category, rules, lang, creatorName }) {
-      const prepared = await bot.api.savePreparedInlineMessage(
-        userId,
-        inviteCard({ gameId, link, category, rules, lang, creatorName, webAppUrl }),
-        { allow_user_chats: true, allow_group_chats: true, allow_channel_chats: true },
-      );
+      const prepared = await bot.api.savePreparedInlineMessage(userId, inviteCard({ gameId, link, category, rules, lang, creatorName, webAppUrl }), {
+        allow_user_chats: true,
+        allow_group_chats: true,
+        allow_channel_chats: true,
+      });
       return { id: prepared.id, expiresAt: prepared.expiration_date * 1000 };
     },
   };

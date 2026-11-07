@@ -38,17 +38,31 @@ export function ModeCard({ variant, selected, onPick }: { variant: Variant; sele
       aria-checked={selected}
       onClick={onPick}
       className="qd-press relative box-border flex h-full min-h-[62px] w-full cursor-pointer items-center gap-2.5 rounded-[20px] border-0 py-2 pr-2.5 pl-2 text-left text-text"
-      style={{ background: selected ? 'var(--qd-brand-glass)' : 'var(--qd-sheen), var(--qd-glass)', boxShadow: selected ? 'var(--qd-brand-edge)' : 'var(--qd-glass-edge-flat)' }}
+      style={{
+        background: selected ? 'var(--qd-brand-glass)' : 'var(--qd-sheen), var(--qd-glass)',
+        boxShadow: selected ? 'var(--qd-brand-edge)' : 'var(--qd-glass-edge-flat)',
+      }}
     >
       <span className="relative shrink-0">
-        <span aria-hidden="true" className="qd-ball h-[32px] w-[32px]" style={{ '--qd-ball': look.ball, '--qd-ball-glow': look.glow, color: look.ink } as CSSProperties}>
+        <span
+          aria-hidden="true"
+          className="qd-ball h-[32px] w-[32px]"
+          style={{ '--qd-ball': look.ball, '--qd-ball-glow': look.glow, color: look.ink } as CSSProperties}
+        >
           <Icon glyph={look.glyph} size={16} stroke={2.4} />
         </span>
         {selected && (
           <span
             aria-hidden="true"
             className="qd-pop qd-ball absolute -right-1.5 -bottom-1 h-[18px] w-[18px]"
-            style={{ '--qd-ball': '#3BE58B', '--qd-ball-glow': 'var(--qd-ok-glow)', color: '#04261A', boxShadow: '0 0 0 2px var(--qd-ring-gap), 0 0 10px var(--qd-ok-glow)' } as CSSProperties}
+            style={
+              {
+                '--qd-ball': '#3BE58B',
+                '--qd-ball-glow': 'var(--qd-ok-glow)',
+                color: '#04261A',
+                boxShadow: '0 0 0 2px var(--qd-ring-gap), 0 0 10px var(--qd-ok-glow)',
+              } as CSSProperties
+            }
           >
             <Icon glyph="check" size={10} stroke={3.6} />
           </span>
@@ -66,9 +80,17 @@ export function ModeCard({ variant, selected, onPick }: { variant: Variant; sele
 export function Lives({ who, left, total, side }: { who: string; left: number; total: number; side: 'me' | 'opp' }) {
   const { t } = useTranslation();
   return (
-    <span role="img" aria-label={t('s09.livesAria', { who, n: left, m: total })} className={`flex items-center gap-0.5 ${side === 'opp' ? 'flex-row-reverse' : ''}`}>
+    <span
+      role="img"
+      aria-label={t('s09.livesAria', { who, n: left, m: total })}
+      className={`flex items-center gap-0.5 ${side === 'opp' ? 'flex-row-reverse' : ''}`}
+    >
       {Array.from({ length: total }, (_, i) => (
-        <span key={i} className={i < left ? '' : 'opacity-30'} style={{ color: i < left ? '#FF5A7A' : 'var(--tg-theme-hint-color)', filter: i < left ? 'drop-shadow(0 0 6px rgba(255,90,122,.6))' : undefined }}>
+        <span
+          key={i}
+          className={i < left ? '' : 'opacity-30'}
+          style={{ color: i < left ? '#FF5A7A' : 'var(--tg-theme-hint-color)', filter: i < left ? 'drop-shadow(0 0 6px rgba(255,90,122,.6))' : undefined }}
+        >
           <Icon glyph="heart" size={18} stroke={2.6} />
         </span>
       ))}
@@ -77,7 +99,21 @@ export function Lives({ who, left, total, side }: { who: string; left: number; t
 }
 
 /** Полоса режима под счётом: жизни обоих и «Очки ×2» на финальных вопросах. */
-export function RulesStrip({ rules, meName, oppName, meLives, oppLives, doubled }: { rules: GameRules; meName: string; oppName: string | null; meLives: number | null; oppLives: number | null; doubled: boolean }) {
+export function RulesStrip({
+  rules,
+  meName,
+  oppName,
+  meLives,
+  oppLives,
+  doubled,
+}: {
+  rules: GameRules;
+  meName: string;
+  oppName: string | null;
+  meLives: number | null;
+  oppLives: number | null;
+  doubled: boolean;
+}) {
   const { t } = useTranslation();
   const total = VARIANT_LIVES[rules.variant];
   if (total === 0 && !doubled) return null;

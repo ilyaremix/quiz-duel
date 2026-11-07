@@ -75,11 +75,20 @@ function StreakCard({ w }: { w: WalletResponse }) {
               <span
                 aria-hidden="true"
                 className="qd-ball h-6 w-6"
-                style={{ '--qd-ball': past ? '#3BE58B' : '#FFD36B', '--qd-ball-glow': past ? 'var(--qd-ok-glow)' : 'var(--qd-gold-glow)', color: past ? '#04261A' : '#3A2600' } as CSSProperties}
+                style={
+                  {
+                    '--qd-ball': past ? '#3BE58B' : '#FFD36B',
+                    '--qd-ball-glow': past ? 'var(--qd-ok-glow)' : 'var(--qd-gold-glow)',
+                    color: past ? '#04261A' : '#3A2600',
+                  } as CSSProperties
+                }
               >
                 <Icon glyph={past ? 'check' : gift ? 'gift' : 'coin'} size={13} stroke={2.7} />
               </span>
-              <span className="qd-num text-[12px] font-extrabold" style={{ color: past ? 'var(--qd-gold-text)' : today ? 'var(--tg-theme-text-color)' : 'var(--tg-theme-hint-color)' }}>
+              <span
+                className="qd-num text-[12px] font-extrabold"
+                style={{ color: past ? 'var(--qd-gold-text)' : today ? 'var(--tg-theme-text-color)' : 'var(--tg-theme-hint-color)' }}
+              >
                 +{formatNumber(n, i18n.language)}
               </span>
             </div>
@@ -164,7 +173,13 @@ function Items({ w, me }: { w: WalletResponse; me: MeResponse }) {
         <span
           aria-hidden="true"
           className="qd-ball h-11 w-11"
-          style={{ '--qd-ball': w.adFree ? '#3BE58B' : '#FF6A88', '--qd-ball-glow': w.adFree ? 'var(--qd-ok-glow)' : 'rgba(255,106,136,.5)', color: w.adFree ? '#04261A' : '#FFFFFF' } as CSSProperties}
+          style={
+            {
+              '--qd-ball': w.adFree ? '#3BE58B' : '#FF6A88',
+              '--qd-ball-glow': w.adFree ? 'var(--qd-ok-glow)' : 'rgba(255,106,136,.5)',
+              color: w.adFree ? '#04261A' : '#FFFFFF',
+            } as CSSProperties
+          }
         >
           <Icon glyph={w.adFree ? 'check' : 'ad'} size={21} stroke={2.3} />
         </span>
@@ -177,7 +192,11 @@ function Items({ w, me }: { w: WalletResponse; me: MeResponse }) {
             type="button"
             onClick={() => shop.openItem({ kind: 'adFree', id: 'adfree' })}
             className="qd-press box-border flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-[20px] border-0 pr-3.5 pl-[5px] text-[14px] font-bold"
-            style={{ background: 'var(--qd-gold-glass)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.4), inset 0 0 0 1px var(--qd-gold-ring)', color: 'var(--qd-gold-text)' }}
+            style={{
+              background: 'var(--qd-gold-glass)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,.4), inset 0 0 0 1px var(--qd-gold-ring)',
+              color: 'var(--qd-gold-text)',
+            }}
           >
             <CoinDot size={30} star />
             {formatNumber(AD_FREE_STARS, i18n.language)}
@@ -192,7 +211,15 @@ function Items({ w, me }: { w: WalletResponse; me: MeResponse }) {
         </div>
         <div className="grid grid-cols-3 gap-2 pt-0.5">
           {GLOWS.map((id) => (
-            <GlowTile key={id} id={id} state={glowState(id)} meId={me.id} meName={me.firstName} mePhoto={me.photoUrl} onPress={() => shop.openItem({ kind: 'glow', id })} />
+            <GlowTile
+              key={id}
+              id={id}
+              state={glowState(id)}
+              meId={me.id}
+              meName={me.firstName}
+              mePhoto={me.photoUrl}
+              onPress={() => shop.openItem({ kind: 'glow', id })}
+            />
           ))}
         </div>
       </section>
@@ -249,7 +276,11 @@ export function ShopScreen({ me }: { me: MeResponse }) {
             aria-label={`${t('s27.balance')}: ${formatNumber(coins, i18n.language)} ${pw(t, coins, 'coin')}`}
             className="qd-card-gold box-border flex h-11 items-center gap-2 rounded-[22px] pr-3.5 pl-1.5"
           >
-            <span aria-hidden="true" className="qd-ball qd-bob h-8 w-8" style={{ '--qd-ball': '#FFD36B', '--qd-ball-glow': 'var(--qd-gold-glow)', color: '#3A2600' } as CSSProperties}>
+            <span
+              aria-hidden="true"
+              className="qd-ball qd-bob h-8 w-8"
+              style={{ '--qd-ball': '#FFD36B', '--qd-ball-glow': 'var(--qd-gold-glow)', color: '#3A2600' } as CSSProperties}
+            >
               <Icon glyph="coin" size={17} stroke={2.4} />
             </span>
             <span className="qd-num text-[19px] font-extrabold" style={{ color: 'var(--qd-gold-text)' }}>

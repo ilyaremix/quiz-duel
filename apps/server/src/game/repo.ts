@@ -450,9 +450,17 @@ export function memoryGamesRepo(): GamesRepo & {
         const p = players.get(u.userId)!;
         const t = u.totals;
         Object.assign(p, {
-          rating: t.rating, games: t.games, wins: t.wins, losses: t.losses, draws: t.draws,
-          currentStreak: t.currentStreak, bestStreak: t.bestStreak, totalCorrect: t.totalCorrect,
-          questionsPlayed: u.questionsPlayed, duelCorrect: u.duelCorrect, correctTimeMs: u.correctTimeMs,
+          rating: t.rating,
+          games: t.games,
+          wins: t.wins,
+          losses: t.losses,
+          draws: t.draws,
+          currentStreak: t.currentStreak,
+          bestStreak: t.bestStreak,
+          totalCorrect: t.totalCorrect,
+          questionsPlayed: u.questionsPlayed,
+          duelCorrect: u.duelCorrect,
+          correctTimeMs: u.correctTimeMs,
         });
         for (const [c, add] of Object.entries(u.categoryAdd) as [Category, CategoryCounters][]) {
           const cur = (p.categories[c] ??= { answered: 0, correct: 0, wins: 0 });

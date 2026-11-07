@@ -160,11 +160,7 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
     const allowed = () => events.hit(userId, Date.now());
 
     /** Событие с ack: проверка схемой, лимит, ошибка сервера не роняет соединение. */
-    function on<S extends z.ZodType, R extends object>(
-      event: keyof ClientToServerEvents,
-      schema: S,
-      handler: (payload: z.infer<S>) => Promise<Ack<R>>,
-    ) {
+    function on<S extends z.ZodType, R extends object>(event: keyof ClientToServerEvents, schema: S, handler: (payload: z.infer<S>) => Promise<Ack<R>>) {
       socket.on(event, (async (payload: unknown, ack: unknown) => {
         if (typeof ack !== 'function') return;
         const reply = ack as (result: Ack<R>) => void;

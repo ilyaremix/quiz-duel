@@ -83,7 +83,8 @@ function RatingArt({ me }: { me: MeResponse }) {
           <div
             className="qd-glint box-border flex h-[132px] w-full justify-center rounded-[20px_20px_10px_10px] pt-3 text-[26px] font-bold"
             style={{
-              background: 'radial-gradient(90% 50% at 30% 0%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 70%), linear-gradient(180deg, #FFE08A, #F2B230)',
+              background:
+                'radial-gradient(90% 50% at 30% 0%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 70%), linear-gradient(180deg, #FFE08A, #F2B230)',
               boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0 34px var(--qd-gold-glow)',
               color: '#3A2600',
             }}

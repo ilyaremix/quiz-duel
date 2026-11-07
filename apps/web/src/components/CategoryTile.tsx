@@ -41,8 +41,7 @@ export function CategoryTile({ cat, selected, onPick, access, sub, wide = false 
   const { t } = useTranslation();
   const look = CATEGORY_LOOK[cat];
   const ball = wide ? 44 : 38;
-  const subColor =
-    access === 'pass' ? 'var(--qd-brand-text)' : access === 'owned' ? 'var(--qd-correct-text)' : 'var(--tg-theme-hint-color)';
+  const subColor = access === 'pass' ? 'var(--qd-brand-text)' : access === 'owned' ? 'var(--qd-correct-text)' : 'var(--tg-theme-hint-color)';
   return (
     <button
       type="button"

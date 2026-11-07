@@ -42,8 +42,7 @@ export type ShopKind = 'glow' | 'pack' | 'topic';
 
 export const isGlow = (v: unknown): v is GlowId => typeof v === 'string' && (GLOWS as readonly string[]).includes(v);
 export const isPack = (v: unknown): v is PackId => typeof v === 'string' && (PACKS as readonly string[]).includes(v);
-export const isPremiumTopic = (v: unknown): v is PremiumTopic =>
-  typeof v === 'string' && (PREMIUM_TOPICS as readonly string[]).includes(v);
+export const isPremiumTopic = (v: unknown): v is PremiumTopic => typeof v === 'string' && (PREMIUM_TOPICS as readonly string[]).includes(v);
 
 /** Цена товара в монетах; null - такого товара нет. */
 export function priceOf(kind: ShopKind, item: string): number | null {
@@ -67,8 +66,7 @@ export const AD_FREE_STARS = 100;
 export type StarsProduct = 'coins_s' | 'coins_m' | 'coins_l' | 'adfree';
 export const STARS_PRODUCTS: readonly StarsProduct[] = ['coins_s', 'coins_m', 'coins_l', 'adfree'];
 
-export const isStarsProduct = (v: unknown): v is StarsProduct =>
-  typeof v === 'string' && (STARS_PRODUCTS as readonly string[]).includes(v);
+export const isStarsProduct = (v: unknown): v is StarsProduct => typeof v === 'string' && (STARS_PRODUCTS as readonly string[]).includes(v);
 
 /** Сколько звёзд стоит и что даёт покупка. */
 export function starsProduct(product: StarsProduct): { stars: number; coins: number; adFree: boolean } {

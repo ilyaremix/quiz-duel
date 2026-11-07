@@ -54,7 +54,9 @@ describe('styles.css: у каждой анимации есть правило �
       props.set(m[1] ?? '', new Set([...(m[2] ?? '').matchAll(/([a-z-]+)\s*:/g)].map((p) => p[1] ?? '')));
     }
     const endless = new Set([...css.matchAll(/\banimation:\s*([\w-]+)[^;]*\binfinite\b/g)].map((m) => m[1] ?? ''));
-    const heavy = [...endless].flatMap((name) => [...(props.get(name) ?? ['нет @keyframes'])].filter((p) => p !== 'transform' && p !== 'opacity').map((p) => `${name}: ${p}`));
+    const heavy = [...endless].flatMap((name) =>
+      [...(props.get(name) ?? ['нет @keyframes'])].filter((p) => p !== 'transform' && p !== 'opacity').map((p) => `${name}: ${p}`),
+    );
     expect(endless.size).toBeGreaterThan(20);
     expect(heavy).toEqual([]);
   });

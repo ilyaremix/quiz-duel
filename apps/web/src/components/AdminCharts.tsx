@@ -62,7 +62,10 @@ const leaveFor = (clear: () => void) => (e: PointerEvent) => {
 export function ChartEmpty({ height }: { height: number }) {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center justify-center rounded-[16px] text-[13px] font-medium" style={{ height, color: HINT, background: 'var(--qd-chart-track)' }}>
+    <div
+      className="flex items-center justify-center rounded-[16px] text-[13px] font-medium"
+      style={{ height, color: HINT, background: 'var(--qd-chart-track)' }}
+    >
       {t('adm.empty')}
     </div>
   );
@@ -125,7 +128,11 @@ export function Bars({ data, label, height = 130, unit = '' }: { data: SeriesPoi
           </button>
         ))}
       </div>
-      <div aria-hidden="true" className="qd-num absolute right-0 left-10 flex justify-between text-[11px] font-semibold" style={{ top: T0 + H + 6, color: HINT }}>
+      <div
+        aria-hidden="true"
+        className="qd-num absolute right-0 left-10 flex justify-between text-[11px] font-semibold"
+        style={{ top: T0 + H + 6, color: HINT }}
+      >
         <span>{data[0]!.d}</span>
         {n > 2 && <span>{data[Math.floor((n - 1) / 2)]!.d}</span>}
         {n > 1 && <span>{data[n - 1]!.d}</span>}
@@ -184,7 +191,12 @@ export function Line({ data, label, unit = '%', max, height = 120 }: { data: Lin
     <div
       ref={ref}
       role="group"
-      aria-label={t('adm.chart.aria', { name: label, min: num(Math.min(...values)) + unit, max: num(Math.max(...values)) + unit, last: num(values[n - 1]!) + unit })}
+      aria-label={t('adm.chart.aria', {
+        name: label,
+        min: num(Math.min(...values)) + unit,
+        max: num(Math.max(...values)) + unit,
+        last: num(values[n - 1]!) + unit,
+      })}
       className="relative w-full"
       style={{ height: base + 24 }}
     >
@@ -205,11 +217,20 @@ export function Line({ data, label, unit = '%', max, height = 120 }: { data: Lin
           </svg>
           {h >= 0 && (
             <>
-              <div aria-hidden="true" className="absolute w-px" style={{ left: Math.round(P[h]![0]), top: T0, height: H, background: 'var(--qd-chart-cross)' }} />
+              <div
+                aria-hidden="true"
+                className="absolute w-px"
+                style={{ left: Math.round(P[h]![0]), top: T0, height: H, background: 'var(--qd-chart-cross)' }}
+              />
               <div
                 aria-hidden="true"
                 className="absolute h-2.5 w-2.5 rounded-full"
-                style={{ left: Math.round(P[h]![0] - 5), top: Math.round(P[h]![1] - 5), background: 'var(--qd-chart)', boxShadow: '0 0 0 2px var(--qd-chart-ring)' }}
+                style={{
+                  left: Math.round(P[h]![0] - 5),
+                  top: Math.round(P[h]![1] - 5),
+                  background: 'var(--qd-chart)',
+                  boxShadow: '0 0 0 2px var(--qd-chart-ring)',
+                }}
               />
             </>
           )}
@@ -300,7 +321,11 @@ export function Meter({ label, value, share, sub, look }: { label: ReactNode; va
   return (
     <div className="flex items-center gap-3">
       {look && (
-        <span aria-hidden="true" className="qd-ball h-[34px] w-[34px] shrink-0" style={{ '--qd-ball': look.ball, '--qd-ball-glow': look.glow, color: look.ink } as CSSProperties}>
+        <span
+          aria-hidden="true"
+          className="qd-ball h-[34px] w-[34px] shrink-0"
+          style={{ '--qd-ball': look.ball, '--qd-ball-glow': look.glow, color: look.ink } as CSSProperties}
+        >
           <Icon glyph={look.glyph} size={17} stroke={2.4} />
         </span>
       )}
@@ -356,4 +381,3 @@ export function seenText(at: number, lang: string, t: (k: string) => string, now
   if (sec < 30 * 86_400) return rtf.format(-Math.round(sec / 86_400), 'day');
   return new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(at));
 }
-
