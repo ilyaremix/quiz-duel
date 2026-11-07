@@ -5,6 +5,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/http/app.js';
 import type { AdminRepo } from '../src/admin.js';
+import type { EconomyRepo } from '../src/economy.js';
+import type { FriendsRepo } from '../src/friends.js';
+import type { TelegramUser } from '../src/auth/initData.js';
 import { ilya, makeInitData, memoryUsers, testEnv } from './helpers.js';
 
 const apps: Array<Awaited<ReturnType<typeof buildApp>>> = [];
@@ -68,5 +71,45 @@ describe('админка', () => {
     expect(tracked).toEqual([['home', 'quick']]);
     const bad = await app.inject({ method: 'POST', url: '/api/events', headers: auth(mark), payload: JSON.stringify({ events: ['drop table'] }) });
     expect(bad.statusCode).toBe(400);
+  });
+});
+
+describe('бан', () => {
+  // Заблокирован Марк; Илья - обычный игрок.
+  async function bannedApp() {
+    const calls: string[] = [];
+    const admin = {
+      touchDay: async () => undefined,
+      track: async () => void calls.push('track'),
+      isBanned: async (id: number) => id === mark.id,
+    } as unknown as AdminRepo;
+    const reward = { ok: true as const, wallet: {} as never, reward: 10 };
+    const economy = {
+      claimDaily: async (id: number) => (calls.push(`daily:${id}`), reward),
+      buy: async (id: number) => (calls.push(`buy:${id}`), { ok: true as const, wallet: {} as never }),
+    } as unknown as EconomyRepo;
+    const friends = {
+      request: async (id: number) => (calls.push(`friend:${id}`), 'sent' as const),
+      attribute: async () => ({ inviterId: null }),
+    } as unknown as FriendsRepo;
+    const app = await buildApp({ env: testEnv(), users: memoryUsers(), admin, economy, friends, botUsername: 'quizduel_test_bot', logger: false });
+    apps.push(app);
+    return { app, calls };
+  }
+
+  it('заблокированному - 403 на награды, покупки, друзей и аналитику, как ни пиши адрес', async () => {
+    const { app, calls } = await bannedApp();
+    const post = (url: string, body: unknown = {}, user: TelegramUser = mark) => app.inject({ method: 'POST', url, headers: auth(user), payload: JSON.stringify(body) });
+    // «?x» и %64 (= «d») раньше проходили мимо проверки по адресу.
+    for (const url of ['/api/daily', '/api/daily?x', '/api/%64aily', '/api/daily?a=1&b=2']) {
+      expect((await post(url)).statusCode, url).toBe(403);
+    }
+    expect((await post('/api/shop/buy?x', { kind: 'glow', item: 'neon' })).statusCode).toBe(403);
+    expect((await post('/api/friends/request?x', { id: ilya.id })).statusCode).toBe(403);
+    expect((await post('/api/events?x', { events: ['home'] })).statusCode).toBe(403);
+    expect(calls).toEqual([]);
+    // Обычный игрок - как раньше.
+    expect((await post('/api/daily?x', {}, ilya)).statusCode).toBe(200);
+    expect(calls).toEqual([`daily:${ilya.id}`]);
   });
 });

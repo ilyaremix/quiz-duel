@@ -177,6 +177,17 @@ export async function buildApp({
 
   const auth = requireTelegramAuth(env.BOT_TOKEN, env.INIT_DATA_MAX_AGE_SEC);
 
+  /**
+   * Заблокированный в админке не получает награды, не покупает, не зовёт в друзья и не пишет аналитику.
+   * Проверка висит на самих маршрутах, а не на сравнении адреса: «?x» или %-кодирование в URL её не обходят.
+   */
+  const notBanned = async (request: FastifyRequest, reply: FastifyReply) => {
+    if (request.tg && admin && (await admin.isBanned(request.tg.user.id))) {
+      return reply.code(403).send({ error: 'forbidden', reason: 'banned' } satisfies ApiError);
+    }
+  };
+  const authNotBanned = { onRequest: auth, preHandler: notBanned };
+
   // Healthcheck Docker дёргает каждые 30 с - не засоряем им логи.
   app.get('/api/health', { logLevel: 'warn' }, async (_request, reply) => {
     const db = await users.ping();
@@ -308,7 +319,7 @@ export async function buildApp({
     const guard = { onRequest: auth, preHandler: onlyAdmin };
 
     // Аналитика: экраны и кнопки из приложения (пачкой, только известные имена).
-    app.post('/api/events', { onRequest: auth }, async (request, reply) => {
+    app.post('/api/events', authNotBanned, async (request, reply) => {
       const parsed = TrackRequestSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send(bad);
       await admin.track(request.tg!.user.id, parsed.data.events, now());
@@ -388,7 +399,7 @@ export async function buildApp({
     const bad = { error: 'bad_request' } satisfies ApiError;
     app.get('/api/friends', { onRequest: auth }, async (request) => friends.list(request.tg!.user.id, presence));
 
-    app.post('/api/friends/request', { onRequest: auth }, async (request, reply) => {
+    app.post('/api/friends/request', authNotBanned, async (request, reply) => {
       const parsed = FriendIdSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send(bad);
       const me = request.tg!.user.id;
@@ -400,7 +411,7 @@ export async function buildApp({
       return { result };
     });
 
-    app.post('/api/friends/respond', { onRequest: auth }, async (request, reply) => {
+    app.post('/api/friends/respond', authNotBanned, async (request, reply) => {
       const parsed = FriendRespondSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send(bad);
       const me = request.tg!.user.id;
@@ -411,7 +422,7 @@ export async function buildApp({
     });
 
     // Карточка-приглашение с кнопкой «Играть»; без бота или при сбое Telegram - только ссылка (клиент делится ей).
-    app.post('/api/friends/invite', { onRequest: auth }, async (request): Promise<FriendInviteMessageResponse> => {
+    app.post('/api/friends/invite', authNotBanned, async (request): Promise<FriendInviteMessageResponse> => {
       const tg = request.tg!.user;
       const link = `https://t.me/${botUsername}/${env.APP_SHORT_NAME}?startapp=r_${tg.id}`;
       if (!referrals) return { link, preparedMessageId: null };
@@ -435,15 +446,6 @@ export async function buildApp({
   }
 
   if (economy) {
-    // Заблокированный в админке не получает награды и не покупает.
-    const notBanned = async (request: FastifyRequest, reply: FastifyReply) => {
-      if (request.tg && admin && (await admin.isBanned(request.tg.user.id))) {
-        return reply.code(403).send({ error: 'forbidden', reason: 'banned' } satisfies ApiError);
-      }
-    };
-    app.addHook('preHandler', async (request, reply) => {
-      if (request.method === 'POST' && /^\/api\/(daily|tasks|shop|ads|stars)\//.test(request.url + '/')) return notBanned(request, reply);
-    });
     const refused = (reply: FastifyReply, failure: EcoFailure) =>
       reply.code(ecoStatus(failure.error)).send({ error: failure.error === 'not_found' ? 'not_found' : 'conflict', reason: failure.error } satisfies ApiError);
     const bad = { error: 'bad_request' } satisfies ApiError;
@@ -455,12 +457,12 @@ export async function buildApp({
       return wallet ?? reply.code(404).send({ error: 'not_found' } satisfies ApiError);
     });
 
-    app.post('/api/daily', { onRequest: auth }, async (request, reply) => {
+    app.post('/api/daily', authNotBanned, async (request, reply) => {
       const result = await economy.claimDaily(request.tg!.user.id, now());
       return result.ok ? { wallet: result.wallet, reward: result.reward } : refused(reply, result);
     });
 
-    app.post('/api/tasks/claim', { onRequest: auth }, async (request, reply) => {
+    app.post('/api/tasks/claim', authNotBanned, async (request, reply) => {
       const parsed = TaskClaimSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send(bad);
       // Premium мог появиться после первого входа: берём свежий признак из initData.
@@ -469,35 +471,35 @@ export async function buildApp({
       return result.ok ? { wallet: result.wallet, reward: result.reward } : refused(reply, result);
     });
 
-    app.post('/api/shop/buy', { onRequest: auth }, async (request, reply) => {
+    app.post('/api/shop/buy', authNotBanned, async (request, reply) => {
       const parsed = BuyRequestSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send(bad);
       const result = await economy.buy(request.tg!.user.id, parsed.data.kind, parsed.data.item, now());
       return result.ok ? result.wallet : refused(reply, result);
     });
 
-    app.post('/api/shop/equip', { onRequest: auth }, async (request, reply) => {
+    app.post('/api/shop/equip', authNotBanned, async (request, reply) => {
       const parsed = EquipRequestSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send(bad);
       const result = await economy.equip(request.tg!.user.id, parsed.data.kind, parsed.data.item, now());
       return result.ok ? result.wallet : refused(reply, result);
     });
 
-    app.post('/api/ads/start', { onRequest: auth }, async (request, reply) => {
+    app.post('/api/ads/start', authNotBanned, async (request, reply) => {
       const parsed = AdStartRequestSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send(bad);
       const result = await economy.adStart(request.tg!.user.id, parsed.data.purpose, parsed.data.topic, now());
       return result.ok ? { id: result.id, sec: result.sec, src: result.src } : refused(reply, result);
     });
 
-    app.post('/api/ads/done', { onRequest: auth }, async (request, reply) => {
+    app.post('/api/ads/done', authNotBanned, async (request, reply) => {
       const parsed = AdDoneRequestSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send(bad);
       const result = await economy.adDone(request.tg!.user.id, parsed.data.id, now());
       return result.ok ? { wallet: result.wallet, reward: result.reward } : refused(reply, result);
     });
 
-    app.post('/api/stars/invoice', { onRequest: auth }, async (request, reply) => {
+    app.post('/api/stars/invoice', authNotBanned, async (request, reply) => {
       const parsed = InvoiceRequestSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send(bad);
       if (!invoices) return reply.code(503).send({ error: 'internal', reason: 'payments_off' } satisfies ApiError);
