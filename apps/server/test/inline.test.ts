@@ -85,4 +85,12 @@ describe('Этап 8: inline-режим', () => {
     expect(w.users.rows.has(777)).toBe(true);
     expect(answer.options.button?.text).toBe('Open Quiz Duel and accept the documents');
   });
+
+  it('язык из настроек мини-аппа важнее языка Telegram', async () => {
+    const w = await world();
+    await w.users.upsertFromTelegram(ilya);
+    await w.users.updateSettings(ilya.id, { language: 'en' });
+    const answer = await inlineAnswer(w.games, w.users, ilya, WEB);
+    expect(answer.results[0]).toMatchObject({ title: 'Duel challenge · Mix', mpeg4_url: `${WEB}/bot/invite-en.mp4` });
+  });
 });

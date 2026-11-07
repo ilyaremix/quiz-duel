@@ -1,7 +1,8 @@
 import { Bot, InlineKeyboard } from 'grammy';
+import type { LanguageCode } from 'grammy/types';
 import type { FastifyBaseLogger } from 'fastify';
-import { langFromTelegram, type GameCategory, type GameRules, type Lang } from '@quiz-duel/shared';
-import { botTexts, inviteTexts, shareTexts, supportTexts } from './texts.js';
+import { RU_LANGUAGE_CODES, langFromTelegram, resolveLang, type GameCategory, type GameRules, type Lang } from '@quiz-duel/shared';
+import { botTexts, inviteTexts, profileTexts, shareTexts, supportTexts } from './texts.js';
 import { CARD_VIDEO, cardMedia, type CardKind } from './cards.js';
 import type { GameManager, InviteMaker, ResultSharer } from '../game/manager.js';
 import type { UsersRepo } from '../users.js';
@@ -34,13 +35,23 @@ export async function createBot(token: string, webAppUrl: string, users?: UsersR
     await next();
   });
 
+  // Язык ответа - выбранный в приложении (Настройки → Язык), а если там «Авто» - язык Telegram.
+  const langOf = async (from: TelegramUser | undefined): Promise<Lang> => {
+    if (!from) return 'en';
+    if (!users) return langFromTelegram(from.language_code);
+    const target = await users.alertTarget(from.id).catch(() => null);
+    return target?.lang ?? langFromTelegram(from.language_code);
+  };
+
   bot.command('start', async (ctx) => {
     // Нажал /start - бот может ему писать (уведомления о лобби, реванше, итогах).
     if (users && ctx.from) {
-      await users.upsertFromTelegram(ctx.from as TelegramUser);
+      const user = await users.upsertFromTelegram(ctx.from as TelegramUser);
       await users.setWriteAccess(ctx.from.id, true);
+      // Меню команд в этом чате - на языке из настроек приложения.
+      void syncChatCommands(bot, ctx.from.id, user.language === 'auto' ? null : resolveLang(user.language, user.tgLanguage));
     }
-    const t = botTexts[langFromTelegram(ctx.from?.language_code)];
+    const t = botTexts[await langOf(ctx.from as TelegramUser)];
     await ctx.reply(t.start, {
       reply_markup: new InlineKeyboard().webApp(t.play, webAppUrl),
     });
@@ -48,12 +59,12 @@ export async function createBot(token: string, webAppUrl: string, users?: UsersR
 
   // Помощь с оплатой звёздами: Telegram требует, чтобы бот отвечал на /paysupport.
   bot.command('paysupport', async (ctx) => {
-    await ctx.reply(supportTexts[langFromTelegram(ctx.from?.language_code)].pay, { link_preview_options: { is_disabled: true } });
+    await ctx.reply(supportTexts[await langOf(ctx.from as TelegramUser)].pay, { link_preview_options: { is_disabled: true } });
   });
 
   // Правила и политика - те же страницы, что в приложении.
   bot.command('terms', async (ctx) => {
-    const t = supportTexts[langFromTelegram(ctx.from?.language_code)];
+    const t = supportTexts[await langOf(ctx.from as TelegramUser)];
     if (!docs) return;
     await ctx.reply(t.terms, {
       reply_markup: new InlineKeyboard().url(t.termsButton, docs.termsUrl).row().url(t.privacyButton, docs.privacyUrl),
@@ -73,19 +84,43 @@ export async function createBot(token: string, webAppUrl: string, users?: UsersR
 
 export type QuizBot = Awaited<ReturnType<typeof createBot>>;
 
+/** Команды меню бота на языке. */
+export const botCommands = (lang: Lang) => [
+  { command: 'start', description: botTexts[lang].startCommand },
+  { command: 'paysupport', description: supportTexts[lang].payCommand },
+  { command: 'terms', description: supportTexts[lang].termsCommand },
+];
+
+/**
+ * Меню команд в личном чате с игроком - на языке из настроек приложения. null («Авто») -
+ * своё меню чата снимается, Telegram показывает общее по языку клиента. Сбой (игрок не нажимал
+ * /start) не важен: меню - мелочь, сообщения бота и так идут на нужном языке.
+ */
+export async function syncChatCommands(bot: Pick<QuizBot, 'api'>, chatId: number, lang: Lang | null) {
+  const scope = { type: 'chat' as const, chat_id: chatId };
+  try {
+    if (lang) await bot.api.setMyCommands(botCommands(lang), { scope });
+    else await bot.api.deleteMyCommands({ scope });
+  } catch {
+    // нет чата с ботом - нечего настраивать
+  }
+}
+
 /** Кнопка меню и команды. Ошибка здесь не мешает игре, поэтому только пишем в лог. */
 export async function configureBot(bot: QuizBot, webAppUrl: string, log: FastifyBaseLogger) {
   try {
     await bot.api.setChatMenuButton({
       menu_button: { type: 'web_app', text: 'Quiz Duel', web_app: { url: webAppUrl } },
     });
-    const commands = (lang: Lang) => [
-      { command: 'start', description: botTexts[lang].startCommand },
-      { command: 'paysupport', description: supportTexts[lang].payCommand },
-      { command: 'terms', description: supportTexts[lang].termsCommand },
-    ];
-    await bot.api.setMyCommands(commands('en'));
-    await bot.api.setMyCommands(commands('ru'), { language_code: 'ru' });
+    await bot.api.setMyCommands(botCommands('en'));
+    await bot.api.setMyDescription(profileTexts.en.description(bot.botInfo.username));
+    await bot.api.setMyShortDescription(profileTexts.en.shortDescription);
+    // Русский - для тех же кодов Telegram, что и в мини-аппе (ru, uk, be, kk).
+    for (const language_code of RU_LANGUAGE_CODES as readonly LanguageCode[]) {
+      await bot.api.setMyCommands(botCommands('ru'), { language_code });
+      await bot.api.setMyDescription(profileTexts.ru.description(bot.botInfo.username), { language_code });
+      await bot.api.setMyShortDescription(profileTexts.ru.shortDescription, { language_code });
+    }
   } catch (error) {
     log.warn({ err: error }, 'bot configuration failed');
   }
@@ -231,10 +266,11 @@ export async function inlineAnswer(
   from: TelegramUser,
   webAppUrl: string,
 ) {
-  const lang = langFromTelegram(from.language_code);
-  const t = inviteTexts[lang];
   // Inline-запрос может прийти от того, кто ещё ни разу не открывал игру.
   const user = await users.upsertFromTelegram(from);
+  // Язык карточки - из настроек приложения (там «Авто» - язык Telegram).
+  const lang = resolveLang(user.language, user.tgLanguage);
+  const t = inviteTexts[lang];
   const res = await games.inlineChallenge(from.id);
   const options: { cache_time: number; is_personal: boolean; button?: { text: string; web_app: { url: string } } } = {
     cache_time: 0,

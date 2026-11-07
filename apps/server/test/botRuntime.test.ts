@@ -3,7 +3,7 @@
  * inline-запросы не держат общую очередь, Telegram не принял ролик - карточка уходит текстом.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { attachInline, botHealth, inlineAnswer, startBot, type QuizBot } from '../src/bot/index.js';
+import { attachInline, botCommands, botHealth, inlineAnswer, syncChatCommands, startBot, type QuizBot } from '../src/bot/index.js';
 import { ilya, mark, silentLog, world } from './socketWorld.js';
 
 const WEB = 'https://quiz.example.sslip.io';
@@ -118,5 +118,23 @@ describe('inline-режим: ответ не держит бота', () => {
     expect(text!.description).toBe('Микс · Классика · 10 вопросов по 15 секунд');
     expect(text!.input_message_content.message_text).toBe(card!.caption);
     expect(text!.reply_markup.inline_keyboard).toEqual(card!.reply_markup.inline_keyboard);
+  });
+});
+
+describe('меню команд по языку игрока', () => {
+  it('язык выбран - команды на нём в чате игрока; «авто» - убираем личное меню', async () => {
+    const calls: unknown[][] = [];
+    const api = {
+      setMyCommands: async (...a: unknown[]) => void calls.push(['set', ...a]),
+      deleteMyCommands: async (...a: unknown[]) => void calls.push(['del', ...a]),
+    };
+    await syncChatCommands({ api } as never, 42, 'en');
+    await syncChatCommands({ api } as never, 42, null);
+    expect(calls[0]).toEqual(['set', botCommands('en'), { scope: { type: 'chat', chat_id: 42 } }]);
+    expect(calls[1]).toEqual(['del', { scope: { type: 'chat', chat_id: 42 } }]);
+    expect(botCommands('en')[0]).toMatchObject({ command: 'start' });
+    // Ошибка Telegram (игрок не запускал бота) не роняет сохранение настроек.
+    const failing = { setMyCommands: async () => { throw new Error('chat not found'); } };
+    await expect(syncChatCommands({ api: failing } as never, 1, 'ru')).resolves.toBeUndefined();
   });
 });

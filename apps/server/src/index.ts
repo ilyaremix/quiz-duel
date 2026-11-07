@@ -5,7 +5,7 @@ import { createPrismaUsersRepo } from './users.js';
 import { createPrismaStatsRepo } from './stats.js';
 import { buildApp } from './http/app.js';
 import { attachSocket, socketNotifier, socketPush, type IoServer } from './socket.js';
-import { attachInline, botHealth, botInvites, botResults, configureBot, createBot, startBot, type BotTrouble, type QuizBot } from './bot/index.js';
+import { attachInline, botHealth, botInvites, botResults, configureBot, createBot, startBot, syncChatCommands, type BotTrouble, type QuizBot } from './bot/index.js';
 import { botAlerts } from './bot/alerts.js';
 import { cardMedia } from './bot/cards.js';
 import { dailyReminders } from './bot/reminders.js';
@@ -85,7 +85,11 @@ async function main() {
       void friends.brief(fromId).then((from) => from && push.friendChanged(userId, { kind, from }));
     },
     botUsername,
-    onSettingsChanged: (userId) => gamesRef?.userChanged(userId),
+    onSettingsChanged: (userId) => {
+      gamesRef?.userChanged(userId);
+      // Язык, выбранный в мини-аппе, сразу переносится на меню команд бота в чате игрока.
+      if (bot) void users.alertTarget(userId).then((t) => t && syncChatCommands(bot, userId, t.lang));
+    },
     botStatus: bot ? botHealth : undefined,
   });
   logRef = app.log;

@@ -337,6 +337,17 @@ body {
   user-select: none;
 }
 
+/* Полосы прокрутки не показываем нигде: в Telegram (особенно на Android и десктопе) они
+   торчат у правого края. Прокрутка жестом и колесом остаётся. */
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 #root {
   overflow-x: hidden;
   overflow-y: auto;
@@ -390,15 +401,29 @@ button:focus-visible {
  * варианты - VS и победа.
  */
 .qd-aurora {
+  /* Слой выходит за экран на --qd-au-pad сверху и снизу: на iPhone в полноэкранном Telegram видимая
+     область бывает выше 100% (вырост вьюпорта, safe area), и под краем слоя проступала полоса пятен
+     без вуали. Свой композитный слой и contain - чтобы пятна всегда обрезались по его краю. */
+  --qd-au-pad: 120px;
   position: fixed;
-  inset: 0;
+  top: calc(-1 * var(--qd-au-pad));
+  bottom: calc(-1 * var(--qd-au-pad));
+  left: 0;
+  right: 0;
   overflow: hidden;
+  contain: strict;
+  isolation: isolate;
+  transform: translateZ(0);
   pointer-events: none;
   z-index: -1;
   background: var(--qd-bg);
 }
+html {
+  background: var(--qd-bg);
+}
 .qd-aurora i {
   position: absolute;
+  z-index: 0;
   display: block;
   border-radius: 50%;
 }
@@ -406,7 +431,7 @@ button:focus-visible {
   width: 560px;
   height: 560px;
   left: -250px;
-  top: -230px;
+  top: calc(var(--qd-au-pad) - 230px);
   background: radial-gradient(closest-side, var(--qd-au1), rgba(79, 141, 255, 0));
   animation: qd-au-a 12s var(--qd-ease-move) infinite alternate;
 }
@@ -414,7 +439,7 @@ button:focus-visible {
   width: 500px;
   height: 500px;
   right: -240px;
-  top: 70px;
+  top: calc(var(--qd-au-pad) + 70px);
   background: radial-gradient(closest-side, var(--qd-au2), rgba(155, 92, 255, 0));
   animation: qd-au-b 14s var(--qd-ease-move) -4s infinite alternate;
 }
@@ -422,7 +447,7 @@ button:focus-visible {
   width: 520px;
   height: 520px;
   left: -200px;
-  bottom: -240px;
+  bottom: calc(var(--qd-au-pad) - 240px);
   background: radial-gradient(closest-side, var(--qd-au3), rgba(255, 106, 136, 0));
   animation: qd-au-a 16s var(--qd-ease-move) -7s infinite alternate-reverse;
 }
@@ -430,13 +455,14 @@ button:focus-visible {
   width: 420px;
   height: 420px;
   right: -180px;
-  bottom: 100px;
+  bottom: calc(var(--qd-au-pad) + 100px);
   background: radial-gradient(closest-side, var(--qd-au4), rgba(34, 211, 238, 0));
   animation: qd-au-b 13s var(--qd-ease-move) -9s infinite alternate;
 }
 .qd-aurora::after {
   content: '';
   position: absolute;
+  z-index: 1;
   inset: 0;
   background: var(--qd-veil);
 }

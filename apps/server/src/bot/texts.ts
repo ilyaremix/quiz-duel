@@ -217,3 +217,30 @@ export const dailyTexts: Record<Lang, { text: (day: number, reward: number) => s
     button: 'Claim',
   },
 };
+
+/**
+ * Профиль бота в Telegram. description - экран пустого чата («Что умеет этот бот?», до 512 символов),
+ * shortDescription - профиль бота и превью ссылки (до 120 символов).
+ */
+export const profileTexts: Record<Lang, { description: (bot: string) => string; shortDescription: string }> = {
+  ru: {
+    description: (bot) =>
+      '⚔️ Quiz Duel - викторина 1 на 1 в реальном времени.\n\n' +
+      '• Вызывайте друзей прямо из любого чата: напишите @' + bot + ' и отправьте вызов\n' +
+      '• Отвечайте точнее и быстрее соперника - за скорость больше очков\n' +
+      '• Наука, история, культура, спорт, технологии и «Микс»\n' +
+      '• Рейтинг, друзья, достижения и тренировка в одиночку\n\n' +
+      'Нажмите «Старт» и сыграйте первую дуэль.',
+    shortDescription: 'Викторина 1 на 1: вызовите друга из любого чата и проверьте, кто знает больше ⚔️',
+  },
+  en: {
+    description: (bot) =>
+      '⚔️ Quiz Duel - a real-time 1v1 quiz.\n\n' +
+      '• Challenge friends from any chat: type @' + bot + ' and send the invite\n' +
+      '• Answer more accurately and faster than your rival - speed earns extra points\n' +
+      '• Science, history, culture, sport, tech and Mix\n' +
+      '• Leaderboard, friends, achievements and solo practice\n\n' +
+      'Tap “Start” and play your first duel.',
+    shortDescription: 'A 1v1 quiz: challenge a friend from any chat and see who knows more ⚔️',
+  },
+};
