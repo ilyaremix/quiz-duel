@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ACTIVE_PHASES, gameIdFromStartParam, TIMINGS, type GameView, type MeResponse } from '@quiz-duel/shared';
 import { api, ApiRequestError, queryKeys, setSessionAuth } from './lib/api';
-import { askWriteAccess, closeMiniApp, onBack, setGameGuards, type TelegramSession } from './lib/telegram';
+import { askWriteAccess, closeMiniApp, onBack, setGameGuards, setHapticsEnabled, type TelegramSession } from './lib/telegram';
 import { gameActions, useGame } from './lib/game';
 import { setLang } from './i18n';
 import { setMotionSetting } from './lib/motion';
@@ -173,6 +173,7 @@ function InTelegram({ session }: { session: TelegramSession }) {
     if (!me.data) return;
     setLang(me.data.lang);
     setMotionSetting(me.data.reducedMotion);
+    setHapticsEnabled(me.data.haptics);
   }, [me.data]);
 
   const gameOnScreen = Boolean(game && !hidden && !linkError && conn !== 'replaced');

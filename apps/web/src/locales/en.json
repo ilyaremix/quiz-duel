@@ -579,6 +579,32 @@
     "states": {
       "on": "on",
       "off": "off"
-    }
+    },
+    "feedback": "Haptics & notifications",
+    "haptics": "Haptics",
+    "hapticsHint": "On answers, results and the final seconds",
+    "notif": "Bot notifications",
+    "notifHint": "Rematch, opponent waiting, game result",
+    "notifNoAccess": "The bot can’t message you yet - allow it in the Telegram prompt or tap “Start” in the bot",
+    "howTo": "How to play",
+    "ok": "Got it",
+    "rules": [
+      {
+        "t": "Challenge a friend",
+        "d": "Send a link to any chat - whoever opens it first is your opponent"
+      },
+      {
+        "t": "10 questions, 15 seconds each",
+        "d": "You pick an answer once and can’t change it"
+      },
+      {
+        "t": "Faster means more points",
+        "d": "A correct answer gives 500 to 1,000 points, a wrong one gives 0"
+      },
+      {
+        "t": "Climb the leaderboard",
+        "d": "Wins raise your rating, practice doesn’t affect it"
+      }
+    ]
   }
 }

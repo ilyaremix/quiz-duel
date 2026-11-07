@@ -22,6 +22,7 @@ export interface UserRecord {
   tgLanguage: string | null;
   language: LangSetting;
   reducedMotion: MotionSetting;
+  haptics: boolean;
   rating: number;
   games: number;
   wins: number;
@@ -54,6 +55,7 @@ export interface SettingsPatch {
   writeAccess?: boolean;
   language?: LangSetting;
   reducedMotion?: MotionSetting;
+  haptics?: boolean;
 }
 
 /** Настройки из строки игрока в том виде, в каком их отдаёт API. */
@@ -63,6 +65,7 @@ export function settingsOf(row: {
   language: LangSetting;
   tgLanguage: string | null;
   reducedMotion: MotionSetting;
+  haptics: boolean;
 }): SettingsResponse {
   return {
     notifications: row.notifications,
@@ -71,6 +74,7 @@ export function settingsOf(row: {
     lang: resolveLang(row.language, row.tgLanguage),
     autoLang: langFromTelegram(row.tgLanguage),
     reducedMotion: row.reducedMotion,
+    haptics: row.haptics,
   };
 }
 
@@ -136,6 +140,7 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
         tgLanguage: row.tgLanguage,
         language: row.language,
         reducedMotion: row.reducedMotion,
+        haptics: row.haptics,
         rating: row.rating,
         games: row.games,
         wins: row.wins,
@@ -190,7 +195,7 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
       if (done.count === 0) return null;
       const row = await prisma.user.findUniqueOrThrow({
         where: { id: BigInt(id) },
-        select: { notifications: true, writeAccess: true, language: true, tgLanguage: true, reducedMotion: true },
+        select: { notifications: true, writeAccess: true, language: true, tgLanguage: true, reducedMotion: true, haptics: true },
       });
       return settingsOf(row);
     },
@@ -216,6 +221,7 @@ export function toMeResponse(user: UserRecord, docsVersion: string, serverNow = 
     lang: resolveLang(user.language, user.tgLanguage),
     autoLang: langFromTelegram(user.tgLanguage),
     reducedMotion: user.reducedMotion,
+    haptics: user.haptics,
     rating: user.rating,
     games: user.games,
     wins: user.wins,

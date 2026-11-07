@@ -619,6 +619,11 @@ body {
   animation: qd-shine 900ms var(--qd-ease-ui) 700ms 2 both;
 }
 
+/* Кружок тумблера: перемещение по экрану - кривая move, 200 мс. */
+.qd-knob {
+  transition: transform 200ms var(--qd-ease-move);
+}
+
 /* Шторка: перетаскивание без анимации, возврат на место - по кривой шторки. */
 .qd-sheet-drag {
   touch-action: none;
@@ -683,7 +688,8 @@ body {
   transition: opacity var(--qd-dur-press) ease;
 }
 /* Шторка возвращается на место без «доезда», индикатор загрузки крутится медленнее. */
-.qd-rm .qd-sheet-drag {
+.qd-rm .qd-sheet-drag,
+.qd-rm .qd-knob {
   transition: none !important;
 }
 .qd-rm .qd-spin {

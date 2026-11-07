@@ -125,3 +125,29 @@ describe('этап 9: режим без анимаций - POST /api/settings { 
     expect(calls).toEqual([]);
   });
 });
+
+describe('этап 9: вибрация и уведомления - POST /api/settings', () => {
+  it('вибрация по умолчанию включена, выключается и сохраняется; уведомления - как на этапе 8', async () => {
+    const { app, users } = await makeApp();
+    expect(await me(app)).toMatchObject({ haptics: true, notifications: true });
+    expect((await post(app, { haptics: false })).json()).toMatchObject({ haptics: false, notifications: true });
+    expect(users.rows.get(ilya.id)!.haptics).toBe(false);
+    expect(await me(app)).toMatchObject({ haptics: false });
+    expect((await post(app, { notifications: false, haptics: true })).json()).toMatchObject({ haptics: true, notifications: false });
+    expect((await post(app, { haptics: 'yes' })).statusCode).toBe(400);
+  });
+
+  it('ответ - все настройки сразу', async () => {
+    const { app } = await makeApp();
+    await me(app);
+    expect((await post(app, { haptics: true })).json()).toEqual({
+      notifications: true,
+      writeAccess: false,
+      language: 'auto',
+      lang: 'ru',
+      autoLang: 'ru',
+      reducedMotion: 'auto',
+      haptics: true,
+    });
+  });
+});

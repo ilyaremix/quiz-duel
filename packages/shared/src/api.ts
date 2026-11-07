@@ -54,6 +54,8 @@ export interface MeResponse {
   /** Каким был бы язык при «Авто» - по language_code из Telegram (подсказка в настройках). */
   autoLang: Lang;
   reducedMotion: MotionSetting;
+  /** Вибрация включена (по умолчанию да). */
+  haptics: boolean;
   rating: number;
   games: number;
   wins: number;
@@ -266,6 +268,7 @@ export interface SettingsRequest {
   language?: LangSetting;
   /** Режим без анимаций: «Авто» (система или слабое устройство), «Вкл», «Выкл». */
   reducedMotion?: MotionSetting;
+  haptics?: boolean;
 }
 
 export interface SettingsResponse {
@@ -276,4 +279,5 @@ export interface SettingsResponse {
   lang: Lang;
   autoLang: Lang;
   reducedMotion: MotionSetting;
+  haptics: boolean;
 }

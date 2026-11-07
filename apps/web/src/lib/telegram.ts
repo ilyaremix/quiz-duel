@@ -140,14 +140,25 @@ export function onResume(handler: () => void): () => void {
   };
 }
 
+/** Вибрация включена в настройках игрока (по умолчанию да; приходит в /api/me). */
+let hapticsOn = true;
+export function setHapticsEnabled(on: boolean) {
+  hapticsOn = on;
+}
+
+/** Вызов вибрации: ничего не делает, если игрок её выключил или Telegram её не умеет. */
+function buzz(fn: () => unknown) {
+  if (hapticsOn) safe(fn);
+}
+
 /** Вибрация: лёгкая на выбор ответа, success / error на раскрытии, сильная на победу, тики на последних секундах. */
 export const haptic = {
-  select: () => safe(() => hapticFeedback.impactOccurred.ifAvailable('light')),
-  tick: () => safe(() => hapticFeedback.selectionChanged.ifAvailable()),
-  success: () => safe(() => hapticFeedback.notificationOccurred.ifAvailable('success')),
-  error: () => safe(() => hapticFeedback.notificationOccurred.ifAvailable('error')),
+  select: () => buzz(() => hapticFeedback.impactOccurred.ifAvailable('light')),
+  tick: () => buzz(() => hapticFeedback.selectionChanged.ifAvailable()),
+  success: () => buzz(() => hapticFeedback.notificationOccurred.ifAvailable('success')),
+  error: () => buzz(() => hapticFeedback.notificationOccurred.ifAvailable('error')),
   win: () =>
-    safe(() => {
+    buzz(() => {
       hapticFeedback.notificationOccurred.ifAvailable('success');
       hapticFeedback.impactOccurred.ifAvailable('heavy');
     }),
