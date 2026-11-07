@@ -43,6 +43,7 @@ export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord>; cons
         id: user.id,
         language: 'auto',
         reducedMotion: 'auto',
+        theme: 'auto',
         haptics: true,
         rating: 1000,
         games: 0,

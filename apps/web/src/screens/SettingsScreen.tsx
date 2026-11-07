@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { LangSetting, MeResponse, MotionSetting } from '@quiz-duel/shared';
+import type { ThemeSetting, LangSetting, MeResponse, MotionSetting } from '@quiz-duel/shared';
 import { Ball, BALLS } from '../components/Ball';
 import { Button } from '../components/Button';
 import { Icon, type IconGlyph } from '../components/Icon';
 import { Segmented } from '../components/Segmented';
+import { shop, useWallet } from '../lib/economy';
+import { setThemeSetting, telegramIsDark } from '../lib/telegram';
 import { Sheet } from '../components/Sheet';
 import { Switch } from '../components/Switch';
 import { gameActions } from '../lib/game';
@@ -92,6 +94,13 @@ export function SettingsScreen({ me }: { me: MeResponse }) {
   const langHint = me.language === 'auto' ? t('s20.langAuto', { name: t(`s20.langNames.${me.autoLang}`) }) : t('s20.langFixed');
 
   const autoReduced = useAutoReduced();
+  const [themeAuto, themeLight, themeDark] = t('s20.themeOpts').split('|');
+  const themeOptions: { value: ThemeSetting; label: string }[] = [
+    { value: 'auto', label: themeAuto ?? '' },
+    { value: 'light', label: themeLight ?? '' },
+    { value: 'dark', label: themeDark ?? '' },
+  ];
+  const wallet = useWallet().data;
   const motionOptions: { value: MotionSetting; label: string }[] = [
     { value: 'auto', label: t('s20.auto') },
     { value: 'on', label: t('s20.on') },
@@ -137,6 +146,25 @@ export function SettingsScreen({ me }: { me: MeResponse }) {
           </Group>
         </div>
 
+        <div className="qd-in qd-d1">
+          <Group title={t('s20.theme')}>
+            <div className="qd-card flex flex-col gap-2.5 rounded-[26px] p-3">
+              <Segmented
+                label={t('s20.theme')}
+                options={themeOptions}
+                value={me.theme ?? 'auto'}
+                onPick={(theme) => {
+                  setThemeSetting(theme);
+                  void saveSettings(queryClient, { theme });
+                }}
+              />
+              <p className="m-0 mx-1.5 text-[13px] leading-[1.4] font-medium text-hint">
+                {(me.theme ?? 'auto') === 'auto' ? t('s20.themeAuto', { name: t(`s20.themeNames.${telegramIsDark() ? 'dark' : 'light'}`) }) : t('s20.themeFixed')}
+              </p>
+            </div>
+          </Group>
+        </div>
+
         <div className="qd-in qd-d2">
           <Group title={t('s20.motion')}>
             <div className="qd-card flex flex-col gap-2.5 rounded-[26px] p-3">
@@ -160,6 +188,23 @@ export function SettingsScreen({ me }: { me: MeResponse }) {
             </div>
           </Group>
         </div>
+
+        {wallet && (
+          <div className="qd-in qd-d3">
+            <Group title={t('s20.ads')}>
+              <div className="qd-card flex items-center gap-3 rounded-[26px] py-2.5 pr-2.5 pl-4">
+                <span className="min-w-0 grow text-[14px] leading-[1.35] font-medium" style={{ color: wallet.adFree ? 'var(--qd-correct-text)' : 'var(--tg-theme-hint-color)' }}>
+                  {wallet.adFree ? t('s20.adsOff') : t('s20.adsOn')}
+                </span>
+                {!wallet.adFree && (
+                  <Button variant="secondary" size="s" full={false} icon={<Icon glyph="star" size={17} stroke={2.4} />} onClick={() => shop.openItem({ kind: 'adFree', id: 'adfree' })}>
+                    {t('s20.adsBuy')}
+                  </Button>
+                )}
+              </div>
+            </Group>
+          </div>
+        )}
 
         <button
           type="button"

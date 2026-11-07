@@ -147,9 +147,18 @@ describe('этап 9: вибрация и уведомления - POST /api/set
       lang: 'ru',
       autoLang: 'ru',
       reducedMotion: 'auto',
+      theme: 'auto',
       haptics: true,
       onboarded: false,
     });
+  });
+
+  it('обновление 2.0: тема оформления сохраняется и приходит в /api/me', async () => {
+    const { app } = await makeApp();
+    await me(app);
+    expect((await post(app, { theme: 'light' })).json()).toMatchObject({ theme: 'light' });
+    expect(await me(app)).toMatchObject({ theme: 'light' });
+    expect((await post(app, { theme: 'neon' })).statusCode).toBe(400);
   });
 });
 

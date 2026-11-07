@@ -10,6 +10,9 @@ export const AUTH_SCHEME = 'tma';
 
 export type MotionSetting = 'auto' | 'on' | 'off';
 
+/** Обновление 2.0: тема оформления; auto - как в Telegram. */
+export type ThemeSetting = 'auto' | 'light' | 'dark';
+
 /** Документы, которые игрок принимает перед первой партией. */
 export type ConsentDoc = 'terms' | 'privacy';
 export const CONSENT_DOCS: readonly ConsentDoc[] = ['terms', 'privacy'];
@@ -55,6 +58,7 @@ export interface MeResponse {
   /** Каким был бы язык при «Авто» - по language_code из Telegram (подсказка в настройках). */
   autoLang: Lang;
   reducedMotion: MotionSetting;
+  theme: ThemeSetting;
   /** Вибрация включена (по умолчанию да). */
   haptics: boolean;
   rating: number;
@@ -276,6 +280,7 @@ export interface SettingsRequest {
   language?: LangSetting;
   /** Режим без анимаций: «Авто» (система или слабое устройство), «Вкл», «Выкл». */
   reducedMotion?: MotionSetting;
+  theme?: ThemeSetting;
   haptics?: boolean;
   /** Онбординг пройден (отменить нельзя). */
   onboarded?: true;
@@ -289,6 +294,7 @@ export interface SettingsResponse {
   lang: Lang;
   autoLang: Lang;
   reducedMotion: MotionSetting;
+  theme: ThemeSetting;
   haptics: boolean;
   onboarded: boolean;
 }

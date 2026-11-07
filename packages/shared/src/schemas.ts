@@ -59,6 +59,7 @@ export const SettingsRequestSchema = z
     writeAccess: z.literal(true).optional(),
     language: z.enum(['auto', 'ru', 'en']).optional(),
     reducedMotion: z.enum(['auto', 'on', 'off']).optional(),
+    theme: z.enum(['auto', 'light', 'dark']).optional(),
     haptics: z.boolean().optional(),
     onboarded: z.literal(true).optional(),
   })

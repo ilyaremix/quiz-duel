@@ -7,6 +7,7 @@ import {
   type LangSetting,
   type MeResponse,
   type MotionSetting,
+  type ThemeSetting,
   type PlayerProfile,
   type SettingsResponse,
 } from '@quiz-duel/shared';
@@ -23,6 +24,7 @@ export interface UserRecord {
   tgLanguage: string | null;
   language: LangSetting;
   reducedMotion: MotionSetting;
+  theme: ThemeSetting;
   haptics: boolean;
   rating: number;
   games: number;
@@ -57,6 +59,7 @@ export interface SettingsPatch {
   writeAccess?: boolean;
   language?: LangSetting;
   reducedMotion?: MotionSetting;
+  theme?: ThemeSetting;
   haptics?: boolean;
   onboarded?: boolean;
 }
@@ -68,6 +71,7 @@ export function settingsOf(row: {
   language: LangSetting;
   tgLanguage: string | null;
   reducedMotion: MotionSetting;
+  theme: ThemeSetting;
   haptics: boolean;
   onboarded: boolean;
 }): SettingsResponse {
@@ -78,6 +82,7 @@ export function settingsOf(row: {
     lang: resolveLang(row.language, row.tgLanguage),
     autoLang: langFromTelegram(row.tgLanguage),
     reducedMotion: row.reducedMotion,
+    theme: row.theme,
     haptics: row.haptics,
     onboarded: row.onboarded,
   };
@@ -145,6 +150,7 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
         tgLanguage: row.tgLanguage,
         language: row.language,
         reducedMotion: row.reducedMotion,
+        theme: row.theme,
         haptics: row.haptics,
         rating: row.rating,
         games: row.games,
@@ -202,7 +208,7 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
       if (done.count === 0) return null;
       const row = await prisma.user.findUniqueOrThrow({
         where: { id: BigInt(id) },
-        select: { notifications: true, writeAccess: true, language: true, tgLanguage: true, reducedMotion: true, haptics: true, onboarded: true },
+        select: { notifications: true, writeAccess: true, language: true, tgLanguage: true, reducedMotion: true, theme: true, haptics: true, onboarded: true },
       });
       return settingsOf(row);
     },
@@ -228,6 +234,7 @@ export function toMeResponse(user: UserRecord, docsVersion: string, serverNow = 
     lang: resolveLang(user.language, user.tgLanguage),
     autoLang: langFromTelegram(user.tgLanguage),
     reducedMotion: user.reducedMotion,
+    theme: user.theme,
     haptics: user.haptics,
     rating: user.rating,
     games: user.games,

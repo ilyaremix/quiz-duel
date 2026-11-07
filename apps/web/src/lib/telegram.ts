@@ -24,10 +24,49 @@ export interface TelegramSession {
 /** Фон приложения в стиле C (--qd-bg в styles.css) - им же красим шапку и низ Telegram. */
 const CHROME_BG = { dark: '#070818', light: '#EEF0FA' } as const;
 
+/** Схема из Telegram (или системы вне его) и ручной выбор игрока: «Авто» - как в Telegram. */
+let systemDark = true;
+let themeSetting: 'auto' | 'light' | 'dark' = 'auto';
+const THEME_KEY = 'qd.theme';
+try {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === 'light' || saved === 'dark' || saved === 'auto') themeSetting = saved;
+} catch {
+  // нет хранилища - по Telegram
+}
+let chromeReady = false;
+
+function effectiveDark() {
+  return themeSetting === 'auto' ? systemDark : themeSetting === 'dark';
+}
+
 function applyColorScheme(isDark: boolean) {
+  systemDark = isDark;
+  paint();
+}
+
+function paint() {
+  const dark = effectiveDark();
   const root = document.documentElement;
-  root.classList.toggle('qd-dark', isDark);
-  root.classList.toggle('qd-light', !isDark);
+  root.classList.toggle('qd-dark', dark);
+  root.classList.toggle('qd-light', !dark);
+  if (chromeReady) applyChromeColors(dark);
+}
+
+/** Обновление 2.0: тема оформления из настроек (хранится на сервере, копия - на устройстве против мигания). */
+export function setThemeSetting(setting: 'auto' | 'light' | 'dark') {
+  themeSetting = setting;
+  try {
+    localStorage.setItem(THEME_KEY, setting);
+  } catch {
+    // не страшно
+  }
+  paint();
+}
+
+/** Какая тема в Telegram сейчас (для подсказки «Авто - сейчас тёмная»). */
+export function telegramIsDark() {
+  return systemDark;
 }
 
 /** Шапка, фон под приложением и нижняя панель Telegram - в цвет нашего фона, а не темы Telegram. */
@@ -91,11 +130,9 @@ function setupSdk() {
   applyColorScheme(themeParams.isDark());
 
   miniApp.mount.ifAvailable();
-  applyChromeColors(themeParams.isDark());
-  themeParams.isDark.sub(() => {
-    applyColorScheme(themeParams.isDark());
-    applyChromeColors(themeParams.isDark());
-  });
+  chromeReady = true;
+  applyChromeColors(effectiveDark());
+  themeParams.isDark.sub(() => applyColorScheme(themeParams.isDark()));
 
   // Высота и отступы под вырез и кнопки Telegram в --tg-viewport-*.
   const mounting = viewport.mount.ifAvailable();
