@@ -36,7 +36,7 @@ cd quiz-duel
 cp .env.example .env
 sed -i "s|^WEB_APP_URL=.*|WEB_APP_URL=https://$DOMAIN|" .env
 sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|" .env
-nano .env          # BOT_TOKEN и APP_SHORT_NAME=play
+nano .env          # BOT_TOKEN и APP_SHORT_NAME (короткое имя из /newapp)
 chmod 600 .env
 
 docker compose up -d --build

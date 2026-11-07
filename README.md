@@ -10,13 +10,26 @@ Telegram Mini App: викторина 1 на 1 в реальном времен�
 Как сыграть: откройте бота → «Создать дуэль» → категория → «Пригласить» → отправьте карточку другу.
 Можно и без друга: «Быстрая игра» (случайный соперник по рейтингу) или «Тренировка».
 
+### Проверить за 5 минут, без своего бота
+
+1. **В Telegram**: [@q_battle_bot](https://t.me/q_battle_bot) → «Тренировка» - партия на 10 вопросов без соперника.
+   Дуэль: «Создать дуэль» и откройте ссылку со второго аккаунта (или с телефона и Telegram Desktop) - кто открыл
+   первым, тот соперник; оба «Готов» → 10 вопросов → итоги и «Реванш».
+2. **Сервер живой**: [quiz.aidcrypto.blog/api/health](https://quiz.aidcrypto.blog/api/health) - база, бот
+   (`polling`), время последней резервной копии базы (`backupAgoSec`).
+3. **CI**: [GitHub Actions](https://github.com/ilyaremix/quiz-duel/actions) - на каждый коммит типы, ESLint, Prettier,
+   тесты (с настоящим Postgres), сборка и оба Docker-образа с проверкой на чистой машине.
+4. **Тесты у себя** (Node 22, без бота и базы - тесты на Postgres пропускаются):
+   `npm ci && npm run db:generate && npm run typecheck && npm test`.
+5. **Где что в коде** - таблицы ниже, по каждому пункту ТЗ: файл и тест.
+
 ## Что сделано: исходное ТЗ
 
 | # | Пункт ТЗ | | Где в коде | Тесты |
 |---|---|:---:|---|---|
 | 1 | Игрок создаёт игру, получает ссылку и кидает её в чат. Ссылка сразу открывает эту игру | ✅ | Ссылка `t.me/q_battle_bot/QuizDuel?startapp=g_<id>` - [`links.ts`](packages/shared/src/links.ts); `GameManager.create` - [`manager.ts`](apps/server/src/game/manager.ts); карточка «Вызов на дуэль» для `shareMessage` - [`bot/index.ts`](apps/server/src/bot/index.ts); вход по `start_param` - [`App.tsx`](apps/web/src/App.tsx) | [`manager.test.ts`](apps/server/test/manager.test.ts) «создание и ссылка», [`socket.test.ts`](apps/server/test/socket.test.ts) «создание → вход по ссылке → «Готов» у обоих» |
 | 2 | Кто первым перешёл по ссылке, тот и соперник. Партия начинается, когда оба нажали «Готов» | ✅ | `join` и `setReady` в машине состояний - [`machine.ts`](apps/server/src/game/machine.ts); все изменения партии идут по очереди - `manager.ts` | `manager.test.ts` «двое открыли ссылку одновременно», «третий открыл ссылку», «оба готовы - отсчёт» |
-| 3 | 10 вопросов, на каждый 15 секунд и 4 варианта. Вопросы у обоих одинаковые, база из 100 вопросов | ✅ | [`data/questions.json`](data/questions.json) (100 вопросов RU/EN), подбор - [`picker.ts`](apps/server/src/game/picker.ts), тайминги - [`scoring.ts`](packages/shared/src/scoring.ts) | [`questions.test.ts`](packages/shared/test/questions.test.ts), [`picker.test.ts`](apps/server/test/picker.test.ts), [`machine.test.ts`](apps/server/test/machine.test.ts) «полная партия» |
+| 3 | 10 вопросов, на каждый 15 секунд и 4 варианта. Вопросы у обоих одинаковые, база из 100 вопросов | ✅ | [`data/questions.json`](data/questions.json) (180 вопросов RU/EN: 100 в 5 темах ТЗ и 80 в платных темах 2.0), подбор - [`picker.ts`](apps/server/src/game/picker.ts), тайминги - [`scoring.ts`](packages/shared/src/scoring.ts) | [`questions.test.ts`](packages/shared/test/questions.test.ts), [`picker.test.ts`](apps/server/test/picker.test.ts), [`machine.test.ts`](apps/server/test/machine.test.ts) «полная партия» |
 | 4 | За верный ответ очки: чем быстрее, тем больше | ✅ | `pointsFor` - [`scoring.ts`](packages/shared/src/scoring.ts): `500 + 500 × (осталось / 15 с)`; время считает сервер | [`scoring.test.ts`](packages/shared/test/scoring.test.ts), `machine.test.ts` «время ответа считает сервер» |
 | 5 | Следующий вопрос - когда ответили оба или вышло время. После каждого вопроса оба видят верный ответ и счёт | ✅ | `closeQuestion` - `machine.ts`; снимок без верного ответа до раскрытия - [`view.ts`](apps/server/src/game/view.ts); экраны 9-11 - [`QuestionScreen.tsx`](apps/web/src/screens/QuestionScreen.tsx) | `manager.test.ts` «ответили оба - вопрос сразу закрывается», «никто не ответил»; `machine.test.ts` «верный ответ не уходит на клиент» |
 | 6 | Можно свернуть или закрыть приложение и вернуться в ту же партию | ✅ | `session:hello.currentGameId` - [`socket.ts`](apps/server/src/socket.ts); переподключение и `wake()` - [`lib/game.ts`](apps/web/src/lib/game.ts); партии из базы после перезапуска - `GameManager.restore` | [`reliability.test.ts`](apps/server/test/reliability.test.ts) - 8 сценариев с двумя настоящими клиентами |
@@ -39,6 +52,7 @@ Telegram Mini App: викторина 1 на 1 в реальном времен�
   safe area, аватарки из Telegram или инициалы.
 - **Каждый экран продуман целиком**: загрузка, пустое состояние, ошибка с «Повторить», «нет сети».
 - **Автодеплой**: сервер сам выкатывает каждый коммит в `main` с зелёным CI ([`deploy/autodeploy.sh`](deploy/autodeploy.sh)).
+  **Резервные копии базы** - каждый день, хранятся 14 дней ([`deploy/backup.sh`](deploy/backup.sh)).
 
 Подробно, как устроена каждая часть: [docs/DETAILS.md](docs/DETAILS.md).
 
@@ -90,6 +104,7 @@ flowchart LR
     end
     GM --> P[("PostgreSQL<br/>снимок каждой партии,<br/>ответы, рейтинг")]
     F --> P
+    BK["backup<br/>pg_dump раз в сутки"] --> P
   end
   A --> C
   B --> C
@@ -119,7 +134,7 @@ apps/server/           Fastify + Socket.IO + бот
   src/bot/             карточки, inline-режим, уведомления
   prisma/              схема и миграции
 packages/shared/       типы событий, zod-схемы, очки, Эло, ачивки, часы, язык
-data/questions.json    100 вопросов RU/EN
+data/questions.json    180 вопросов RU/EN (5 тем ТЗ + 4 платные)
 deploy/, docs/         автодеплой, блок Caddyfile, DEPLOY.md, DETAILS.md
 ```
 
@@ -200,7 +215,13 @@ stateDiagram-v2
   профиль соперника - только того, с кем играли; разбор - только участникам.
 - **Каждое событие сокета** проверяется строгой zod-схемой ([`schemas.ts`](packages/shared/src/schemas.ts)): лишние поля и
   неверные типы - отказ `invalid`, сервер не падает.
-- **Лимиты**: 10 новых игр в минуту, реакции раз в 2 с, 30 событий за 10 с на подключение, 120 REST-запросов в минуту.
+- **Лимиты**: 10 новых игр в минуту, реакции раз в 2 с, 30 событий сокета за 10 с на игрока (общие для всех его
+  подключений - переподключение счёт не сбрасывает), 20 подключений в минуту, 120 REST-запросов и 300 событий
+  аналитики в минуту.
+- **Бан** из админки: 403 на маршрутах монет, магазина, рекламы, оплаты, друзей и аналитики (проверка по маршруту,
+  а не по строке адреса), новые партии сервер не начинает.
+- **Заголовки** ([`Caddyfile`](apps/web/Caddyfile)): CSP (скрипты, стили и запросы - только свой домен), во фрейме
+  мини-апп открывает только web.telegram.org, HSTS, Permissions-Policy. Контейнеры сервера и Caddy - не от root.
 - **Секреты** только в `.env` (в репозитории - [`.env.example`](.env.example)). CORS - только домен мини-аппа.
   `X-Forwarded-For` берётся только от своего Caddy. Наружу открыт только Caddy, сервер и база - внутри docker-сети.
 
@@ -243,8 +264,9 @@ stateDiagram-v2
 - **Главная кнопка - своя, а не нативная `MainButton`.** Так решили в прототипе: объёмная кнопка в стиле игры,
   одинаковая на iOS, Android и Desktop. Остальное нативное: BackButton, вибрация, тема, запрет свайпа во время партии.
 
-**Мелкие решения**: 3 лёгких + 4 средних + 3 сложных в любой категории, по возрастанию; в «Миксе» не больше 2 вопросов
-из одной темы; сначала вопросы, которых не видел ни один из игроков. Лобби живёт 15 минут с последнего действия.
+**Мелкие решения**: 3 лёгких + 4 средних + 3 сложных в любой категории, по возрастанию; в «Миксе» дуэли каждый выбирает
+тему из трёх выпавших, и вопросы поровну из двух выбранных, в «Миксе» тренировки - не больше 2 вопросов из одной темы;
+сначала вопросы, которых не видел ни один из игроков. Лобби живёт 15 минут с последнего действия.
 Документы - страницы Telegraph, открываются через Instant View; поменяли текст - подняли `DOCS_VERSION`, и игроки снова видят галочки
 (кто уже проходил онбординг - один экран «Мы обновили документы»). Ссылки на документы есть и внизу «Настроек», и у бота - `/terms`.
 Помощь с оплатой звёздами - `/paysupport` (её требуют правила Telegram Stars).
@@ -258,8 +280,8 @@ cp .env.example .env      # BOT_TOKEN, APP_SHORT_NAME, WEB_APP_URL, POSTGRES_PAS
 docker compose up -d --build
 ```
 
-Поднимутся `postgres`, `server` (API, сокет, бот; миграции и 100 вопросов заливаются при старте) и `web`
-на http://127.0.0.1:3080. Вне Telegram там заглушка «Откройте в Telegram». Чтобы открыть в Telegram,
+Поднимутся `postgres`, `server` (API, сокет, бот; миграции и 180 вопросов заливаются при старте), `web`
+на http://127.0.0.1:3080 и `backup` (копии базы в папку `backups`). Вне Telegram там заглушка «Откройте в Telegram». Чтобы открыть в Telegram,
 нужен HTTPS-туннель:
 
 ```bash
@@ -287,24 +309,29 @@ npm run dev:web      # мини-апп на :5173, /api и /socket.io прокс
 ```bash
 npm ci && npm run db:generate
 npm run typecheck
+npm run lint            # ESLint: TypeScript и правила хуков React
+npm run format:check    # Prettier
 npm test
 ```
 
-339 тестов на Vitest. Тесты на настоящем Postgres (`settle.db.test.ts`) включаются переменной `TEST_DATABASE_URL`,
-база при этом очищается; без неё они пропускаются. В CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) они идут
-всегда: сервис postgres, миграции, проверка типов, тесты и сборка на каждый push. Сервер выкатывает только коммиты с зелёным CI.
+434 теста на Vitest (shared 77, сервер 340, мини-апп 17). Тесты на настоящем Postgres (`*.db.test.ts`) включаются
+переменной `TEST_DATABASE_URL`, база при этом очищается; без неё они пропускаются. В CI
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) они идут всегда: сервис postgres, миграции, типы, ESLint, Prettier,
+тесты и сборка на каждый push. Второе задание CI собирает оба Docker-образа и поднимает `docker compose` на чистой машине:
+миграции на пустой базе, первая резервная копия, `/api/health` через Caddy, заголовки и кэш
+([`deploy/smoke.sh`](deploy/smoke.sh)). Сервер выкатывает только коммиты с зелёным CI.
 
 | Что | Где |
 |---|---|
 | Формула очков (границы 0 с, 15 с, допуск), Эло (победа, ничья, K новичка), часы клиента, язык | `packages/shared/test` |
 | Условия всех 12 ачивок | [`achievements.test.ts`](packages/shared/test/achievements.test.ts) |
-| База вопросов: ровно 100, по 20 на категорию, 6/8/6 по сложности, 4 разных варианта на обоих языках, без дублей | `packages/shared/test/questions.test.ts`, `apps/server/test/questions.test.ts` |
+| База вопросов: 180, 9 тем по 20, 6/8/6 по сложности, 4 разных варианта на обоих языках, без дублей | `packages/shared/test/questions.test.ts`, `apps/server/test/questions.test.ts` |
 | Все переходы машины состояний с фейковым временем + 500 случайных партий с проверкой инвариантов | `machine.test.ts`, [`machine.fuzz.test.ts`](apps/server/test/machine.fuzz.test.ts) |
 | Менеджер партий: очередь, таймеры, лобби, ответы, сдача, перезапуск | `manager.test.ts` |
 | Два настоящих клиента `socket.io-client`: полная партия, одновременный вход, отключение и возврат, техпобеда через 30 с, сдача, реванш (и взаимный), поддельный initData, перезапуск сервера | `socket.test.ts`, `reliability.test.ts`, `rematch.socket.test.ts` и другие `*.socket.test.ts` |
 | Транзакция итогов на настоящем Postgres: повтор, гонка двух партий, откат при сбое; журнал согласий; уникальный индекс ответов | `settle.db.test.ts` |
-| REST и initData: подпись, свежесть, подмена полей, CORS, согласия, настройки | `http.test.ts`, `initData.test.ts`, `settings.test.ts` |
-| Мини-апп: ключи `ru.json` и `en.json` совпадают, в компонентах нет захардкоженных строк, у каждой анимации есть правило «без анимаций» | `apps/web/test` |
+| REST и initData: подпись, свежесть, подмена полей, CORS, согласия, настройки; бан и лимиты (обход через `?x` и переподключения) | `http.test.ts`, `initData.test.ts`, `settings.test.ts`, `admin.http.test.ts`, `limits.socket.test.ts` |
+| Мини-апп: ключи `ru.json` и `en.json` совпадают, в компонентах нет захардкоженных строк, у каждой анимации есть правило «без анимаций», бесконечные анимации - только `transform` и `opacity`; словарь качается с повторами; вход по ссылке ждёт профиль | `apps/web/test` |
 
 Время в сокет-тестах идёт по «перематываемым» часам ([`jumpClock.ts`](apps/server/test/jumpClock.ts)): 30 секунд ожидания
 и 15 минут жизни лобби проходят мгновенно. Перед сдачей - ручная проверка на iOS, Android и Telegram Desktop
