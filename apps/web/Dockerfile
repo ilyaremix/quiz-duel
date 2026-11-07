@@ -13,7 +13,11 @@ COPY packages/shared packages/shared
 COPY apps/web apps/web
 RUN npm run build -w @quiz-duel/web
 
-# 2. Caddy отдаёт статику и проксирует /api и /socket.io на server
+# 2. Caddy отдаёт статику и проксирует /api и /socket.io на server.
+# Не от root: свой пользователь без прав (данные Caddy - в /data и /config), порт 8080.
 FROM caddy:2-alpine
+RUN addgroup -S -g 10001 web && adduser -S -D -H -u 10001 -G web web && chown -R web:web /data /config
 COPY apps/web/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/apps/web/dist /srv
+USER web
+EXPOSE 8080

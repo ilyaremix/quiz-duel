@@ -40,3 +40,30 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  # То же, что соберёт и запустит автодеплой, на чистой машине: оба образа, миграции на пустой базе,
+  # Caddy (не от root) с заголовками безопасности и кэшем. Сломанная сборка Docker - красный CI,
+  # и такой коммит на сервер не попадёт.
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: .env for CI
+        run: |
+          cat > .env <<'ENV'
+          BOT_TOKEN=1234567890:ci-test-token-not-a-real-bot-0000
+          APP_SHORT_NAME=play
+          WEB_APP_URL=https://quiz.example.com
+          POSTGRES_PASSWORD=ci
+          WEB_PORT=3080
+          BOT_ENABLED=false
+          ENV
+      - name: Caddyfile
+        run: docker run --rm -v "$PWD/apps/web/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Build and start (docker compose)
+        run: docker compose up -d --build --wait --wait-timeout 240
+      - name: Smoke test
+        run: deploy/smoke-web.sh http://127.0.0.1:3080 quiz-duel-web-1
+      - name: Logs
+        if: failure()
+        run: docker compose logs --tail 80

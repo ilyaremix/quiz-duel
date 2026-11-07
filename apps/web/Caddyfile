@@ -1,5 +1,6 @@
 # Caddy внутри контейнера web: отдаёт статику мини-аппа и проксирует API и сокет
 # на контейнер server. HTTPS здесь не нужен - его даёт Caddy на самом сервере.
+# Работает не от root, поэтому слушает 8080 (порты ниже 1024 - только для root).
 {
 	admin off
 	servers {
@@ -9,8 +10,22 @@
 	}
 }
 
-:80 {
+:8080 {
 	encode zstd gzip
+
+	# Заголовки безопасности - на все ответы.
+	# CSP: скрипты, стили, шрифты и запросы - только свой домен (сокет - wss на нём же);
+	# аватарки Telegram приходят с его серверов (https). Встраивать мини-апп во фрейм может
+	# только веб-версия Telegram (web.telegram.org), поэтому X-Frame-Options: DENY здесь нельзя.
+	# Стили inline разрешены: React задаёт style у элементов.
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; font-src 'self'; connect-src 'self' wss://{host}; frame-ancestors https://web.telegram.org https://*.telegram.org; base-uri 'self'; form-action 'self'; object-src 'none'"
+		Strict-Transport-Security "max-age=31536000"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
 
 	handle /api/* {
 		reverse_proxy server:3000
@@ -20,21 +35,24 @@
 		reverse_proxy server:3000
 	}
 
+	# Файлы сборки с хэшем в имени - кэш навсегда. Нет такого файла (старая версия
+	# после выкатки) - честный 404, а не страница приложения вместо скрипта.
+	handle /assets/* {
+		root * /srv
+		@exists file
+		header @exists Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
 	handle {
 		root * /srv
 
-		# Файлы сборки с хэшем в имени кэшируем навсегда, index.html - никогда:
-		# иначе Telegram покажет старую версию после деплоя.
-		@hashed path /assets/*
-		header @hashed Cache-Control "public, max-age=31536000, immutable"
-		@html not path /assets/*
-		header @html Cache-Control "no-cache"
-
-		header {
-			X-Content-Type-Options nosniff
-			Referrer-Policy strict-origin-when-cross-origin
-			-Server
-		}
+		# Ролики бота и рекламы, картинка для истории: имена без хэша, меняются редко - кэш на сутки.
+		@media path /bot/* /ads/* /story.jpg
+		header @media Cache-Control "public, max-age=86400"
+		# Страница - никогда из кэша: иначе Telegram покажет старую версию после выкатки.
+		@page not path /bot/* /ads/* /story.jpg
+		header @page Cache-Control "no-cache"
 
 		try_files {path} /index.html
 		file_server
