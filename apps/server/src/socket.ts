@@ -4,6 +4,7 @@ import type { z } from 'zod';
 import {
   AnswerPayloadSchema,
   CreateGamePayloadSchema,
+  DraftPayloadSchema,
   EmptyPayloadSchema,
   GameIdPayloadSchema,
   ReadyPayloadSchema,
@@ -174,6 +175,7 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
       });
       on('solo:start', CreateGamePayloadSchema, (p) => games.soloStart(userId, p.category as GameCategory));
       on('game:join', GameIdPayloadSchema, (p) => games.join(userId, p.gameId));
+      on('game:draft', DraftPayloadSchema, (p) => games.draft(userId, p.gameId, p.category));
       on('game:sync', SyncPayloadSchema, (p) => games.sync(userId, p.gameId));
       on('game:invite', GameIdPayloadSchema, (p) => games.invite(userId, p.gameId));
       on('game:ready', ReadyPayloadSchema, (p) => games.ready(userId, p.gameId, p.ready));

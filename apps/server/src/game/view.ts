@@ -1,6 +1,7 @@
 import {
   OPEN_PHASES,
   TIMINGS,
+  type DraftView,
   type GameResultView,
   type GameView,
   type Lang,
@@ -13,6 +14,21 @@ import {
 import type { QuestionBank } from '../questions/bank.js';
 import { isGone, limitMs, livesLeft, otherOf, outcomeFor, playerOf, rematchAvailable, rulesOf, type GameState, type PlayerState } from './machine.js';
 import { isDoubled } from '@quiz-duel/shared';
+
+/** Выбор темы в «Миксе» глазами игрока: тему соперника видно только после показа. */
+function draftFor(state: GameState, me: PlayerState): DraftView | null {
+  if (!state.draft || state.phase !== 'draft') return null;
+  const mine = state.draft.players.find((p) => p.userId === me.userId);
+  const opp = state.draft.players.find((p) => p.userId !== me.userId);
+  if (!mine) return null;
+  return {
+    offers: mine.offers,
+    myPick: mine.pick,
+    oppPicked: Boolean(opp?.pick),
+    revealed: state.draft.revealed,
+    oppPick: state.draft.revealed ? (opp?.pick ?? null) : null,
+  };
+}
 
 /** Карточка игрока по id; нет данных - нейтральная заглушка (имя покажется инициалом «?»). */
 export type ProfileLookup = (userId: number) => PlayerProfile | undefined;
@@ -155,6 +171,7 @@ export function viewFor(
     opponentAnswered: state.phase === 'question' && Boolean(opp?.answers[i]),
     reveal,
     rules: rulesOf(state),
+    draft: draftFor(state, me),
     result: resultFor(state, me),
     cancelReason: state.cancelReason,
     rematchOf: state.rematchOf,

@@ -11,6 +11,8 @@
 import {
   ACTIVE_PHASES,
   DEFAULT_RULES,
+  DRAFT,
+  type Category,
   FINAL_PHASES,
   isAnswerInTime,
   isDoubled,
@@ -109,6 +111,8 @@ export interface GameState {
   soloBest?: number | null;
   /** Режим, время на ответ и число вопросов (у партий до обновления 2.0 нет - значит по умолчанию). */
   rules?: GameRules;
+  /** «Микс»: выбор темы перед партией. */
+  draft?: DraftState | null;
   rev: number;
 }
 
@@ -118,6 +122,17 @@ export interface MachineDeps {
   correctOf: (questionId: string) => number;
   /** 10 вопросов партии (сервер учитывает, что видели оба игрока). */
   pickQuestions: (state: GameState) => GameQuestion[];
+  /**
+   * Обновление 2.0: выбор темы в «Миксе» - по 3 темы каждому (в порядке участников).
+   * Нет функции - «Микс» начинается сразу, без выбора.
+   */
+  draftOffers?: (state: GameState) => Category[][];
+}
+
+/** Выбор темы в «Миксе»: что выпало каждому и что он выбрал. */
+export interface DraftState {
+  players: { userId: number; offers: Category[]; pick: Category | null }[];
+  revealed: boolean;
 }
 
 export type GameEvent =
@@ -125,6 +140,9 @@ export type GameEvent =
   | { type: 'seatFreed'; userId: number }
   | { type: 'ready'; userId: number; ready: boolean }
   | { type: 'countdown' }
+  | { type: 'draft' }
+  | { type: 'draftPicked'; userId: number }
+  | { type: 'draftRevealed' }
   | { type: 'question'; index: number }
   | { type: 'opponentAnswered'; userId: number; index: number }
   | { type: 'reveal'; index: number }
@@ -227,7 +245,7 @@ export function createGame(params: CreateParams, now: number, deps: MachineDeps)
     state.lobbyExpiresAt = null;
     startQuestion(state, 0, now, []);
   } else if (params.startNow && state.opponent) {
-    startCountdown(state, now, deps, []);
+    beginMatch(state, now, deps, []);
   }
   return state;
 }
@@ -280,7 +298,7 @@ export function setReady(prev: GameState, userId: number, ready: boolean, now: n
     state.phaseEndsAt = null;
     clearGrace(state);
   } else if (state.opponent && state.creator.ready && state.opponent.ready) {
-    startCountdown(state, now, deps, events);
+    beginMatch(state, now, deps, events);
   }
   return done(state, events);
 }
@@ -502,6 +520,15 @@ function deadlines(state: GameState): Deadline[] {
     }
   }
 
+  if (phase === 'draft') {
+    const at = state.phaseEndsAt!;
+    list.push({
+      at,
+      // После выбора - сразу экран VS с 3-2-1 (лобби игроки уже видели).
+      apply: (s, ev, d) => (s.draft?.revealed ? startCountdown(s, at, d, ev, TIMINGS.vsMs) : revealDraft(s, at, ev)),
+    });
+  }
+
   if (phase === 'countdown') {
     const at = state.phaseEndsAt!;
     list.push({ at, apply: (s, ev) => startQuestion(s, 0, at, ev) });
@@ -550,11 +577,56 @@ function deadlines(state: GameState): Deadline[] {
 // ---------------------------------------------------------------------------
 // Переходы (меняют уже склонированное состояние)
 
-function startCountdown(state: GameState, now: number, deps: MachineDeps, events: GameEvent[]) {
+/** Оба готовы: «Микс» на двоих - сначала выбор темы, иначе сразу отсчёт. */
+function beginMatch(state: GameState, now: number, deps: MachineDeps, events: GameEvent[]) {
+  if (deps.draftOffers && state.category === 'mix' && state.mode !== 'solo' && state.opponent) startDraft(state, now, deps, events);
+  else startCountdown(state, now, deps, events);
+}
+
+function startDraft(state: GameState, now: number, deps: MachineDeps, events: GameEvent[]) {
+  const offers = deps.draftOffers!(state);
+  state.draft = { players: participants(state).map((p, i) => ({ userId: p.userId, offers: offers[i] ?? [], pick: null })), revealed: false };
+  state.phase = 'draft';
+  state.phaseEndsAt = now + DRAFT.pickMs;
+  state.lobbyExpiresAt = null;
+  refreshGrace(state, now);
+  events.push({ type: 'draft' });
+}
+
+/** Темы выбраны (или вышло время - у кого нет выбора, берётся первая выпавшая): показываем обе. */
+function revealDraft(state: GameState, at: number, events: GameEvent[]) {
+  for (const p of state.draft!.players) p.pick ??= p.offers[0] ?? null;
+  state.draft!.revealed = true;
+  state.phaseEndsAt = at + DRAFT.revealMs;
+  events.push({ type: 'draftRevealed' });
+}
+
+/** Выбор темы из трёх выпавших. Оба выбрали - сразу показ тем. */
+export function pickTopic(prev: GameState, userId: number, category: Category, now: number): Step {
+  if (!playerOf(prev, userId)) return fail('not_participant');
+  if (prev.phase !== 'draft' || !prev.draft || prev.draft.revealed) return fail('wrong_phase');
+  const mine = prev.draft.players.find((p) => p.userId === userId);
+  if (!mine) return fail('not_participant');
+  if (!mine.offers.includes(category)) return fail('bad_option');
+  if (mine.pick) return fail('already_answered');
+  const state = clone(prev);
+  state.draft!.players.find((p) => p.userId === userId)!.pick = category;
+  const events: GameEvent[] = [{ type: 'draftPicked', userId }];
+  if (state.draft!.players.every((p) => p.pick)) revealDraft(state, now, events);
+  return done(state, events);
+}
+
+/** Темы вопросов партии: выбранные в «Миксе» (одна или две разные); null - выбора не было. */
+export function draftTopics(state: GameState): Category[] | null {
+  const picks = state.draft?.players.map((p) => p.pick).filter((c): c is Category => Boolean(c));
+  return picks && picks.length ? [...new Set(picks)] : null;
+}
+
+function startCountdown(state: GameState, now: number, deps: MachineDeps, events: GameEvent[], durationMs: number = TIMINGS.countdownMs) {
   state.questions = deps.pickQuestions(state);
   if (state.questions.length !== rulesOf(state).count) throw new Error(`в партии должно быть ${rulesOf(state).count} вопросов`);
   state.phase = 'countdown';
-  state.phaseEndsAt = now + TIMINGS.countdownMs;
+  state.phaseEndsAt = now + durationMs;
   state.lobbyExpiresAt = null;
   refreshGrace(state, now);
   events.push({ type: 'countdown' });

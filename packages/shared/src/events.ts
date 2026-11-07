@@ -4,7 +4,7 @@
  * Этап 1: приветствие и часы. Этап 4: лобби. Этап 5: ответы и сдача. Этап 7: реванш.
  */
 import type { GameRules, GameView, PlayerProfile, Reaction } from './game.js';
-import type { GameCategory } from './categories.js';
+import type { Category, GameCategory } from './categories.js';
 import type { PlayerBrief } from './api.js';
 
 export interface SessionHello {
@@ -80,6 +80,11 @@ export interface CreateGamePayload {
   category: GameCategory;
   /** Режим и настройки (по умолчанию - Классика, 10 вопросов по 15 с). */
   rules?: GameRules;
+}
+
+export interface DraftPayload {
+  gameId: string;
+  category: Category;
 }
 
 export interface GameIdPayload {
@@ -224,6 +229,8 @@ export interface ClientToServerEvents {
   'game:leave': (payload: GameIdPayload, ack: AckFn) => void;
   /** Ответ на текущий вопрос. Время и очки считает сервер. */
   'game:answer': (payload: AnswerPayload, ack: AckFn<AnswerResult>) => void;
+  /** Микс: выбор темы из трёх выпавших. */
+  'game:draft': (payload: DraftPayload, ack: AckFn<GameResult>) => void;
   /** Быстрая игра: встать в очередь (повторный вызов - та же очередь, тот же since). */
   'queue:join': (payload: Record<string, never>, ack: AckFn<QueueJoined>) => void;
   /** Быстрая игра: «Отмена». */

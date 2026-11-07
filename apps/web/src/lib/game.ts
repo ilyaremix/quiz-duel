@@ -13,6 +13,7 @@ import {
   TIMINGS,
   type ClientToServerEvents,
   type FriendInviteEvent,
+  type Category,
   type GameCategory,
   type GameRules,
   type GameErrorCode,
@@ -761,6 +762,16 @@ export const gameActions = {
    * снимается. Нет ответа (обрыв связи) - после переподключения выбор уходит ещё раз
    * (reconcilePick), сервер примет только первый.
    */
+  /** «Микс»: выбор темы из трёх выпавших. */
+  async draft(category: Category) {
+    const g = get().game;
+    if (!g || g.phase !== 'draft') return;
+    haptic.select();
+    const res = await request('game:draft', { gameId: g.id, category }, 'game:draft');
+    if (res.ok) applyView(res.game);
+    else if (res.error === 'internal' || res.error === 'rate_limited') showToast('error', 'toast.connection');
+  },
+
   async answer(position: number) {
     const g = get().game;
     const q = g?.question;

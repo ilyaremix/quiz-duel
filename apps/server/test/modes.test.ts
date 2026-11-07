@@ -3,11 +3,11 @@
  * (досрочный конец, у кого кончились жизни - тот проиграл), «Финал ×2», рейтинг только в «Классике».
  */
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_RULES, TIMINGS, pointsFor, type GameRules } from '@quiz-duel/shared';
+import { DEFAULT_RULES, DRAFT, TIMINGS, pointsFor, type GameRules } from '@quiz-duel/shared';
 import { loadQuestionBank } from '../src/questions/bank.js';
 import { pickQuestions, splitFor } from '../src/game/picker.js';
 import { seededRng } from '../src/game/rng.js';
-import { answer, createGame, livesLeft, setReady, tick, join, rulesOf, type GameState, type MachineDeps, type Step } from '../src/game/machine.js';
+import { answer, createGame, draftTopics, forfeit, livesLeft, pickTopic, setReady, tick, join, rulesOf, type GameState, type MachineDeps, type Step } from '../src/game/machine.js';
 import { computeSettlement, settleInput } from '../src/game/settle.js';
 import { memoryPlayer } from '../src/game/repo.js';
 import { viewFor } from '../src/game/view.js';
@@ -168,5 +168,63 @@ describe('«Финал ×2» и рейтинг', () => {
     // Статистика при этом идёт: партия и победа засчитаны.
     expect(fa.totals.games).toBe(1);
     expect(fa.totals.wins).toBe(1);
+  });
+});
+
+describe('«Микс»: выбор темы', () => {
+  const offers: MachineDeps['draftOffers'] = () => [
+    ['science', 'history', 'sport'],
+    ['tech', 'culture', 'science'],
+  ];
+  const dd: MachineDeps = {
+    ...deps,
+    draftOffers: offers,
+    pickQuestions: (s) => pickQuestions({ bank, category: s.category, rng: seededRng(3), count: rulesOf(s).count, topics: draftTopics(s) ?? undefined }),
+  };
+  const ready = (rules: GameRules = DEFAULT_RULES, category: 'mix' | 'sport' = 'mix') => {
+    let s = createGame({ id: 'd1', mode: 'link', category, creatorId: A, rules }, T0, dd);
+    s = ok(join(s, B, T0 + 1000));
+    s = ok(setReady(s, A, true, T0 + 2000, dd));
+    return ok(setReady(s, B, true, T0 + 3000, dd));
+  };
+  const catOf = (s: GameState) => s.questions.map((q) => bank.byId.get(q.id)!.category);
+
+  it('по 3 темы каждому, оба выбрали - показ тем, потом сразу VS и вопросы поровну', () => {
+    let s = ready();
+    const now = T0 + 3000;
+    expect(s.phase).toBe('draft');
+    expect(s.phaseEndsAt).toBe(now + DRAFT.pickMs);
+    expect(viewFor(s, A, 'ru', bank, now)!.draft).toEqual({ offers: ['science', 'history', 'sport'], myPick: null, oppPicked: false, revealed: false, oppPick: null });
+    expect(pickTopic(s, A, 'tech', now + 500)).toEqual({ ok: false, error: 'bad_option' });
+    s = ok(pickTopic(s, A, 'history', now + 1000));
+    expect(pickTopic(s, A, 'science', now + 1100)).toEqual({ ok: false, error: 'already_answered' });
+    expect(viewFor(s, B, 'ru', bank, now + 1000)!.draft).toMatchObject({ oppPicked: true, oppPick: null });
+    s = ok(pickTopic(s, B, 'tech', now + 2000));
+    expect(s.draft!.revealed).toBe(true);
+    expect(viewFor(s, A, 'ru', bank, now + 2000)!.draft).toMatchObject({ myPick: 'history', oppPick: 'tech', revealed: true });
+    s = ok(tick(s, now + 2000 + DRAFT.revealMs, dd));
+    expect(s.phase).toBe('countdown');
+    expect(s.phaseEndsAt).toBe(now + 2000 + DRAFT.revealMs + TIMINGS.vsMs);
+    const cats = catOf(s);
+    expect(cats.filter((c) => c === 'history')).toHaveLength(5);
+    expect(cats.filter((c) => c === 'tech')).toHaveLength(5);
+  });
+
+  it('не успел - тема выберется сама; одна тема на двоих - все вопросы из неё', () => {
+    let s = ready({ variant: 'classic', timeSec: 15, count: 5 });
+    s = ok(pickTopic(s, B, 'science', T0 + 4000));
+    s = ok(tick(s, T0 + 3000 + DRAFT.pickMs, dd));
+    expect(s.draft).toMatchObject({ revealed: true });
+    expect(s.draft!.players.find((p) => p.userId === A)!.pick).toBe('science');
+    s = ok(tick(s, T0 + 3000 + DRAFT.pickMs + DRAFT.revealMs, dd));
+    expect(new Set(catOf(s))).toEqual(new Set(['science']));
+    expect(s.questions).toHaveLength(5);
+  });
+
+  it('одна тема (не «Микс») - без выбора; выход во время выбора - техническая победа соперника', () => {
+    expect(ready(DEFAULT_RULES, 'sport').phase).toBe('countdown');
+    const s = ready();
+    const left = ok(forfeit(s, A, T0 + 4000));
+    expect(left.finish).toMatchObject({ reason: 'forfeit', winnerId: B });
   });
 });

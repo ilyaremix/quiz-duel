@@ -5,7 +5,7 @@
 import { z } from 'zod';
 import { CONSENT_DOCS, type ConsentDoc } from './api.js';
 import { GAME_ID_RE } from './links.js';
-import { GAME_CATEGORIES, type GameCategory } from './categories.js';
+import { CATEGORIES, GAME_CATEGORIES, type GameCategory } from './categories.js';
 import { COUNT_OPTIONS, MAX_QUESTIONS, TIME_OPTIONS, VARIANTS, type Reaction } from './game.js';
 import { ALL_REACTIONS, PREMIUM_TOPICS, STARS_PRODUCTS, type PremiumTopic, type StarsProduct } from './economy.js';
 
@@ -38,6 +38,8 @@ export const AnswerPayloadSchema = z.strictObject({
 });
 
 export const ReadyPayloadSchema = z.strictObject({ gameId, ready: z.boolean() });
+
+export const DraftPayloadSchema = z.strictObject({ gameId, category: z.enum(CATEGORIES) });
 
 export const ReactPayloadSchema = z.strictObject({ gameId, emoji: z.enum(ALL_REACTIONS as unknown as Tuple<Reaction>) });
 

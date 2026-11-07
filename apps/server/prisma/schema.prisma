@@ -173,6 +173,8 @@ enum GameMode {
 enum GamePhase {
   waiting
   lobby
+  /// Обновление 2.0: «Микс» - выбор темы перед отсчётом
+  draft
   countdown
   question
   reveal

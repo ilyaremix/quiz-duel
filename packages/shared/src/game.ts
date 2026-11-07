@@ -9,7 +9,7 @@ import type { Category, GameCategory } from './categories.js';
  * Отдельно: expired (лобби истекло) и cancelled (отмена создателем, выход из тренировки
  * или никто не дал ни одного ответа).
  */
-export type GamePhase = 'waiting' | 'lobby' | 'countdown' | 'question' | 'reveal' | 'finished' | 'expired' | 'cancelled';
+export type GamePhase = 'waiting' | 'lobby' | 'draft' | 'countdown' | 'question' | 'reveal' | 'finished' | 'expired' | 'cancelled';
 
 /** link - дуэль по ссылке, quick - быстрая игра, rematch - реванш, solo - тренировка. */
 export type GameMode = 'link' | 'quick' | 'rematch' | 'solo';
@@ -20,7 +20,7 @@ export type FinishReason = 'completed' | 'forfeit' | 'abandoned';
 /** creator - создатель отменил, left - вышли из тренировки, no_answers - никто ни разу не ответил. */
 export type CancelReason = 'creator' | 'left' | 'no_answers';
 
-export const ACTIVE_PHASES: readonly GamePhase[] = ['countdown', 'question', 'reveal'];
+export const ACTIVE_PHASES: readonly GamePhase[] = ['draft', 'countdown', 'question', 'reveal'];
 export const OPEN_PHASES: readonly GamePhase[] = ['waiting', 'lobby'];
 export const FINAL_PHASES: readonly GamePhase[] = ['finished', 'expired', 'cancelled'];
 
@@ -33,6 +33,22 @@ export interface PlayerProfile {
   rating: number;
   /** Свечение аватарки из магазина (видят соперники). */
   glow: GlowId;
+}
+
+/**
+ * Обновление 2.0: старт «Микса» - каждому выпадает 3 темы, он выбирает одну (10 с, не успел -
+ * выберется сама), вопросы поровну из темы каждого игрока.
+ */
+export const DRAFT = { offers: 3, pickMs: 10_000, revealMs: 3_000 } as const;
+
+export interface DraftView {
+  /** Мои три темы. */
+  offers: Category[];
+  myPick: Category | null;
+  oppPicked: boolean;
+  /** Оба выбрали: видно тему соперника, через revealMs - отсчёт. */
+  revealed: boolean;
+  oppPick: Category | null;
 }
 
 /**
@@ -203,6 +219,8 @@ export interface GameView {
   question: QuestionView | null;
   /** Режим, время на ответ и число вопросов. */
   rules: GameRules;
+  /** Микс: выбор темы перед партией (фаза draft); null - выбора нет. */
+  draft: DraftView | null;
   /** Мой выбор в текущем вопросе (чтобы после переподключения он остался выделен). */
   myAnswer: { position: number } | null;
   opponentAnswered: boolean;

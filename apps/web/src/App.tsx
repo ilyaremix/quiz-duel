@@ -39,6 +39,7 @@ import { ItemSheet } from './screens/ItemSheet';
 import { AdScreen } from './screens/AdScreen';
 import { InviteBanner } from './components/InviteBanner';
 import { SetupSheet } from './screens/SetupSheet';
+import { DraftScreen } from './screens/DraftScreen';
 import { shop, useShop, useWallet } from './lib/economy';
 
 /** Вне Telegram: заглушка с кнопкой, ведущей в мини-апп (адрес отдаёт сервер). */
@@ -72,6 +73,8 @@ function GameRoute({ game, me, review }: { game: GameView; me: MeResponse; revie
       return <LobbyWaitScreen game={game} />;
     case 'lobby':
       return game.opponent ? <LobbyScreen game={game} /> : <LobbyWaitScreen game={game} />;
+    case 'draft':
+      return game.draft ? <DraftScreen game={game} /> : <LoadingScreen />;
     case 'countdown':
       return <CountdownRoute game={game} />;
     case 'question':

@@ -78,6 +78,7 @@ async function main() {
     alerts,
     sharer: bot ? botResults(bot) : undefined,
     clock: realClock,
+    draft: true,
     canReact: async (userId, emoji) => {
       const pack = packOf(emoji);
       return pack !== null && (await economy.ownsPack(userId, pack));

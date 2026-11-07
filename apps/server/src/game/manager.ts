@@ -16,7 +16,10 @@
  */
 import {
   ACTIVE_PHASES,
+  CATEGORIES,
+  DRAFT,
   REACTIONS,
+  type Category,
   FINAL_PHASES,
   gameLink,
   OPEN_PHASES,
@@ -45,7 +48,7 @@ import type { GameError, GameEvent, GameState, MachineDeps, Step } from './machi
 import { pickQuestions } from './picker.js';
 import type { GamesRepo } from './repo.js';
 import { newGameId } from './ids.js';
-import { secureRng, type Rng } from './rng.js';
+import { secureRng, shuffle, type Rng } from './rng.js';
 import { viewFor } from './view.js';
 import { losersOf, settleInput } from './settle.js';
 
@@ -153,6 +156,8 @@ export interface ManagerDeps {
    * награда за приглашение. Ошибка здесь не мешает игре.
    */
   onSettled?: (state: GameState) => Promise<void> | void;
+  /** Обновление 2.0: в «Миксе» на двоих - выбор темы перед отсчётом (без флага - сразу отсчёт). */
+  draft?: boolean;
   /** Можно ли игроку эту реакцию (наборы из магазина). Без проверки - только базовые. */
   canReact?: (userId: number, emoji: string) => Promise<boolean>;
   /** Часы и таймеры (по умолчанию настоящие). */
@@ -266,7 +271,9 @@ export class GameManager {
           seen: this.games.get(state.id)?.seen ?? this.pendingSeen.get(state.id) ?? new Map(),
           rng,
           count: machine.rulesOf(state).count,
+          topics: machine.draftTopics(state) ?? undefined,
         }),
+      ...(d.draft ? { draftOffers: (state: GameState) => machine.participants(state).map(() => shuffle(CATEGORIES, rng).slice(0, DRAFT.offers)) } : {}),
     };
   }
 
@@ -681,6 +688,11 @@ export class GameManager {
   }
 
   /** «Выйти из партии»: сразу техническая победа сопернику, без 30 с ожидания. */
+  /** «Микс»: выбор темы из трёх выпавших. */
+  async draft(userId: number, gameId: string, category: Category): Promise<Result<{ game: GameView }>> {
+    return this.mutate(userId, gameId, async (entry) => machine.pickTopic(entry.state, userId, category, this.now()));
+  }
+
   async forfeit(userId: number, gameId: string): Promise<Result<{ game: GameView }>> {
     return this.mutate(userId, gameId, async (entry) => machine.forfeit(entry.state, userId, this.now()));
   }
