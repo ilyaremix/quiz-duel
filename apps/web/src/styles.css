@@ -762,6 +762,32 @@ html {
   animation: qd-btn-shine 3600ms var(--qd-ease-move) 900ms infinite;
 }
 
+/* Плавное раскрытие блока (панель «Режим и настройки»): высота через grid-template-rows 0fr → 1fr,
+   содержимое проявляется чуть позже начала разворота и гаснет сразу при сворачивании. */
+.qd-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 320ms var(--qd-ease-ui),
+    opacity 160ms ease;
+}
+.qd-collapse[data-open='true'] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows 320ms var(--qd-ease-ui),
+    opacity 240ms ease 90ms;
+}
+.qd-collapse-in {
+  min-height: 0;
+  overflow: hidden;
+}
+.qd-rm .qd-collapse,
+.qd-rm .qd-collapse[data-open='true'] {
+  transition: none;
+}
+
 /* Вариант ответа: при нажатии сразу окрашивается синим стеклом «моего выбора». */
 .qd-ans:not(:disabled):active {
   background: var(--qd-me-glass) !important;
