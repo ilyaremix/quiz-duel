@@ -1,0 +1,4 @@
+# Коммиты только с форматированием - git blame их пропускает (GitHub учитывает этот файл сам,
+# локально: git config blame.ignoreRevsFile .git-blame-ignore-revs).
+# style: format the code with Prettier (no code changes)
+9bcd27e0bd043d478137f4d11ac53878fef4d998

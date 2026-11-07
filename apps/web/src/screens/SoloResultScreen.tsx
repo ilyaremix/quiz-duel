@@ -27,13 +27,13 @@ export function SoloResultScreen({ game }: { game: GameView }) {
   const solo = result?.solo ?? null;
   const n = (v: number) => formatNumber(v, lang);
 
-  const fresh = result?.newAchievements ?? [];
+  const fresh = result?.newAchievements;
   const toasted = useRef<string | null>(null);
   useEffect(() => {
     if (!solo || toasted.current === game.id) return;
     toasted.current = game.id;
     if (solo.record) haptic.win();
-    const first = fresh[0];
+    const first = fresh?.[0];
     if (first) showToast('achievement', 'toast.ach', { name: t(`ach.${first}.t`) }, ACH_GLYPH[first]);
   }, [game.id, solo, fresh, t]);
 
@@ -152,7 +152,7 @@ export function SoloResultScreen({ game }: { game: GameView }) {
         {t('s19.noRating')}
       </p>
 
-      {fresh[0] && (
+      {fresh?.[0] && (
         <div className="qd-ach-in">
           <Achievement code={fresh[0]} state="new" />
         </div>

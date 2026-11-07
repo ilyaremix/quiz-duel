@@ -120,7 +120,7 @@ describe('«Три жизни» и «Внезапная смерть»', () => {
     expect(livesLeft(s, s.creator)).toBe(2);
     expect(livesLeft(s, s.opponent!)).toBe(1);
     // Третья ошибка Марка - партия кончается после раскрытия, а не через 10 вопросов.
-    ({ s, now } = round(s, now, true, false, rules));
+    ({ s } = round(s, now, true, false, rules));
     expect(s.phase).toBe('finished');
     expect(s.closed).toBe(3);
     expect(s.finish).toMatchObject({ reason: 'completed', winnerId: A });
@@ -130,7 +130,7 @@ describe('«Три жизни» и «Внезапная смерть»', () => {
     const rules: GameRules = { variant: 'sudden', timeSec: 15, count: 10 };
     let { s, now } = started(rules);
     ({ s, now } = round(s, now, true, true, rules));
-    ({ s, now } = round(s, now, false, false, rules));
+    ({ s } = round(s, now, false, false, rules));
     expect(s.phase).toBe('finished');
     expect(s.closed).toBe(2);
     // Илья ответил на первый вопрос быстрее - у него больше очков.
@@ -143,7 +143,7 @@ describe('«Три жизни» и «Внезапная смерть»', () => {
     // Илья быстрее и верно, Марк медленнее, но верно.
     ({ s, now } = round(s, now, true, true, rules));
     expect(s.creator.score).toBeGreaterThan(s.opponent!.score);
-    ({ s, now } = round(s, now, false, true, rules));
+    ({ s } = round(s, now, false, true, rules));
     expect(s.phase).toBe('finished');
     expect(s.finish!.winnerId).toBe(B);
   });

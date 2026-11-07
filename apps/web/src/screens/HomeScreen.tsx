@@ -41,7 +41,6 @@ export function HomeScreen({ me }: { me: MeResponse }) {
   const dailyBusy = useShop((s) => Boolean(s.busy.daily));
   const stats = profile.data?.stats;
   const recent = profile.data?.matches.slice(0, 3) ?? [];
-  const newbie = (stats?.games ?? me.games) === 0;
   const rating = stats?.rating ?? me.rating;
 
   const resume = game && hidden;

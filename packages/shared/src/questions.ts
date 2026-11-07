@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { LANGS, type Lang } from './lang.js';
 
-import { ALL_CATEGORIES, DIFFICULTIES, type Category, type Difficulty, type GameCategory } from './categories.js';
+import { ALL_CATEGORIES, DIFFICULTIES, type Category, type Difficulty } from './categories.js';
 
 /** Префикс id вопроса по категории: sci-01 … tec-20. */
 export const CATEGORY_ID_PREFIX: Record<Category, string> = {

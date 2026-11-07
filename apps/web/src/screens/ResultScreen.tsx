@@ -112,11 +112,12 @@ export function ResultScreen({ game }: { game: GameView }) {
   }, [look]);
 
   // Новые ачивки партии: тост один раз на каждую (приходят вместе с рейтингом).
-  const fresh = result?.newAchievements ?? [];
+  const fresh = result?.newAchievements;
   const toasted = useRef<string | null>(null);
   useEffect(() => {
+    if (!fresh || fresh.length === 0) return;
     const key = `${game.id}:${fresh.join(',')}`;
-    if (fresh.length === 0 || toasted.current === key) return;
+    if (toasted.current === key) return;
     toasted.current = key;
     const first = fresh[0]!;
     showToast('achievement', fresh.length > 1 ? 'toast.achMany' : 'toast.ach', { name: t(`ach.${first}.t`), n: String(fresh.length - 1) }, ACH_GLYPH[first]);
@@ -224,7 +225,7 @@ export function ResultScreen({ game }: { game: GameView }) {
         <StatCard value={stats.avgMs === null ? '-' : formatSec(stats.avgMs, t, lang)} label={t('s12.avgLabel')} />
       </section>
 
-      {fresh[0] && (
+      {fresh?.[0] && (
         <div className="qd-ach-in">
           <Achievement code={fresh[0]} state="new" />
         </div>

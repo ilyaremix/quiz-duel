@@ -1,12 +1,22 @@
 /// <reference types="node" />
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { CATEGORIES, DIFFICULTIES } from '../src/categories.js';
+import { ALL_CATEGORIES, DIFFICULTIES } from '../src/categories.js';
 import { BANK_RULES, MIX_SPLIT, QUESTIONS_PER_GAME, validateQuestionBank } from '../src/questions.js';
 
 // Сама база лежит в data/ и попадает только в сервер; здесь читаем её с диска.
 const bankUrl = new URL('../../../data/questions.json', import.meta.url);
-const loadBank = (): any[] => JSON.parse(readFileSync(bankUrl, 'utf8'));
+/** Вопрос из JSON как есть: тесты валидатора портят его как угодно, типы проверяет сам валидатор. */
+interface RawQuestion {
+  id: string;
+  category: string;
+  difficulty: string;
+  correct: number;
+  ru: { text: string; options: string[] };
+  en: { text: string; options: string[] };
+  [extra: string]: unknown;
+}
+const loadBank = (): RawQuestion[] => JSON.parse(readFileSync(bankUrl, 'utf8'));
 
 function errorsOf(bank: unknown): string[] {
   const result = validateQuestionBank(bank);
@@ -20,23 +30,18 @@ describe('data/questions.json', () => {
     expect(errorsOf(bank)).toEqual([]);
   });
 
-  it('ровно 100 вопросов, по 20 на категорию, 6/8/6 по сложности', () => {
+  it('180 вопросов: 9 тем (5 из ТЗ и 4 платные) по 20, в каждой 6/8/6 по сложности', () => {
     expect(bank).toHaveLength(BANK_RULES.total);
-    for (const category of CATEGORIES) {
+    expect(ALL_CATEGORIES).toHaveLength(9);
+    for (const category of ALL_CATEGORIES) {
       const inCategory = bank.filter((q) => q.category === category);
-      expect(inCategory, category).toHaveLength(20);
-      expect(
-        inCategory.filter((q) => q.difficulty === 'easy'),
-        category,
-      ).toHaveLength(6);
-      expect(
-        inCategory.filter((q) => q.difficulty === 'medium'),
-        category,
-      ).toHaveLength(8);
-      expect(
-        inCategory.filter((q) => q.difficulty === 'hard'),
-        category,
-      ).toHaveLength(6);
+      expect(inCategory, category).toHaveLength(BANK_RULES.perCategory);
+      for (const d of DIFFICULTIES) {
+        expect(
+          inCategory.filter((q) => q.difficulty === d),
+          `${category} ${d}`,
+        ).toHaveLength(BANK_RULES.perDifficulty[d]);
+      }
     }
   });
 
@@ -63,8 +68,10 @@ describe('data/questions.json', () => {
 });
 
 describe('validateQuestionBank ловит ошибки', () => {
-  const broken = (mutate: (bank: any[]) => void) => {
-    const bank = loadBank();
+  // В базе заведомо есть первые два вопроса - их и портим.
+  type Bank = [RawQuestion, RawQuestion, ...RawQuestion[]];
+  const broken = (mutate: (bank: Bank) => void) => {
+    const bank = loadBank() as Bank;
     mutate(bank);
     return errorsOf(bank);
   };

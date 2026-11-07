@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TIMINGS, type GameView } from '@quiz-duel/shared';
+import type { GameView } from '@quiz-duel/shared';
 import { Answer, type AnswerState } from '../components/Answer';
 import { Avatar } from '../components/Avatar';
 import { Ball, BALLS } from '../components/Ball';
