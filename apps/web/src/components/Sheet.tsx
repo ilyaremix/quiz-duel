@@ -36,10 +36,19 @@ const MAX_HEIGHT =
 export function Sheet({ open, label, onClose, children, footer }: SheetProps) {
   const [mounted, setMounted] = useState(open);
   const [leaving, setLeaving] = useState(false);
-  const [dragY, setDragY] = useState(0);
-  const [dragging, setDragging] = useState(false);
   const [scrollable, setScrollable] = useState(false);
   const drag = useRef<Drag | null>(null);
+  // Сдвиг при перетаскивании пишем прямо в style, без перерисовки React: иначе на каждое движение пальца
+  // перерисовывалось всё содержимое шторки (десятки плиток) - отсюда микрофризы на iPhone.
+  const dragEl = useRef<HTMLDivElement | null>(null);
+  const frame = useRef(0);
+  const setShift = (y: number, animate: boolean) => {
+    const el = dragEl.current;
+    if (!el) return;
+    cancelAnimationFrame(frame.current);
+    el.style.transition = animate ? 'transform 300ms var(--qd-ease-sheet)' : 'none';
+    el.style.transform = y ? `translate3d(0, ${y}px, 0)` : '';
+  };
   const body = useRef<HTMLDivElement | null>(null);
   const content = useRef<HTMLDivElement | null>(null);
 
@@ -61,16 +70,16 @@ export function Sheet({ open, label, onClose, children, footer }: SheetProps) {
     if (open) {
       setMounted(true);
       setLeaving(false);
-      setDragY(0);
+      setShift(0, false);
       return;
     }
     if (!mounted) return;
     setLeaving(true);
+    // Чуть дольше анимации выхода: шторка успевает доехать до низа, не пропадая на последних кадрах.
     const timer = window.setTimeout(() => {
       setMounted(false);
       setLeaving(false);
-      setDragY(0);
-    }, EXIT_MS);
+    }, EXIT_MS + 60);
     return () => window.clearTimeout(timer);
   }, [open, mounted]);
 
@@ -98,8 +107,14 @@ export function Sheet({ open, label, onClose, children, footer }: SheetProps) {
     }
     d.samples.push({ y: e.clientY, t: performance.now() });
     if (d.samples.length > 6) d.samples.shift();
-    setDragY(Math.max(0, dy));
-    setDragging(true);
+    const y = Math.max(0, dy);
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      const el = dragEl.current;
+      if (!el) return;
+      el.style.transition = 'none';
+      el.style.transform = `translate3d(0, ${y}px, 0)`;
+    });
   };
   const up = () => {
     const d = drag.current;
@@ -108,9 +123,10 @@ export function Sheet({ open, label, onClose, children, footer }: SheetProps) {
     const a = d.samples[0]!;
     const b = d.samples[d.samples.length - 1]!;
     const velocity = (b.y - a.y) / Math.max(1, b.t - a.t);
-    setDragging(false);
+    cancelAnimationFrame(frame.current);
+    // Закрываем - шторка уезжает вниз с того места, где её отпустили; иначе - плавно на место.
     if (velocity > CLOSE_VELOCITY) onClose();
-    else setDragY(0);
+    else setShift(0, true);
   };
 
   return (
@@ -122,15 +138,12 @@ export function Sheet({ open, label, onClose, children, footer }: SheetProps) {
         onClick={onClose}
       />
       <div
+        ref={dragEl}
         className="qd-sheet-drag absolute inset-x-0 bottom-0"
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={up}
-        style={{
-          transform: `translateY(${dragY}px)`,
-          transition: dragging ? 'none' : 'transform 300ms var(--qd-ease-sheet)',
-        }}
       >
         <section
           role="dialog"

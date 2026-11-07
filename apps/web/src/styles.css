@@ -1781,6 +1781,18 @@ html {
 .qd-sheet-drag {
   touch-action: none;
 }
+/* Слои шторки и фона создаются заранее, а не в первый кадр анимации (на iPhone это давало рывок
+   в начале выезда и закрытия). */
+.qd-sheet-drag,
+.qd-sheet-in,
+.qd-sheet-out {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+.qd-backdrop-in,
+.qd-backdrop-out {
+  will-change: opacity;
+}
 
 /*
  * Режим без анимаций (класс qd-rm на <html>, его ставит lib/motion.ts по настройке

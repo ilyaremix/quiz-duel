@@ -267,66 +267,70 @@ export function CategorySheet() {
 
       {!solo && <RulesPanel />}
 
-      <div className="flex flex-col gap-2.5">
-        <CategoryTile
-          cat="mix"
-          wide
-          selected={selected === "mix"}
-          onPick={() => setSelected("mix")}
-          sub={t(solo ? "cat.mix.solo" : "cat.mix.duel")}
-        />
-        <div className="grid grid-cols-2 gap-2.5">
-          {base.map((cat, i) => (
-            <div
-              key={cat}
-              className={
-                i === base.length - 1 && base.length % 2 === 1
-                  ? "col-span-2"
-                  : ""
-              }
-            >
-              <CategoryTile
-                cat={cat}
-                selected={cat === selected}
-                onPick={() => setSelected(cat)}
-              />
-            </div>
-          ))}
+      {/* Плитки тем - отдельным слоем: когда панель выше разворачивается, они просто сдвигаются,
+          а не перерисовываются каждый кадр (стекло и свечения дорогие на iPhone). */}
+      <div className="flex flex-col gap-4" style={{ willChange: "transform" }}>
+        <div className="flex flex-col gap-2.5">
+          <CategoryTile
+            cat="mix"
+            wide
+            selected={selected === "mix"}
+            onPick={() => setSelected("mix")}
+            sub={t(solo ? "cat.mix.solo" : "cat.mix.duel")}
+          />
+          <div className="grid grid-cols-2 gap-2.5">
+            {base.map((cat, i) => (
+              <div
+                key={cat}
+                className={
+                  i === base.length - 1 && base.length % 2 === 1
+                    ? "col-span-2"
+                    : ""
+                }
+              >
+                <CategoryTile
+                  cat={cat}
+                  selected={cat === selected}
+                  onPick={() => setSelected(cat)}
+                />
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="mx-1 -mb-1.5 flex flex-col gap-0.5">
-        <h3 className="m-0 text-[17px] font-bold tracking-[-0.01em]">
-          {t("s04.premium")}
-        </h3>
-        <span className="text-[12px] font-medium text-hint">
-          {t("s04.premiumHint")}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2.5">
-        {PREMIUM_CATEGORIES.map((cat) => {
-          const access = topicAccess(wallet.data, cat);
-          return (
-            <CategoryTile
-              key={cat}
-              cat={cat}
-              access={access}
-              sub={
-                access === "pass"
-                  ? t("s04.pass")
-                  : access === "owned"
-                    ? t("s04.owned")
-                    : t(`cat.${cat}.count`)
-              }
-              selected={cat === selected}
-              onPick={() =>
-                access === "locked"
-                  ? shop.openItem({ kind: "topic", id: cat })
-                  : setSelected(cat)
-              }
-            />
-          );
-        })}
+        <div className="mx-1 -mb-1.5 flex flex-col gap-0.5">
+          <h3 className="m-0 text-[17px] font-bold tracking-[-0.01em]">
+            {t("s04.premium")}
+          </h3>
+          <span className="text-[12px] font-medium text-hint">
+            {t("s04.premiumHint")}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2.5">
+          {PREMIUM_CATEGORIES.map((cat) => {
+            const access = topicAccess(wallet.data, cat);
+            return (
+              <CategoryTile
+                key={cat}
+                cat={cat}
+                access={access}
+                sub={
+                  access === "pass"
+                    ? t("s04.pass")
+                    : access === "owned"
+                      ? t("s04.owned")
+                      : t(`cat.${cat}.count`)
+                }
+                selected={cat === selected}
+                onPick={() =>
+                  access === "locked"
+                    ? shop.openItem({ kind: "topic", id: cat })
+                    : setSelected(cat)
+                }
+              />
+            );
+          })}
+        </div>
       </div>
     </Sheet>
   );
