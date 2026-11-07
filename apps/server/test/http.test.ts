@@ -1,4 +1,8 @@
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { lastBackupAt } from '../src/backup.js';
 import { buildApp } from '../src/http/app.js';
 import type { StatsRepo } from '../src/stats.js';
 import { DOCS_VERSION, ilya, makeInitData, memoryUsers, testEnv } from './helpers.js';
@@ -97,6 +101,30 @@ describe('публичные маршруты', () => {
     const body = (await app.inject({ method: 'GET', url: '/api/health' })).json();
     expect(body).toMatchObject({ ok: true, bot: 'polling', botRestarts: 1 });
     expect(body.botUpdateAgoSec).toBeGreaterThanOrEqual(41);
+  });
+
+  it('GET /api/health: возраст последней резервной копии базы (без копий - null, на ok не влияет)', async () => {
+    const at = Date.now() - 3_600_000;
+    const withBackup = await makeApp({ backupStatus: async () => at });
+    const body = (await withBackup.app.inject({ method: 'GET', url: '/api/health' })).json();
+    expect(body.ok).toBe(true);
+    expect(body.backupAgoSec).toBeGreaterThanOrEqual(3599);
+    expect(body.backupAgoSec).toBeLessThan(3700);
+
+    const none = await makeApp({ backupStatus: async () => null });
+    expect((await none.app.inject({ method: 'GET', url: '/api/health' })).json()).toMatchObject({ ok: true, backupAgoSec: null });
+    const broken = await makeApp({ backupStatus: () => Promise.reject(new Error('EACCES')) });
+    expect((await broken.app.inject({ method: 'GET', url: '/api/health' })).json()).toMatchObject({ ok: true, backupAgoSec: null });
+  });
+
+  it('время копии читается из файла сервиса backup', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'qd-backup-'));
+    const file = join(dir, '.last-ok');
+    expect(await lastBackupAt(file)).toBeNull();
+    await writeFile(file, '1794000000\n');
+    expect(await lastBackupAt(file)).toBe(1_794_000_000_000);
+    await writeFile(file, 'garbage');
+    expect(await lastBackupAt(file)).toBeNull();
   });
 
   it('GET /api/config отдаёт ссылку на мини-апп', async () => {

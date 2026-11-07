@@ -1,4 +1,4 @@
-# Quiz Duel: postgres + server (API, Socket.IO, бот) + web (статика и прокси).
+# Quiz Duel: postgres + server (API, Socket.IO, бот) + web (статика и прокси) + backup (копии базы).
 # Наружу открыт только web на 127.0.0.1:${WEB_PORT}; HTTPS даёт Caddy на сервере
 # (пример блока - deploy/Caddyfile.host). Запуск: docker compose up -d --build
 
@@ -33,6 +33,28 @@ services:
       DATABASE_URL: postgresql://quizduel:${POSTGRES_PASSWORD}@postgres:5432/quizduel
       # Перед сервером стоят Caddy контейнера web и Caddy хоста (через шлюз сети)
       TRUST_PROXY: 172.28.0.0/24
+    volumes:
+      # Только время последней копии базы (для /api/health); сами копии серверу не читаются.
+      - ./backups:/backups:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Резервные копии базы: раз в сутки в 04:00 по Москве - в папку backups рядом с этим файлом,
+  # хранятся 14 дней (deploy/backup.sh). Восстановление - docs/DEPLOY.md.
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    init: true
+    entrypoint: ['/bin/sh', '/usr/local/bin/backup.sh']
+    environment:
+      PGHOST: postgres
+      PGUSER: quizduel
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: quizduel
+    volumes:
+      - ./backups:/backups
+      - ./deploy/backup.sh:/usr/local/bin/backup.sh:ro
     depends_on:
       postgres:
         condition: service_healthy

@@ -40,7 +40,7 @@ nano .env          # BOT_TOKEN и APP_SHORT_NAME=play
 chmod 600 .env
 
 docker compose up -d --build
-docker compose ps                         # postgres и server - healthy, web - Up
+docker compose ps                         # postgres и server - healthy, web и backup - Up
 curl -s http://127.0.0.1:3080/api/health  # {"ok":true,"db":true,...}
 ```
 
@@ -84,6 +84,38 @@ systemctl disable --now quiz-duel-deploy.timer   # выключить
 Если сборка упала, старые контейнеры продолжают работать, а скрипт не повторяет её по кругу:
 следующий коммит с исправлением выкатится сам. Повторить вручную - командой ниже.
 
+## Резервные копии базы
+
+Сервис `backup` в `docker-compose.yml` (скрипт [`deploy/backup.sh`](../deploy/backup.sh)) раз в сутки
+в 04:00 по Москве делает копию базы в папку `backups` рядом с `docker-compose.yml`
+(`/root/quiz-duel/backups`). Хранятся 14 дней, старые удаляются сами. После выкатки или перезагрузки
+сервера копия делается сразу, если последней больше суток. Файл пишется под временным именем и
+переименовывается только целиком - недописанных копий в папке не бывает. Читать копии может только root.
+
+Проверить, что копии идут, можно без входа на сервер: в `/api/health` поле `backupAgoSec` -
+сколько секунд назад сделана последняя копия (больше 86 400 - копии не идут, `null` - ещё ни одной).
+
+```bash
+ls -lh /root/quiz-duel/backups                # копии: quizduel-ГГГГ-ММ-ДД-ЧЧММ.dump
+docker compose logs --tail 20 backup          # «копия готова: …» или «ОШИБКА»
+```
+
+Копию стоит иногда скачивать к себе (WinSCP): если пропадёт весь сервер, пропадут и копии на нём.
+
+Восстановление (база заменяется целиком на состояние из копии; партии, идущие в этот момент, теряются):
+
+```bash
+cd /root/quiz-duel
+docker compose stop server
+docker compose exec -T postgres pg_restore -U quizduel -d quizduel --clean --if-exists --no-owner \
+  < backups/quizduel-2026-11-08-0100.dump
+docker compose start server
+curl -s http://127.0.0.1:3080/api/health
+```
+
+Сделать копию прямо сейчас: `docker compose restart backup` после `rm backups/.last-ok`
+(при старте сервис делает копию, если последней больше суток или её нет).
+
 ## Обновление вручную
 
 ```bash
@@ -99,4 +131,4 @@ docker compose exec postgres psql -U quizduel quizduel -c 'select id, first_name
 ```
 
 Данные базы лежат в docker-томе `quiz-duel_pgdata` и переживают пересборку.
-`docker compose down -v` удаляет их вместе с томом.
+`docker compose down -v` удаляет их вместе с томом (копии в `backups` остаются).

@@ -8,3 +8,5 @@ apps/server/src/generated
 .git
 .github
 docs
+# Резервные копии базы на сервере (docker-compose, сервис backup)
+backups

@@ -36,6 +36,11 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+  /**
+   * Время последней резервной копии базы (секунды Unix): его пишет сервис backup (deploy/backup.sh)
+   * в общую с сервером папку. Нет файла - в /api/health backupAgoSec: null.
+   */
+  BACKUP_STATUS_FILE: z.string().default('/backups/.last-ok'),
   /** Обновление 2.0: кто видит админку - Telegram id через запятую. Пусто - владелец из автодеплоя. */
   ADMIN_IDS: z.string().default(''),
   DEPLOY_NOTIFY_CHAT_ID: z.string().default(''),

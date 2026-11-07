@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Проверка запущенного docker compose (её делает CI на чистой машине - как первая выкатка):
-# API отвечает через Caddy и видит базу; Caddy работает не от root; страница приходит с
-# заголовками безопасности и без кэша, файлы сборки - с вечным кэшем, отсутствующий файл
-# сборки - 404, ролики - кэш на сутки.
-# Запуск: deploy/smoke-web.sh [адрес] [контейнер web], по умолчанию http://127.0.0.1:3080 quiz-duel-web-1
+# API отвечает через Caddy и видит базу; сделана резервная копия базы; Caddy работает не от root;
+# страница приходит с заголовками безопасности и без кэша, файлы сборки - с вечным кэшем,
+# отсутствующий файл сборки - 404, ролики - кэш на сутки.
+# Запуск: deploy/smoke.sh [адрес] [контейнер web], по умолчанию http://127.0.0.1:3080 quiz-duel-web-1
+# SMOKE_BACKUP=false - без проверки копий (стенд без сервиса backup).
 set -euo pipefail
 
 base="${1:-http://127.0.0.1:3080}"
@@ -23,6 +24,16 @@ check() {
 health=$(curl -fsS --retry 10 --retry-delay 2 --retry-all-errors "$base/api/health" || true)
 check "API через Caddy: /api/health ok" "$health" '"ok":true'
 check "API через Caddy: база на связи" "$health" '"db":true'
+
+# Первая копия делается сразу при старте сервиса backup - ждём её до 30 с.
+if [[ "${SMOKE_BACKUP:-true}" == "true" ]]; then
+  for _ in $(seq 1 15); do
+    health=$(curl -fsS "$base/api/health" || true)
+    grep -qE '"backupAgoSec":[0-9]+' <<<"$health" && break
+    sleep 2
+  done
+  check "резервная копия базы сделана (backupAgoSec)" "$health" '"backupAgoSec":[0-9]+'
+fi
 
 uid=$(docker exec "$container" stat -c %u /proc/1)
 if [[ "$uid" != "0" ]]; then ok "Caddy работает не от root (uid $uid)"; else bad "Caddy работает от root"; fi

@@ -9,3 +9,5 @@ apps/server/src/generated/
 .DS_Store
 .vscode/
 .idea/
+# Резервные копии базы на сервере (docker-compose, сервис backup)
+backups/

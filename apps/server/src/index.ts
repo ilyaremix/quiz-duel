@@ -20,6 +20,7 @@ import { createAdminRepo } from './admin.js';
 import { InlineKeyboard } from 'grammy';
 import { TIMINGS, packOf } from '@quiz-duel/shared';
 import { syncQuestions } from './questions/sync.js';
+import { lastBackupAt } from './backup.js';
 
 async function main() {
   const env = loadEnv();
@@ -92,6 +93,7 @@ async function main() {
       if (bot) void users.alertTarget(userId).then((t) => t && syncChatCommands(bot, userId, t.lang));
     },
     botStatus: bot ? botHealth : undefined,
+    backupStatus: () => lastBackupAt(env.BACKUP_STATUS_FILE),
   });
   logRef = app.log;
 

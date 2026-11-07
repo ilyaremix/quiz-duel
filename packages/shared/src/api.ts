@@ -95,6 +95,11 @@ export interface HealthResponse {
   botRestarts?: number;
   /** Сколько секунд назад от Telegram пришло последнее обновление (null - ещё ни одного). */
   botUpdateAgoSec?: number | null;
+  /**
+   * Сколько секунд назад сделана последняя резервная копия базы (сервис backup в docker-compose;
+   * null - ещё ни одной или копии не настроены, как при локальной разработке). Больше суток - копии не идут.
+   */
+  backupAgoSec?: number | null;
 }
 
 /** Коды ошибок REST и сокета. */

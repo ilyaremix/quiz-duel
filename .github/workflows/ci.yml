@@ -42,8 +42,8 @@ jobs:
       - run: npm run build
 
   # То же, что соберёт и запустит автодеплой, на чистой машине: оба образа, миграции на пустой базе,
-  # Caddy (не от root) с заголовками безопасности и кэшем. Сломанная сборка Docker - красный CI,
-  # и такой коммит на сервер не попадёт.
+  # резервная копия, Caddy (не от root) с заголовками безопасности и кэшем. Сломанная сборка
+  # Docker - красный CI, и такой коммит на сервер не попадёт.
   images:
     runs-on: ubuntu-latest
     steps:
@@ -63,7 +63,7 @@ jobs:
       - name: Build and start (docker compose)
         run: docker compose up -d --build --wait --wait-timeout 240
       - name: Smoke test
-        run: deploy/smoke-web.sh http://127.0.0.1:3080 quiz-duel-web-1
+        run: deploy/smoke.sh http://127.0.0.1:3080 quiz-duel-web-1
       - name: Logs
         if: failure()
         run: docker compose logs --tail 80

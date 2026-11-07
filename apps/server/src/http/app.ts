@@ -90,6 +90,8 @@ export interface AppDeps {
   onWalletChanged?: (userId: number) => void;
   /** Состояние опроса Telegram ботом - в /api/health (без бота - «off»). */
   botStatus?: () => { state: 'starting' | 'polling' | 'restarting'; restarts: number; lastUpdateAt: number | null };
+  /** Когда сделана последняя резервная копия базы (мс) - в /api/health; null - ещё ни одной. */
+  backupStatus?: () => Promise<number | null>;
   /** Часы (тесты подставляют свои). */
   now?: () => number;
   /** false - без логов (тесты). */
@@ -131,6 +133,7 @@ export async function buildApp({
   onSettingsChanged,
   logger,
   botStatus,
+  backupStatus,
   now = Date.now,
 }: AppDeps) {
   const app = Fastify({
@@ -197,7 +200,7 @@ export async function buildApp({
 
   // Healthcheck Docker дёргает каждые 30 с - не засоряем им логи.
   app.get('/api/health', { logLevel: 'warn' }, async (_request, reply) => {
-    const db = await users.ping();
+    const [db, backupAt] = await Promise.all([users.ping(), backupStatus ? backupStatus().catch(() => null) : null]);
     const bot = botStatus?.();
     const body: HealthResponse = {
       ok: db,
@@ -206,6 +209,8 @@ export async function buildApp({
       bot: bot?.state ?? 'off',
       botRestarts: bot?.restarts ?? 0,
       botUpdateAgoSec: bot?.lastUpdateAt ? Math.round((now() - bot.lastUpdateAt) / 1000) : null,
+      // Копии не влияют на ok: игра работает и без них, а сбой копий виден по возрасту.
+      backupAgoSec: backupAt ? Math.max(0, Math.round((now() - backupAt) / 1000)) : null,
     };
     return reply.code(db ? 200 : 503).send(body);
   });
