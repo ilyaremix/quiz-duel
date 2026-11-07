@@ -19,8 +19,16 @@ describe('Этап 8: inline-режим', () => {
     const w = await world();
     const answer = await inlineAnswer(w.games, w.users, ilya, WEB);
     expect(answer.options).toMatchObject({ cache_time: 0, is_personal: true });
-    expect(answer.results[0]).toMatchObject({ type: 'article', title: 'Вызов на дуэль' });
-    expect(answer.results[0]!.input_message_content.message_text).toContain('Илья зовёт');
+    // Анимированная карточка с сайта; подпись - кто зовёт и правила партии.
+    expect(answer.results[0]).toMatchObject({
+      type: 'mpeg4_gif',
+      title: 'Вызов на дуэль · Микс',
+      mpeg4_url: `${WEB}/bot/invite-ru.mp4`,
+      thumbnail_url: `${WEB}/bot/invite-ru.jpg`,
+      parse_mode: 'HTML',
+    });
+    expect(answer.results[0]!.caption).toContain('Илья вызывает вас на дуэль');
+    expect(answer.results[0]!.caption).toContain('Микс · Классика · 10 вопросов по 15 секунд');
     const url = linkOf(answer);
     const gameId = gameIdFromStartParam(new URL(url).searchParams.get('startapp'))!;
     expect(url).toBe(`https://t.me/quiz_test_bot/play?startapp=g_${gameId}`);
@@ -47,7 +55,7 @@ describe('Этап 8: inline-режим', () => {
     if (!created.ok) throw new Error(created.error);
     const answer = await inlineAnswer(w.games, w.users, ilya, WEB);
     expect(linkOf(answer)).toContain(`g_${created.game.id}`);
-    expect(answer.results[0]!.description).toContain('Спорт');
+    expect(answer.results[0]!.title).toContain('Спорт');
   });
 
   it('без документов, посреди партии или в лобби с соперником - вместо карточки кнопка «Открыть»', async () => {

@@ -63,6 +63,8 @@ model User {
   /// Серия входа: день последней награды (YYYY-MM-DD по Москве) и длина серии
   streakDay     String?       @map("streak_day")
   streakCount   Int           @default(0) @map("streak_count")
+  /// День (по Москве), когда бот напомнил о ежедневной награде: не чаще раза в день
+  remindDay     String?       @map("remind_day")
   /// Партий с последней обязательной рекламы (после каждой 3-й - ролик)
   gamesSinceAd  Int           @default(0) @map("games_since_ad")
   /// Откуда пришёл: первый start_param (src_..., r_..., g_...) или inline/organic

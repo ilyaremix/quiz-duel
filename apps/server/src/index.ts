@@ -7,6 +7,8 @@ import { buildApp } from './http/app.js';
 import { attachSocket, socketNotifier, socketPush, type IoServer } from './socket.js';
 import { attachInline, botInvites, botResults, configureBot, createBot, startBot, type QuizBot } from './bot/index.js';
 import { botAlerts } from './bot/alerts.js';
+import { cardMedia } from './bot/cards.js';
+import { dailyReminders } from './bot/reminders.js';
 import { createPrismaGamesRepo } from './game/repo.js';
 import { GameManager, realClock } from './game/manager.js';
 import { loadQuestionBank } from './questions/bank.js';
@@ -80,7 +82,9 @@ async function main() {
   app.log.info(synced, 'questions synced');
 
   const appUrl = `https://t.me/${botUsername}/${env.APP_SHORT_NAME}`;
-  const alerts = bot ? botAlerts(bot.api, users, appUrl, app.log) : undefined;
+  // Анимированные карточки в сообщениях бота: ролики лежат на сайте мини-аппа (/bot/*.mp4).
+  const cards = cardMedia(env.WEB_APP_URL);
+  const alerts = bot ? botAlerts(bot.api, users, appUrl, app.log, cards) : undefined;
   const games = new GameManager({
     repo: createPrismaGamesRepo(prisma),
     users,
@@ -89,9 +93,9 @@ async function main() {
     appUrl: `https://t.me/${botUsername}/${env.APP_SHORT_NAME}`,
     docsVersion: env.DOCS_VERSION,
     log: app.log,
-    invites: bot ? botInvites(bot) : undefined,
+    invites: bot ? botInvites(bot, env.WEB_APP_URL) : undefined,
     alerts,
-    sharer: bot ? botResults(bot) : undefined,
+    sharer: bot ? botResults(bot, env.WEB_APP_URL) : undefined,
     clock: realClock,
     draft: true,
     topicAccess: async (userId, topic) => (await economy.topicAccess(userId, topic)) !== 'locked',
@@ -127,7 +131,7 @@ async function main() {
         if (!from) return;
         const expiresAt = game.lobbyExpiresAt ?? Date.now() + TIMINGS.lobbyTtlMs;
         push.friendInvite(friendId, { gameId: game.id, from, category: game.category, rules: game.rules, expiresAt });
-        alerts?.send(friendId, { kind: 'friendInvite', gameId: game.id, opponent: from.name });
+        alerts?.send(friendId, { kind: 'friendInvite', gameId: game.id, opponent: from.name, category: game.category, rules: game.rules });
       });
     },
   });
@@ -152,6 +156,14 @@ async function main() {
     );
     await configureBot(bot, env.WEB_APP_URL, app.log);
     startBot(bot, app.log);
+    // Напоминание о ежедневной награде: проход раз в 5 минут, пишет только вечером по Москве.
+    const reminders = dailyReminders({ prisma, users, api: bot.api, cards, appUrl, log: app.log });
+    const remind = () =>
+      void reminders
+        .run(Date.now())
+        .then((n) => n > 0 && app.log.info({ sent: n }, 'daily reminders sent'))
+        .catch((error: unknown) => app.log.warn({ err: error }, 'daily reminders failed'));
+    setInterval(remind, 5 * 60_000).unref();
   }
 
   let stopping = false;

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Quiz Duel · карточка бота</title>
+<!--
+  Анимированная карточка для сообщений бота (макет BotCard): аврора своего цвета, сфера или пара игроков,
+  блеск и искры. Все движения - петли с периодом, кратным 6 с, поэтому ролик 6 с зацикливается без шва.
+  render.py открывает страницу с ?kind=…&lang=…, останавливает анимации и снимает кадры.
+-->
+<style>
+@font-face { font-family: 'Onest'; font-weight: 100 900; src: url('/node_modules/@fontsource-variable/onest/files/onest-cyrillic-wght-normal.woff2') format('woff2-variations'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Onest'; font-weight: 100 900; src: url('/node_modules/@fontsource-variable/onest/files/onest-latin-wght-normal.woff2') format('woff2-variations'); }
+html, body { margin: 0; background: #070818; }
+.qd-bc { position: relative; overflow: hidden; isolation: isolate; width: 320px; height: 180px; background: #070818; color: #fff; font-family: 'Onest', sans-serif; }
+.au { position: absolute; border-radius: 50%; pointer-events: none; }
+.a { animation: au-a 3s cubic-bezier(0.77, 0, 0.175, 1) infinite alternate; }
+.b { animation: au-b 3s cubic-bezier(0.77, 0, 0.175, 1) infinite alternate; }
+@keyframes au-a { to { transform: translate(40px, 26px) scale(1.12); } }
+@keyframes au-b { to { transform: translate(-36px, -20px) scale(0.92); } }
+.bob { animation: bob 1500ms cubic-bezier(0.77, 0, 0.175, 1) infinite alternate; }
+.bob2 { animation: bob 1500ms cubic-bezier(0.77, 0, 0.175, 1) -750ms infinite alternate; }
+@keyframes bob { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+.ring { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.55); animation: ring 1500ms cubic-bezier(0.23, 1, 0.32, 1) infinite; }
+.ring.r2 { animation-delay: -1000ms; }
+.ring.r3 { animation-delay: -500ms; }
+@keyframes ring { 0% { opacity: 0; transform: scale(0.95); } 12% { opacity: 0.8; } 100% { opacity: 0; transform: scale(1.8); } }
+.spin { animation: spin 3s linear infinite; }
+.spin-slow { animation: spin 12s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.pulse { animation: pulse 1500ms ease infinite; }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+.spark { position: absolute; border-radius: 50%; background: #fff; box-shadow: 0 0 8px rgba(255, 255, 255, 0.9); animation: spark 3s ease infinite; }
+@keyframes spark { 0%, 100% { opacity: 0; transform: scale(0.5); } 50% { opacity: 1; transform: scale(1); } }
+.fall { position: absolute; top: -12px; animation: fall 3s linear infinite; }
+@keyframes fall { 0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; } 8% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translate3d(var(--dx, 0px), 200px, 0) rotate(360deg); opacity: 0; } }
+.title { animation: glow 3s ease infinite; }
+@keyframes glow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.2); } }
+.shine { position: absolute; top: -30%; bottom: -30%; left: 0; width: 30%; background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0)); animation: shine 3s cubic-bezier(0.77, 0, 0.175, 1) infinite; }
+@keyframes shine { 0% { transform: translateX(-160%) rotate(18deg); } 40%, 100% { transform: translateX(480%) rotate(18deg); } }
+.brand { position: absolute; z-index: 2; left: 14px; top: 12px; display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
+.brand i { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 32% 25%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 50%), conic-gradient(from 200deg, #4f8dff, #9b5cff, #ff6a88, #ffd36b, #22d3ee, #4f8dff); }
+.stage { position: absolute; z-index: 2; left: 0; right: 0; top: 22px; height: 92px; display: flex; align-items: center; justify-content: center; }
+.orb { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 27px; font-weight: 700; }
+.vs { position: relative; z-index: 3; margin: 0 -8px; height: 26px; padding: 0 10px; border-radius: 13px; background: linear-gradient(180deg, #fff, #e4e8ff); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); color: #0b0d24; display: flex; align-items: center; font-size: 13px; font-weight: 800; }
+.sphere-box { position: relative; width: 92px; height: 92px; display: flex; align-items: center; justify-content: center; }
+.rays { position: absolute; left: 50%; top: 50%; width: 180px; height: 180px; margin: -90px 0 0 -90px; border-radius: 50%; -webkit-mask-image: radial-gradient(closest-side, transparent 28%, #000 45%, transparent 100%); mask-image: radial-gradient(closest-side, transparent 28%, #000 45%, transparent 100%); }
+.halo { position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 50%; background: conic-gradient(from 0deg, rgba(79, 141, 255, 0), #4f8dff, #9b5cff, #ff6a88, #ffd36b, #22d3ee, rgba(79, 141, 255, 0)); -webkit-mask-image: radial-gradient(closest-side, transparent 86%, #000 89%, #000 97%, transparent 100%); mask-image: radial-gradient(closest-side, transparent 86%, #000 89%, #000 97%, transparent 100%); }
+.sphere { position: relative; width: 74px; height: 74px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.foot { position: absolute; z-index: 3; left: 12px; right: 12px; bottom: 14px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.foot b { font-size: 24px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; white-space: nowrap; }
+.foot span { height: 22px; padding: 0 10px; border-radius: 11px; box-sizing: border-box; background: rgba(255, 255, 255, 0.12); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.14); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; white-space: nowrap; }
+svg { display: block; }
+</style>
+</head>
+<body>
+<div id="card" class="qd-bc"></div>
+<script>
+const ICON = {
+  profile: 'M12 4a4 4 0 1 0 0 8a4 4 0 1 0 0-8M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6',
+  clock: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 7v5l3 2',
+  rematch: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
+  rating: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3',
+  gift: 'M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7c-1.5-3-5-3.5-5-1.5S10 7 12 7zM12 7c1.5-3 5-3.5 5-1.5S14 7 12 7z',
+  scale: 'M12 4v16M5 20h14M5 8h14M7 8l-3 6a3 3 0 0 0 6 0zM17 8l-3 6a3 3 0 0 0 6 0z',
+};
+const icon = (g, size, stroke) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"><path d="${ICON[g]}"/></svg>`;
+
+const TEXT = {
+  ru: {
+    invite: ['Вызов на дуэль', 'Викторина 1 на 1'], friend: ['Друг зовёт!', 'Вызов на дуэль'], waiting: ['Соперник ждёт', 'Лобби открыто'],
+    rematch: ['Реванш?', '30 секунд на ответ'], win: ['Победа!', 'Отличная игра'], loss: ['Почти!', 'Реванш за вами'],
+    draw: ['Ничья!', 'Силы равны'], daily: ['Награда ждёт', 'Серия продолжается'],
+  },
+  en: {
+    invite: ['Duel challenge', '1v1 quiz'], friend: ['A friend calls!', 'Duel challenge'], waiting: ['Opponent waiting', 'Lobby is open'],
+    rematch: ['Rematch?', '30 seconds to reply'], win: ['Victory!', 'Great game'], loss: ['So close!', 'Time for a rematch'],
+    draw: ['Draw!', 'Evenly matched'], daily: ['Reward waiting', 'Keep your streak'],
+  },
+};
+
+const OPP = 'radial-gradient(circle at 32% 24%, rgba(255,255,255,.55), rgba(255,255,255,0) 48%), #C2569B';
+const OPP_SH = 'inset 0 -5px 12px rgba(0,0,0,.2), 0 0 0 3px rgba(7,8,24,.9), 0 0 0 5px #FF8A3D, 0 0 26px rgba(255,138,61,.7)';
+const Q = 'linear-gradient(155deg, rgba(255,255,255,.22), rgba(255,255,255,.05)), rgba(20,22,58,.7)';
+const Q_SH = 'inset 0 1px 0 rgba(255,255,255,.45), inset 0 0 0 1px rgba(255,255,255,.18), 0 0 22px rgba(255,138,61,.55)';
+const K = {
+  invite: { duo: true, c: ['rgba(79,141,255,.75)', 'rgba(255,138,61,.6)', 'rgba(155,92,255,.45)'], right: '?', rBg: Q, rSh: Q_SH, rFg: '#FFC59A', glow: 'rgba(155,92,255,.9)', tc: '#FFFFFF' },
+  friend: { duo: true, c: ['rgba(255,106,136,.6)', 'rgba(255,138,61,.65)', 'rgba(155,92,255,.5)'], right: 'friend', rBg: OPP, rSh: OPP_SH + ', 0 0 0 9px rgba(255,138,61,.25)', rFg: '#FFFFFF', glow: 'rgba(255,138,61,.95)', tc: '#FFE1CC' },
+  waiting: { c: ['rgba(255,138,61,.6)', 'rgba(79,141,255,.5)', 'rgba(34,211,238,.4)'], glyph: 'clock', core: 'rgba(255,138,61,.75)', ink: '#FFC59A', cls: 'pulse', glow: 'rgba(255,138,61,.85)', tc: '#FFFFFF' },
+  rematch: { c: ['rgba(155,92,255,.7)', 'rgba(79,141,255,.55)', 'rgba(255,106,136,.45)'], glyph: 'rematch', core: 'rgba(155,92,255,.8)', ink: '#E9DDFF', icon: 'spin', glow: 'rgba(155,92,255,.95)', tc: '#FFFFFF' },
+  win: { c: ['rgba(255,211,107,.6)', 'rgba(155,92,255,.55)', 'rgba(255,211,107,.45)'], glyph: 'rating', core: 'rgba(255,211,107,.85)', ink: '#FFE3A3', cls: 'pulse', ray: 'rgba(255,211,107,.42)', confetti: true, glow: 'rgba(255,211,107,.95)', tc: '#FFE7A8' },
+  loss: { c: ['rgba(255,90,122,.55)', 'rgba(155,92,255,.55)', 'rgba(79,141,255,.4)'], glyph: 'rematch', core: 'rgba(255,90,122,.75)', ink: '#FFC2CF', icon: 'spin', glow: 'rgba(255,90,122,.85)', tc: '#FFFFFF' },
+  draw: { c: ['rgba(79,141,255,.6)', 'rgba(255,138,61,.5)', 'rgba(155,92,255,.45)'], glyph: 'scale', core: 'rgba(79,141,255,.8)', ink: '#CFE0FF', cls: 'bob', glow: 'rgba(79,141,255,.9)', tc: '#FFFFFF' },
+  daily: { c: ['rgba(255,211,107,.6)', 'rgba(59,229,139,.4)', 'rgba(155,92,255,.45)'], glyph: 'gift', core: 'rgba(255,211,107,.85)', ink: '#FFE3A3', cls: 'bob', ray: 'rgba(255,211,107,.3)', glow: 'rgba(255,211,107,.95)', tc: '#FFE7A8' },
+};
+
+const q = new URLSearchParams(location.search);
+const kind = K[q.get('kind')] ? q.get('kind') : 'invite';
+const lang = q.get('lang') === 'en' ? 'en' : 'ru';
+const k = K[kind];
+const [title, sub] = TEXT[lang][kind];
+
+let html = `
+  <span class="au a" style="width:280px;height:280px;left:-110px;top:-140px;background:radial-gradient(closest-side, ${k.c[0]}, rgba(0,0,0,0))"></span>
+  <span class="au b" style="width:260px;height:260px;right:-100px;bottom:-150px;background:radial-gradient(closest-side, ${k.c[1]}, rgba(0,0,0,0))"></span>
+  <span class="au b" style="width:200px;height:200px;left:40px;bottom:-130px;background:radial-gradient(closest-side, ${k.c[2]}, rgba(0,0,0,0))"></span>
+  <span class="shine"></span>`;
+// Искры: задержки отрицательные - с первого кадра ролик уже в «установившемся» состоянии.
+for (const [x, y, w, d] of [[36, 52, 3, 0], [284, 40, 4, 600], [262, 112, 3, 1200], [60, 120, 2, 1800], [150, 28, 3, 2400], [210, 70, 2, 900], [100, 84, 2, 1500]]) {
+  html += `<span class="spark" style="left:${x}px;top:${y}px;width:${w}px;height:${w}px;animation-delay:${d - 3000}ms"></span>`;
+}
+html += `<div class="brand"><i></i>Quiz Duel</div><div class="stage">`;
+if (k.duo) {
+  const right = k.right === '?' ? '?' : icon('profile', 30, 2.2);
+  html += `<div style="display:flex;align-items:center">
+    <div class="orb bob" style="background:radial-gradient(circle at 32% 24%, rgba(255,255,255,.55), rgba(255,255,255,0) 48%), #2F6FEB;box-shadow:inset 0 -5px 12px rgba(0,0,0,.2), 0 0 0 3px rgba(7,8,24,.9), 0 0 0 5px #4F8DFF, 0 0 26px rgba(79,141,255,.7)">${icon('profile', 30, 2.2)}</div>
+    <div class="vs pulse">VS</div>
+    <div style="position:relative;width:64px;height:64px">
+      <span class="ring"></span><span class="ring r2"></span><span class="ring r3"></span>
+      <div class="orb bob2" style="position:relative;background:${k.rBg};box-shadow:${k.rSh};color:${k.rFg}">${right}</div>
+    </div></div>`;
+} else {
+  html += `<div class="sphere-box">
+    ${k.ray ? `<span class="rays spin-slow" style="background:repeating-conic-gradient(from 0deg, ${k.ray} 0deg 6deg, rgba(0,0,0,0) 6deg 20deg)"></span>` : ''}
+    <span class="halo spin"></span>
+    <div class="sphere ${k.cls || ''}" style="background:linear-gradient(155deg, rgba(255,255,255,.34), rgba(255,255,255,.06) 55%), radial-gradient(circle at 50% 115%, ${k.core}, rgba(0,0,0,0) 62%), rgba(20,22,58,.7);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.7), inset 0 0 0 1px rgba(255,255,255,.22), 0 0 34px ${k.glow};color:${k.ink}">
+      <span class="${k.icon || ''}" style="display:flex">${icon(k.glyph, 36, 2.1)}</span>
+    </div></div>`;
+}
+html += `</div>`;
+if (k.confetti) {
+  const COL = ['#4F8DFF', '#9B5CFF', '#FF6A88', '#FFD36B', '#22D3EE', '#3BE58B'];
+  for (let i = 0; i < 14; i++) {
+    const round = i % 3 === 0;
+    html += `<span class="fall" style="left:${20 + ((i * 41) % 280)}px;width:${round ? 7 : 10}px;height:${round ? 7 : 5}px;border-radius:${round ? 4 : 2}px;background:${COL[i % COL.length]};--dx:${((i * 29) % 60) - 30}px;animation-delay:${-((i * 211) % 3000)}ms"></span>`;
+  }
+}
+html += `<div class="foot"><b class="title" style="color:${k.tc};text-shadow:0 0 22px ${k.glow}, 0 2px 12px rgba(0,0,0,.4)">${title}</b><span>${sub}</span></div>`;
+document.getElementById('card').innerHTML = html;
+document.documentElement.lang = lang;
+</script>
+</body>
+</html>

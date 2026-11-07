@@ -1,7 +1,8 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import type { FastifyBaseLogger } from 'fastify';
-import { langFromTelegram, type GameCategory, type Lang } from '@quiz-duel/shared';
+import { langFromTelegram, type GameCategory, type GameRules, type Lang } from '@quiz-duel/shared';
 import { botTexts, inviteTexts, shareTexts } from './texts.js';
+import { CARD_VIDEO, cardMedia, type CardKind } from './cards.js';
 import type { GameManager, InviteMaker, ResultSharer } from '../game/manager.js';
 import type { UsersRepo } from '../users.js';
 import type { TelegramUser } from '../auth/initData.js';
@@ -84,21 +85,37 @@ export function startBot(bot: QuizBot, log: FastifyBaseLogger) {
 
 const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-/** Карточка «Вызов на дуэль» с кнопкой «Принять» (shareMessage и inline-режим). */
-export function inviteArticle(input: { gameId: string; link: string; category: GameCategory; lang: Lang; creatorName: string }) {
-  const t = inviteTexts[input.lang];
+/**
+ * Анимированная карточка для shareMessage и inline-режима: ролик с сайта (Telegram показывает его как GIF),
+ * подпись и кнопка. webAppUrl - адрес мини-аппа, ролики лежат на том же сайте.
+ */
+function animatedCard(webAppUrl: string, kind: CardKind, lang: Lang, card: { id: string; title: string; caption: string; button: InlineKeyboard }) {
+  const media = cardMedia(webAppUrl);
   return {
-    type: 'article' as const,
-    id: `g_${input.gameId}`,
-    title: t.title,
-    description: `${t.description} · ${t.categories[input.category]}`,
-    input_message_content: {
-      message_text: t.body(escapeHtml(input.creatorName), t.categories[input.category]),
-      parse_mode: 'HTML' as const,
-      link_preview_options: { is_disabled: true },
-    },
-    reply_markup: new InlineKeyboard().url(t.accept, input.link),
+    type: 'mpeg4_gif' as const,
+    id: card.id,
+    mpeg4_url: media.url(kind, lang),
+    mpeg4_width: CARD_VIDEO.width,
+    mpeg4_height: CARD_VIDEO.height,
+    mpeg4_duration: CARD_VIDEO.duration,
+    thumbnail_url: media.thumb(kind, lang),
+    thumbnail_mime_type: 'image/jpeg' as const,
+    title: card.title,
+    caption: card.caption,
+    parse_mode: 'HTML' as const,
+    reply_markup: card.button,
   };
+}
+
+/** Карточка «Вызов на дуэль» с кнопкой «Принять» (shareMessage и inline-режим). */
+export function inviteCard(input: { gameId: string; link: string; category: GameCategory; rules: GameRules; lang: Lang; creatorName: string; webAppUrl: string }) {
+  const t = inviteTexts[input.lang];
+  return animatedCard(input.webAppUrl, 'invite', input.lang, {
+    id: `g_${input.gameId}`,
+    title: `${t.title} · ${t.categories[input.category]}`,
+    caption: t.body(escapeHtml(input.creatorName), t.categories[input.category], input.rules),
+    button: new InlineKeyboard().url(t.accept, input.link),
+  });
 }
 
 /**
@@ -125,20 +142,20 @@ export async function inlineAnswer(
     const text = res.error === 'consent_required' ? t.inlineConsent : res.error === 'busy' ? t.inlineBusy : t.inlineOpen;
     return { results: [], options: { ...options, button: { text, web_app: { url: webAppUrl } } } };
   }
-  const article = inviteArticle({ gameId: res.gameId, link: res.link, category: res.category, lang, creatorName: user.firstName });
-  return { results: [article], options };
+  const card = inviteCard({ gameId: res.gameId, link: res.link, category: res.category, rules: res.rules, lang, creatorName: user.firstName, webAppUrl });
+  return { results: [card], options };
 }
 
 /**
  * Подготовленное сообщение для shareMessage: игрок выбирает чат, туда уходит карточка
  * «Вызов на дуэль» с кнопкой «Принять» - она открывает мини-апп сразу в этой игре.
  */
-export function botInvites(bot: QuizBot): InviteMaker {
+export function botInvites(bot: QuizBot, webAppUrl: string): InviteMaker {
   return {
-    async prepare({ userId, gameId, link, category, lang, creatorName }) {
+    async prepare({ userId, gameId, link, category, rules, lang, creatorName }) {
       const prepared = await bot.api.savePreparedInlineMessage(
         userId,
-        inviteArticle({ gameId, link, category, lang, creatorName }),
+        inviteCard({ gameId, link, category, rules, lang, creatorName, webAppUrl }),
         { allow_user_chats: true, allow_group_chats: true, allow_channel_chats: true },
       );
       return { id: prepared.id, expiresAt: prepared.expiration_date * 1000 };
@@ -146,26 +163,30 @@ export function botInvites(bot: QuizBot): InviteMaker {
   };
 }
 
-/** Карточка результата для shareMessage: «Победа 8 420 : 6 100» и кнопка «Сыграть со мной». */
-export function resultArticle(input: { gameId: string; lang: Lang; outcome: 'win' | 'loss' | 'draw'; me: number; opp: number; opponent: string; link: string }) {
+/** Карточка результата для shareMessage: ролик «Победа!» / «Почти!» / «Ничья!», счёт и кнопка «Сыграть со мной». */
+export function resultCard(input: {
+  gameId: string;
+  lang: Lang;
+  outcome: 'win' | 'loss' | 'draw';
+  me: number;
+  opp: number;
+  opponent: string;
+  link: string;
+  webAppUrl: string;
+}) {
   const t = shareTexts[input.lang];
-  return {
-    type: 'article' as const,
+  return animatedCard(input.webAppUrl, input.outcome, input.lang, {
     id: `r_${input.gameId}`,
     title: t.title,
-    input_message_content: {
-      message_text: t.body(input.outcome, input.me, input.opp, input.opponent),
-      parse_mode: 'HTML' as const,
-      link_preview_options: { is_disabled: true },
-    },
-    reply_markup: new InlineKeyboard().url(t.play, input.link),
-  };
+    caption: t.body(input.outcome, input.me, input.opp, input.opponent),
+    button: new InlineKeyboard().url(t.play, input.link),
+  });
 }
 
-export function botResults(bot: QuizBot): ResultSharer {
+export function botResults(bot: QuizBot, webAppUrl: string): ResultSharer {
   return {
     async prepare({ userId, ...rest }) {
-      const prepared = await bot.api.savePreparedInlineMessage(userId, resultArticle(rest), {
+      const prepared = await bot.api.savePreparedInlineMessage(userId, resultCard({ ...rest, webAppUrl }), {
         allow_user_chats: true,
         allow_group_chats: true,
         allow_channel_chats: true,

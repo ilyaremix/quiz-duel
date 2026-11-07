@@ -108,6 +108,9 @@ export interface GameAlert {
   opponent: string;
   /** Для waitingGame: когда наступит техническое поражение (мс). */
   until?: number;
+  /** Для friendInvite: тема и правила партии. */
+  category?: GameCategory;
+  rules?: GameRules;
   result?: { outcome: Outcome; technical: boolean; me: number; opp: number; ratingAfter: number | null; delta: number | null };
 }
 
@@ -117,7 +120,15 @@ export interface GameAlerts {
 
 /** Бот: готовит карточку «Вызов на дуэль» для shareMessage. */
 export interface InviteMaker {
-  prepare(input: { userId: number; gameId: string; link: string; category: GameCategory; lang: UserCard['lang']; creatorName: string }): Promise<PreparedInvite | null>;
+  prepare(input: {
+    userId: number;
+    gameId: string;
+    link: string;
+    category: GameCategory;
+    rules: GameRules;
+    lang: UserCard['lang'];
+    creatorName: string;
+  }): Promise<PreparedInvite | null>;
 }
 
 /**
@@ -486,7 +497,7 @@ export class GameManager {
    * букву - новые игры на каждый запрос не создаются). Иначе - новая игра «Микс».
    * Посреди партии или когда в лобби уже есть соперник - busy (лобби с соперником не трогаем).
    */
-  async inlineChallenge(userId: number): Promise<Result<{ gameId: string; link: string; category: GameCategory; reused: boolean }>> {
+  async inlineChallenge(userId: number): Promise<Result<{ gameId: string; link: string; category: GameCategory; rules: GameRules; reused: boolean }>> {
     const card = await this.card(userId);
     if (!card) return fail('internal');
     if (card.banned) return fail('banned');
@@ -497,7 +508,7 @@ export class GameManager {
     if (currentId && cur && machine.playerOf(cur.state, userId) && !FINAL_PHASES.includes(cur.state.phase)) {
       const s = cur.state;
       if (s.phase === 'waiting' && s.creator.userId === userId && s.mode === 'link') {
-        return { ok: true, gameId: s.id, link: gameLink(this.d.appUrl, s.id), category: s.category, reused: true };
+        return { ok: true, gameId: s.id, link: gameLink(this.d.appUrl, s.id), category: s.category, rules: machine.rulesOf(s), reused: true };
       }
       return fail('busy', { busyGameId: currentId });
     }
@@ -509,7 +520,14 @@ export class GameManager {
     if (!this.isOnline(userId)) {
       await this.run(entry, () => this.apply(entry, machine.setPresence(entry.state, userId, false, this.now())));
     }
-    return { ok: true, gameId: entry.state.id, link: gameLink(this.d.appUrl, entry.state.id), category: entry.state.category, reused: false };
+    return {
+      ok: true,
+      gameId: entry.state.id,
+      link: gameLink(this.d.appUrl, entry.state.id),
+      category: entry.state.category,
+      rules: machine.rulesOf(entry.state),
+      reused: false,
+    };
   }
 
   /** Вход по ссылке. Участник получает снимок своей партии в любой фазе. */
@@ -623,7 +641,7 @@ export class GameManager {
     const invites = this.d.invites;
     entry.invite = (async () => {
       const card = await this.card(userId);
-      return invites.prepare({ userId, gameId, link, category: s.category, lang: card?.lang ?? 'en', creatorName: card?.name ?? '' });
+      return invites.prepare({ userId, gameId, link, category: s.category, rules: machine.rulesOf(s), lang: card?.lang ?? 'en', creatorName: card?.name ?? '' });
     })().catch((error: unknown) => {
       this.d.log.warn({ err: error, gameId }, 'prepared invite failed');
       return null;

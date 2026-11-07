@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { TIMINGS } from '@quiz-duel/shared';
 import type { GameAlert, GameAlerts } from '../src/game/manager.js';
 import { botAlerts, type AlertApi } from '../src/bot/alerts.js';
+import { cardMedia } from '../src/bot/cards.js';
 import { ilya, lobby, mark, player, playOut, start, stateWhere, until, world } from './socketWorld.js';
 import { memoryUsers } from './helpers.js';
 
@@ -140,19 +141,65 @@ describe('Этап 8: отправка уведомлений', () => {
     await users.upsertFromTelegram({ id: 1, first_name: 'Илья', language_code: 'ru', allows_write_to_pm: true });
     await users.upsertFromTelegram({ id: 2, first_name: 'Mark', language_code: 'en', allows_write_to_pm: true });
     await users.upsertFromTelegram({ id: 3, first_name: 'Аня', language_code: 'ru' });
-    const calls: { chatId: number; text: string; url: string; button: string }[] = [];
+    const calls: { chatId: number; text: string; url: string; button: string; media?: string }[] = [];
     let fail: number | null = null;
+    let failAnimation: number | null = null;
+    let seq = 0;
     const api: AlertApi = {
       async sendMessage(chatId, text, other) {
         if (fail) throw Object.assign(new Error('Forbidden'), { error_code: fail });
         const btn = other.reply_markup.inline_keyboard[0]![0] as { text: string; url: string };
         calls.push({ chatId, text, url: btn.url, button: btn.text });
       },
+      async sendAnimation(chatId, animation, other) {
+        if (fail) throw Object.assign(new Error('Forbidden'), { error_code: fail });
+        if (failAnimation) throw Object.assign(new Error('Bad Request: failed to get HTTP URL content'), { error_code: failAnimation });
+        const btn = other.reply_markup.inline_keyboard[0]![0] as { text: string; url: string };
+        calls.push({ chatId, text: other.caption, url: btn.url, button: btn.text, media: animation });
+        return { message_id: ++seq, animation: { file_id: `file-${animation.split('/').pop()}` } };
+      },
     };
     const warns: object[] = [];
-    const sender = botAlerts(api, users, 'https://t.me/q_battle_bot/QuizDuel', { warn: (o) => warns.push(o) });
-    return { users, calls, sender, warns, failWith: (code: number | null) => (fail = code) };
+    const log = { warn: (o: object) => warns.push(o) };
+    const sender = botAlerts(api, users, 'https://t.me/q_battle_bot/QuizDuel', log);
+    const animated = botAlerts(api, users, 'https://t.me/q_battle_bot/QuizDuel', log, cardMedia('https://quiz.example.sslip.io/app'));
+    return {
+      users,
+      calls,
+      sender,
+      animated,
+      warns,
+      failWith: (code: number | null) => (fail = code),
+      failAnimationWith: (code: number | null) => (failAnimation = code),
+    };
   }
+
+  it('карточка-анимация с сайта: по адресу, потом по file_id; Telegram не скачал ролик - текстом', async () => {
+    const { calls, animated, warns, failAnimationWith } = await setup();
+    animated.send(1, { kind: 'rematch', gameId: 'Abcde12345', opponent: 'Mark' });
+    await animated.flush();
+    animated.send(1, { kind: 'rematch', gameId: 'Abcde12345', opponent: 'Mark' });
+    animated.send(2, { kind: 'result', gameId: 'Abcde12345', opponent: 'Илья', result: { outcome: 'draw', technical: false, me: 5000, opp: 5000, ratingAfter: 1000, delta: 0 } });
+    await animated.flush();
+    expect(calls.map((c) => c.media)).toEqual(['https://quiz.example.sslip.io/bot/rematch-ru.mp4', 'file-rematch-ru.mp4', 'https://quiz.example.sslip.io/bot/draw-en.mp4']);
+    expect(calls[0]).toMatchObject({ button: 'Ответить', url: 'https://t.me/q_battle_bot/QuizDuel?startapp=g_Abcde12345' });
+    expect(calls[0]!.text).toContain('предлагает реванш');
+
+    failAnimationWith(400);
+    animated.send(1, { kind: 'joined', gameId: 'Abcde12345', opponent: 'Mark' });
+    await animated.flush();
+    expect(calls.at(-1)).toMatchObject({ chatId: 1, button: 'Открыть лобби' });
+    expect(calls.at(-1)!.media).toBeUndefined();
+    expect(warns).toHaveLength(1);
+  });
+
+  it('друг зовёт: тема и режим партии в тексте', async () => {
+    const { calls, animated } = await setup();
+    animated.send(1, { kind: 'friendInvite', gameId: 'Abcde12345', opponent: 'Mark', category: 'history', rules: { variant: 'lives', timeSec: 10, count: 15 } });
+    await animated.flush();
+    expect(calls[0]!.media).toBe('https://quiz.example.sslip.io/bot/friend-ru.mp4');
+    expect(calls[0]!.text).toContain('История и география · Три жизни · 15 вопросов по 10 секунд');
+  });
 
   it('на языке получателя, с кнопкой прямо в партию; имя экранируется', async () => {
     const { calls, sender } = await setup();

@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { ResultSharer } from '../src/game/manager.js';
-import { resultArticle } from '../src/bot/index.js';
+import { resultCard } from '../src/bot/index.js';
 import { anya, ilya, lobby, mark, player, playOut, start, world } from './socketWorld.js';
 
 function fakeSharer() {
@@ -59,11 +59,14 @@ describe('Этап 8: поделиться результатом', () => {
   }, 20_000);
 
   it('карточка: исход, счёт, соперник (экранирован) и кнопка «Сыграть со мной»', () => {
-    const ru = resultArticle({ gameId: 'Abcde12345', lang: 'ru', outcome: 'win', me: 8420, opp: 6100, opponent: '<Марк>', link: 'https://t.me/b/app' });
-    expect(ru.input_message_content.message_text).toContain('Победа <b>8 420 : 6 100</b>');
-    expect(ru.input_message_content.message_text).toContain('Соперник: &lt;Марк&gt;');
+    const web = 'https://quiz.example.sslip.io';
+    const ru = resultCard({ gameId: 'Abcde12345', lang: 'ru', outcome: 'win', me: 8420, opp: 6100, opponent: '<Марк>', link: 'https://t.me/b/app', webAppUrl: web });
+    expect(ru).toMatchObject({ type: 'mpeg4_gif', mpeg4_url: `${web}/bot/win-ru.mp4`, thumbnail_url: `${web}/bot/win-ru.jpg` });
+    expect(ru.caption).toContain('Победа <b>8 420 : 6 100</b>');
+    expect(ru.caption).toContain('Соперник: &lt;Марк&gt;');
     expect(ru.reply_markup.inline_keyboard[0]![0]).toMatchObject({ text: 'Сыграть со мной', url: 'https://t.me/b/app' });
-    const en = resultArticle({ gameId: 'Abcde12345', lang: 'en', outcome: 'draw', me: 6200, opp: 6200, opponent: 'Ilya', link: 'https://t.me/b/app' });
-    expect(en.input_message_content.message_text).toContain('Draw <b>6,200 : 6,200</b>');
+    const en = resultCard({ gameId: 'Abcde12345', lang: 'en', outcome: 'draw', me: 6200, opp: 6200, opponent: 'Ilya', link: 'https://t.me/b/app', webAppUrl: web });
+    expect(en.mpeg4_url).toBe(`${web}/bot/draw-en.mp4`);
+    expect(en.caption).toContain('Draw <b>6,200 : 6,200</b>');
   });
 });

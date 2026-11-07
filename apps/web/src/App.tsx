@@ -209,7 +209,7 @@ function useRefreshAfterGame(game: GameView | null) {
  * бот позовёт, когда соперник зайдёт, будет ждать или предложит реванш. Уже разрешил - не спрашиваем.
  */
 let writeAccessAsked = false;
-let adminOpenedFromLink = false;
+let linkHandled = false;
 function useWriteAccessAsk(game: GameView | null, me: MeResponse | undefined) {
   const queryClient = useQueryClient();
   const inLobby = Boolean(game && (game.phase === 'waiting' || game.phase === 'lobby'));
@@ -247,11 +247,17 @@ function InTelegram({ session }: { session: TelegramSession }) {
   useRefreshAfterGame(game);
   useWriteAccessAsk(game, me.data);
 
-  // Кнопка «Открыть админку» из /admin у бота: startapp=admin.
+  // Кнопки бота: «Открыть админку» из /admin (startapp=admin) и «Забрать» из напоминания
+  // о ежедневной награде (startapp=daily - сразу «Магазин», где награда).
   useEffect(() => {
-    if (me.data?.admin && session.startParam === 'admin' && !adminOpenedFromLink) {
-      adminOpenedFromLink = true;
+    if (!me.data || linkHandled) return;
+    if (session.startParam === 'admin' && me.data.admin) {
+      linkHandled = true;
       adminActions.open();
+    } else if (session.startParam === 'daily') {
+      linkHandled = true;
+      shop.setSection('earn');
+      gameActions.setTab('shop');
     }
   }, [me.data, session.startParam]);
 

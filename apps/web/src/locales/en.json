@@ -699,7 +699,7 @@
     "haptics": "Haptics",
     "hapticsHint": "On answers, results and the final seconds",
     "notif": "Bot notifications",
-    "notifHint": "Rematch, opponent waiting, game result",
+    "notifHint": "Rematch, opponent waiting, game result, daily reward",
     "notifNoAccess": "The bot can’t message you yet - allow it in the Telegram prompt or tap “Start” in the bot",
     "howTo": "How to play",
     "ok": "Got it",
