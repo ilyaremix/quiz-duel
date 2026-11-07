@@ -15,23 +15,27 @@ import { saveSettings } from '../lib/settings';
 
 type Slide = 1 | 2 | 3;
 
-/** Слайд 1: сообщение в чате и карточка «Вызов на дуэль». */
+/** Слайд 1: сообщение в чате и карточка «Вызов на дуэль» - стекло, собирается каскадом. */
 function ChallengeArt() {
   const { t } = useTranslation();
   return (
-    <div className="qd-pop relative flex w-[290px] flex-col gap-2.5">
-      <div className="qd-rise max-w-[230px] self-start rounded-[18px_18px_18px_6px] bg-section px-3.5 py-2.5 text-[15px] font-semibold">{t('s02.chat')}</div>
-      <div className="qd-rise-2 box-border flex w-[236px] flex-col gap-3 self-end rounded-[20px_20px_6px_20px] bg-section p-3.5 shadow-[0_4px_0_var(--qd-lip)]">
-        <div className="flex items-center gap-2.5">
+    <div className="qd-in relative flex w-[296px] flex-col gap-3">
+      <div className="qd-in qd-d2 qd-card box-border max-w-[236px] self-start rounded-[20px_20px_20px_6px] px-[15px] py-[11px] text-[15px] leading-[1.35] font-medium">
+        {t('s02.chat')}
+      </div>
+      <div className="qd-in qd-d4 qd-card qd-glint box-border flex w-[244px] flex-col gap-3 self-end rounded-[24px_24px_6px_24px] p-3.5">
+        <div className="relative flex items-center gap-2.5">
           <Logo size="m" wordmark={false} />
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[15px] font-extrabold">{t('s02.card')}</span>
-            <span className="text-[12px] font-bold text-hint">{t('cat.science.title')}</span>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-[15px] font-bold">{t('s02.card')}</span>
+            <span className="text-[12px] font-medium text-hint">{t('cat.science.title')}</span>
           </div>
         </div>
-        <Button size="s" tabIndex={-1}>
-          {t('s02.accept')}
-        </Button>
+        <div className="relative">
+          <Button size="s" tabIndex={-1}>
+            {t('s02.accept')}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -41,46 +45,57 @@ function ChallengeArt() {
 function SpeedArt({ me }: { me: MeResponse }) {
   const { t } = useTranslation();
   return (
-    <div className="qd-pop relative flex w-[300px] flex-col gap-3.5">
+    <div className="qd-in relative flex w-[306px] flex-col gap-3.5">
       <Timer seconds={12} />
-      <div className="qd-rise">
-        <Answer text={t('s02.right')} state="correct" points="+950" me={{ id: me.id, name: me.firstName, photoUrl: me.photoUrl }} disabled={false} />
+      <div className="qd-in qd-d2">
+        <Answer text={t('s02.right')} state="correct" points="+950" me={{ id: me.id, name: me.firstName, photoUrl: me.photoUrl }} />
       </div>
-      <div className="qd-rise-2">
+      <div className="qd-in qd-d3">
         <Answer text={t('s02.other')} state="dimmed" />
       </div>
-      <div className="flex h-8 items-center gap-1.5 self-center rounded-2xl px-3.5 text-[14px] font-extrabold" style={{ background: 'var(--qd-gold-tint)', color: 'var(--qd-gold-text)' }}>
+      <span className="qd-in qd-d5 qd-chip qd-chip-gold self-center" style={{ height: 34, padding: '0 14px', borderRadius: 17, fontSize: 14 }}>
         <Icon glyph="bolt" size={16} stroke={2.5} />
         {t('s02.fast')}
-      </div>
+      </span>
     </div>
   );
 }
 
-/** Слайд 3: пьедестал и рост рейтинга. */
+/** Слайд 3: пьедестал (золотой столбик со свечением) и рост рейтинга. */
 function RatingArt({ me }: { me: MeResponse }) {
   const { t, i18n } = useTranslation();
   const [second, third] = t('s02.podium', { returnObjects: true }) as string[];
-  const column = 'flex w-full box-border justify-center rounded-[18px_18px_8px_8px] pt-3 font-black';
+  const column = 'qd-card box-border flex w-full justify-center rounded-[20px_20px_10px_10px] pt-3 text-[22px] font-bold';
   return (
-    <div className="qd-pop relative flex w-[300px] flex-col items-center gap-[18px]">
-      <div className="qd-num flex h-[34px] items-center gap-1.5 rounded-[17px] px-3.5 text-[15px] font-extrabold" style={{ background: 'var(--qd-correct-tint)', color: 'var(--qd-correct-text)' }}>
+    <div className="qd-in relative flex w-[306px] flex-col items-center gap-[18px]">
+      <span className="qd-chip qd-chip-ok qd-num" style={{ height: 34, padding: '0 14px', borderRadius: 17, fontSize: 15 }}>
         {t('s02.rating', { r: formatNumber(me.rating + 16, i18n.language) })}
-      </div>
+      </span>
       <div className="grid w-full grid-cols-3 items-end gap-2.5">
-        <div className="qd-rise flex flex-col items-center gap-2.5">
+        <div className="qd-in qd-d2 flex flex-col items-center gap-2.5">
           <Avatar id={2} name={second ?? ''} size={48} />
-          <div className={`${column} h-[92px] bg-section text-[22px] text-hint`}>2</div>
+          <div className={`${column} h-[92px]`} style={{ color: 'var(--qd-silver)' }}>
+            2
+          </div>
         </div>
         <div className="flex flex-col items-center gap-2.5">
           <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={56} ring="me" badge="online" />
-          <div className={`${column} h-[132px] text-[26px]`} style={{ background: 'var(--qd-gold)', color: 'var(--qd-on-fill)' }}>
+          <div
+            className="qd-glint box-border flex h-[132px] w-full justify-center rounded-[20px_20px_10px_10px] pt-3 text-[26px] font-bold"
+            style={{
+              background: 'radial-gradient(90% 50% at 30% 0%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 70%), linear-gradient(180deg, #FFE08A, #F2B230)',
+              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0 34px var(--qd-gold-glow)',
+              color: '#3A2600',
+            }}
+          >
             1
           </div>
         </div>
-        <div className="qd-rise-2 flex flex-col items-center gap-2.5">
+        <div className="qd-in qd-d3 flex flex-col items-center gap-2.5">
           <Avatar id={3} name={third ?? ''} size={48} />
-          <div className={`${column} h-[70px] bg-section text-[22px] text-hint`}>3</div>
+          <div className={`${column} h-[70px]`} style={{ color: 'var(--qd-bronze)' }}>
+            3
+          </div>
         </div>
       </div>
     </div>
@@ -144,36 +159,48 @@ export function OnboardingScreen({
       </div>
 
       <div className="relative flex grow items-center justify-center">
-        <div aria-hidden="true" className="absolute h-[300px] w-[300px] rounded-full bg-brand-tint opacity-40" />
+        <div
+          aria-hidden="true"
+          className="qd-halo absolute h-[330px] w-[330px] rounded-full"
+          style={{ background: 'radial-gradient(closest-side, var(--qd-brand-glow), rgba(155, 92, 255, 0))' }}
+        />
         {slide === 1 && <ChallengeArt key="s1" />}
         {slide === 2 && <SpeedArt key="s2" me={me} />}
         {slide === 3 && <RatingArt key="s3" me={me} />}
       </div>
 
-      <div key={slide} className="qd-rise flex flex-col items-center gap-2.5 px-3 text-center">
-        <h1 className="m-0 text-[28px] leading-[1.15] font-black">{copy.title}</h1>
-        <p className="m-0 min-h-11 text-[16px] leading-[1.4] font-semibold text-hint">{copy.text}</p>
+      <div key={slide} className="qd-in qd-d2 flex flex-col items-center gap-2.5 px-3 text-center">
+        <h1 className="m-0 text-[28px] leading-[1.15] font-bold tracking-[-0.02em]">{copy.title}</h1>
+        <p className="m-0 min-h-11 text-[16px] leading-[1.4] font-medium text-hint">{copy.text}</p>
       </div>
 
       {slide === 3 && (
-        <div className="qd-rise-2 mt-[18px] flex flex-col gap-2">
+        <div className="qd-in qd-d3 mt-[18px] flex flex-col gap-2">
           <ConsentChecks docs={docs} terms={terms} policy={policy} onTerms={() => setTerms((v) => !v)} onPolicy={() => setPolicy((v) => !v)} />
           {needDocs && docsFailed ? (
             <div className="flex items-center justify-center gap-2">
-              <span className="text-[13px] font-semibold text-hint">{t('s02.docsFailed')}</span>
+              <span className="text-[13px] font-medium text-hint">{t('s02.docsFailed')}</span>
               <Button variant="ghost" size="s" full={false} onClick={onRetryDocs}>
                 {t('common.retry')}
               </Button>
             </div>
           ) : (
-            !both && <span className="text-center text-[13px] font-semibold text-hint">{t('consent.hint')}</span>
+            !both && <span className="text-center text-[13px] font-medium text-hint">{t('consent.hint')}</span>
           )}
         </div>
       )}
 
       <div aria-hidden="true" className="flex justify-center gap-1.5" style={{ margin: slide === 3 ? '16px 0' : '24px 0' }}>
         {[1, 2, 3].map((i) => (
-          <span key={i} className="qd-dot h-2 rounded" style={{ width: i === slide ? 24 : 8, background: i === slide ? 'var(--qd-brand)' : 'var(--qd-surface-2)' }} />
+          <span
+            key={i}
+            className="qd-dot h-2 rounded"
+            style={{
+              width: i === slide ? 24 : 8,
+              background: i === slide ? 'linear-gradient(90deg, #4F8DFF, #9B5CFF)' : 'var(--qd-dash)',
+              boxShadow: i === slide ? '0 0 12px rgba(155, 92, 255, 0.7)' : 'none',
+            }}
+          />
         ))}
       </div>
 

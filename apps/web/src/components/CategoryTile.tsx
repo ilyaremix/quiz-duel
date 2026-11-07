@@ -1,6 +1,6 @@
-import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { GameCategory } from '@quiz-duel/shared';
+import { Ball, BALLS } from './Ball';
 import { Icon } from './Icon';
 import { CATEGORY_LOOK } from './Category';
 
@@ -10,7 +10,7 @@ interface CategoryTileProps {
   onPick: () => void;
 }
 
-/** Плитка категории в шторке выбора: иконка, название, число вопросов, галочка выбора. */
+/** Плитка категории в шторке выбора: глянцевый шар категории, название, число вопросов; выбранная - фиолетовое стекло с галочкой. */
 export function CategoryTile({ cat, selected, onPick }: CategoryTileProps) {
   const { t } = useTranslation();
   const look = CATEGORY_LOOK[cat];
@@ -19,36 +19,42 @@ export function CategoryTile({ cat, selected, onPick }: CategoryTileProps) {
       type="button"
       aria-pressed={selected}
       onClick={onPick}
-      className="qd-press relative box-border flex h-full min-h-[108px] w-full cursor-pointer flex-col items-start gap-2.5 rounded-[20px] border-2 p-3.5 text-left font-[inherit] text-text"
+      className="qd-press relative box-border flex h-full min-h-[116px] w-full cursor-pointer flex-col items-start gap-2.5 rounded-[26px] border-0 px-3.5 pt-3.5 pb-4 text-left text-text"
       style={{
-        '--qd-shadow': '0 4px 0 var(--qd-lip)',
-        borderColor: selected ? 'var(--qd-brand)' : 'transparent',
-        background: selected ? 'var(--qd-brand-tint)' : 'var(--tg-theme-section-bg-color)',
-      } as CSSProperties}
+        background: selected ? 'var(--qd-brand-glass)' : 'var(--qd-sheen), var(--qd-glass)',
+        boxShadow: selected ? 'var(--qd-brand-edge)' : 'var(--qd-glass-edge)',
+      }}
     >
-      <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: look.bg, color: look.fg }}>
-        <Icon glyph={look.glyph} size={20} stroke={2.2} />
-      </span>
+      <Ball size={42} color={look.ball} glow={look.glow} ink={look.ink} style={{ boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -5px 12px rgba(0, 0, 0, 0.16), 0 0 20px ${look.glow}` }}>
+        <Icon glyph={look.glyph} size={20} stroke={2.3} />
+      </Ball>
       <span className="flex flex-col gap-[3px]">
-        <span className="text-[15px] leading-[1.2] font-extrabold">{t(`cat.${cat}.title`)}</span>
-        <span className="text-[12px] font-bold text-hint">{t(`cat.${cat}.count`)}</span>
+        <span className="text-[16px] leading-[1.2] font-bold tracking-[-0.01em]">{t(`cat.${cat}.title`)}</span>
+        <span className="text-[12px] font-medium text-hint">{t(`cat.${cat}.count`)}</span>
       </span>
       {selected && (
-        <span aria-hidden="true" className="qd-pop absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">
+        <Ball
+          size={26}
+          {...BALLS.brand}
+          className="qd-pop absolute top-3 right-3"
+          style={{ boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 0 14px var(--qd-brand-glow)' }}
+        >
           <Icon glyph="check" size={14} stroke={3.5} />
-        </span>
+        </Ball>
       )}
     </button>
   );
 }
 
-/** Метка категории в шапке лобби. */
-export function CategoryChip({ cat }: { cat: GameCategory }) {
+/** Метка категории в шапке лобби и на экране вопроса: стеклянная капсула с мини-шаром категории. */
+export function CategoryChip({ cat, height = 30 }: { cat: GameCategory; height?: number }) {
   const { t } = useTranslation();
   const look = CATEGORY_LOOK[cat];
   return (
-    <span className="flex h-[30px] items-center gap-1.5 rounded-[15px] bg-section px-3 text-[13px] font-extrabold" style={{ color: look.fg }}>
-      <Icon glyph={look.glyph} size={14} stroke={2.5} />
+    <span className="qd-chip" style={{ height, borderRadius: height / 2, padding: '0 12px 0 5px' }}>
+      <Ball size={20} color={look.ball} glow={look.glow} ink={look.ink} style={{ boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 10px ${look.glow}` }}>
+        <Icon glyph={look.glyph} size={12} stroke={2.6} />
+      </Ball>
       {t(`cat.${cat}.title`)}
     </span>
   );

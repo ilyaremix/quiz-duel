@@ -4,17 +4,18 @@ import { Avatar } from './Avatar';
 import { formatNumber } from '../i18n';
 import { formatWhen, signed } from '../lib/format';
 
-const CHIP = {
-  win: { bg: 'var(--qd-correct-tint)', fg: 'var(--qd-correct-text)' },
-  loss: { bg: 'var(--qd-wrong-tint)', fg: 'var(--qd-wrong-text)' },
-  draw: { bg: 'var(--qd-surface-2)', fg: 'var(--tg-theme-hint-color)' },
+/** Исход - тонированная стеклянная капсула: победа зелёная, поражение красная, ничья фиолетовая. */
+export const OUTCOME_CHIP = {
+  win: { bg: 'var(--qd-correct-tint)', ring: 'var(--qd-ok-ring)', fg: 'var(--qd-correct-text)' },
+  loss: { bg: 'var(--qd-wrong-tint)', ring: 'var(--qd-bad-ring)', fg: 'var(--qd-wrong-text)' },
+  draw: { bg: 'var(--qd-brand-tint)', ring: 'var(--qd-brand-ring)', fg: 'var(--qd-brand-text)' },
 } as const;
 
 /** Строка матча: соперник, счёт, когда, итог с изменением рейтинга. Тап - разбор партии. */
 export function MatchRow({ match, onPress }: { match: MatchSummary; onPress?: () => void }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
-  const c = CHIP[match.outcome];
+  const c = OUTCOME_CHIP[match.outcome];
   const label = t(`result.${match.outcome}`);
   const delta = match.ratingDelta === null ? '' : ` ${signed(match.ratingDelta, lang)}`;
   return (
@@ -22,16 +23,20 @@ export function MatchRow({ match, onPress }: { match: MatchSummary; onPress?: ()
       type="button"
       onClick={onPress}
       disabled={!onPress}
-      className="qd-press box-border flex min-h-[58px] w-full cursor-pointer items-center gap-3 rounded-[18px] border-0 bg-section px-3.5 py-2 text-left font-[inherit] text-text disabled:cursor-default"
+      className="qd-press box-border flex min-h-[58px] w-full cursor-pointer items-center gap-3 rounded-[24px] border-0 py-2 pr-3.5 pl-2.5 text-left text-text disabled:cursor-default"
+      style={{ background: 'var(--qd-sheen), var(--qd-glass)', boxShadow: 'var(--qd-glass-edge)' }}
     >
-      <Avatar id={match.opponent.id} name={match.opponent.name} photoUrl={match.opponent.photoUrl} size={38} on="card" />
-      <div className="flex min-w-0 grow flex-col gap-px">
-        <span className="truncate text-[15px] font-extrabold">{match.opponent.name}</span>
-        <span className="qd-num truncate text-[13px] font-semibold text-hint">
+      <Avatar id={match.opponent.id} name={match.opponent.name} photoUrl={match.opponent.photoUrl} size={40} on="card" />
+      <div className="flex min-w-0 grow flex-col gap-0.5">
+        <span className="truncate text-[16px] font-semibold">{match.opponent.name}</span>
+        <span className="qd-num truncate text-[13px] font-medium text-hint">
           {formatNumber(match.myScore, lang)} : {formatNumber(match.oppScore, lang)} · {formatWhen(match.finishedAt, t, lang)}
         </span>
       </div>
-      <span className="qd-num flex h-7 shrink-0 items-center rounded-[14px] px-2.5 text-[13px] font-extrabold" style={{ background: c.bg, color: c.fg }}>
+      <span
+        className="qd-num inline-flex h-7 shrink-0 items-center rounded-[14px] px-[11px] text-[13px] font-bold whitespace-nowrap"
+        style={{ background: c.bg, boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 0 0 1px ${c.ring}`, color: c.fg }}
+      >
         {label}
         {delta}
       </span>

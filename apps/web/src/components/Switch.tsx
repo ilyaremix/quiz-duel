@@ -7,7 +7,10 @@ interface SwitchProps {
   disabled?: boolean;
 }
 
-/** Тумблер: область нажатия 56×44, дорожка 52×32, кружок едет на 20 px (без анимаций - сразу). */
+/**
+ * Тумблер: область нажатия 56×44, дорожка 52×32. Включён - сине-фиолетовый градиент со свечением,
+ * выключен - утопленный трек; глянцевый кружок едет на 20 px (без анимаций - сразу).
+ */
 export function Switch({ on, label, onToggle, disabled }: SwitchProps) {
   return (
     <button
@@ -24,12 +27,26 @@ export function Switch({ on, label, onToggle, disabled }: SwitchProps) {
     >
       <span
         aria-hidden="true"
-        className="relative h-8 w-[52px] rounded-2xl transition-colors duration-200 ease-[ease]"
-        style={{ background: on ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)' }}
+        className="relative h-8 w-[52px] rounded-2xl"
+        style={{
+          background: 'var(--qd-track)',
+          boxShadow: on
+            ? 'inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 0 16px rgba(155, 92, 255, 0.5)'
+            : 'inset 0 1px 3px rgba(0, 0, 0, 0.2), inset 0 0 0 1px var(--qd-glass-rim)',
+          transition: 'box-shadow 200ms ease',
+        }}
       >
         <span
-          className="qd-knob absolute top-[3px] left-[3px] h-[26px] w-[26px] rounded-full bg-white shadow-[0_2px_0_rgba(10,8,16,0.25)]"
-          style={{ transform: `translateX(${on ? 20 : 0}px)` }}
+          className="absolute inset-0 rounded-2xl"
+          style={{ background: 'linear-gradient(90deg, #4F8DFF, #9B5CFF)', opacity: on ? 1 : 0, transition: 'opacity 200ms ease' }}
+        />
+        <span
+          className="qd-knob absolute top-[3px] left-[3px] h-[26px] w-[26px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle at 35% 30%, #FFFFFF, #E9ECFA)',
+            boxShadow: 'inset 0 -1px 0 rgba(0, 0, 0, 0.06), 0 2px 6px rgba(3, 4, 20, 0.35)',
+            transform: `translateX(${on ? 20 : 0}px)`,
+          }}
         />
       </span>
     </button>

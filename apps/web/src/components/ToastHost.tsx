@@ -33,7 +33,13 @@ export function ToastHost() {
       style={{ top: 'calc(var(--tg-viewport-safe-area-inset-top, 0px) + var(--tg-viewport-content-safe-area-inset-top, 0px) + 14px)' }}
     >
       <div className="mx-auto max-w-[560px]">
-        <Toast kind={visible.kind} glyph={visible.glyph} text={t(visible.key, visible.vars)} />
+        <Toast
+          kind={visible.kind}
+          glyph={visible.glyph}
+          // Ачивка: «Новая ачивка» подписью сверху, название - текстом.
+          title={visible.kind === 'achievement' ? t(visible.key === 'toast.achMany' ? 'toast.achTitleMany' : 'toast.achTitle') : undefined}
+          text={t(visible.key, visible.vars)}
+        />
       </div>
     </div>
   );

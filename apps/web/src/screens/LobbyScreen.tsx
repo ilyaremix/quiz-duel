@@ -1,6 +1,9 @@
+import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TIMINGS, type GameView } from '@quiz-duel/shared';
 import { DisconnectBanner } from '../components/Banner';
+import { useAuroraTone } from '../components/Aurora';
+import { BALLS } from '../components/Ball';
 import { Button } from '../components/Button';
 import { CategoryChip } from '../components/CategoryTile';
 import { Icon } from '../components/Icon';
@@ -38,17 +41,24 @@ export function LobbyScreen({ game }: { game: GameView }) {
   const meStatus: PlayerStatus = me.ready ? 'ready' : 'notready';
   const oppStatus: PlayerStatus = !opp.online ? 'offline' : opp.ready ? 'ready' : 'notready';
 
+  // Оба готовы - фон синий против оранжевого, как на VS.
+  useAuroraTone(state === 'both' ? 'vs' : 'default');
+
   // Офлайн соперник (я создатель) - место освободится; офлайн создатель - лобби закроется.
   const offUntil = opp.seatFreesAt ?? game.lobbyExpiresAt ?? now;
 
   return (
-    <main className="qd-screen qd-screen-in flex flex-col gap-[18px]">
-      <header className="flex flex-col items-center gap-2.5 text-center">
+    <main className="qd-screen flex flex-col gap-[18px]">
+      <header className="qd-in flex flex-col items-center gap-2.5 text-center">
         <CategoryChip cat={game.category} />
-        <h1 className="m-0 max-w-full truncate text-[28px] font-black">{t(`s06.${state}.title`, { opp: opp.name })}</h1>
+        <h1 className="m-0 max-w-full truncate text-[28px] font-bold tracking-[-0.02em]">{t(`s06.${state}.title`, { opp: opp.name })}</h1>
         <p
-          className="m-0 text-[15px] font-semibold transition-colors duration-200"
-          style={{ color: state === 'both' ? 'var(--qd-correct-text)' : 'var(--tg-theme-hint-color)' }}
+          className="m-0 text-[15px]"
+          style={{
+            color: state === 'both' ? 'var(--qd-correct-text)' : 'var(--tg-theme-hint-color)',
+            fontWeight: state === 'both' ? 600 : 500,
+            transition: 'color 200ms ease',
+          }}
         >
           {t(`s06.${state}.sub`, { opp: opp.name, n: startIn })}
         </p>
@@ -65,7 +75,9 @@ export function LobbyScreen({ game }: { game: GameView }) {
       )}
 
       <div className="relative grid grid-cols-2 gap-3">
-        <PlayerCard id={me.userId} name={me.name} photoUrl={me.photoUrl} rating={me.rating} side="me" status={meStatus} />
+        <div className="qd-in qd-d1">
+          <PlayerCard id={me.userId} name={me.name} photoUrl={me.photoUrl} rating={me.rating} side="me" status={meStatus} />
+        </div>
         <div key={opp.userId} className="qd-arrive">
           <PlayerCard
             id={opp.userId}
@@ -78,19 +90,33 @@ export function LobbyScreen({ game }: { game: GameView }) {
             onAvatar={() => gameActions.openOpp(opp.userId)}
           />
         </div>
-        <VsBadge />
-        <ReactionBubble userId={me.userId} side="me" className="top-[-14px] left-[18px]" />
-        <ReactionBubble userId={opp.userId} side="opp" className="top-[-14px] right-[18px]" />
+        {state === 'both' ? (
+          // Оба готовы: вместо VS - зелёный шар с отсчётом до старта.
+          <span
+            role="timer"
+            aria-label={t('s06.both.sub', { n: startIn })}
+            className="qd-pop qd-ball qd-num absolute top-1/2 left-1/2 z-[2] -mt-7 -ml-7 h-14 w-14 text-[24px] font-bold"
+            style={{ '--qd-ball': BALLS.ok.color, '--qd-ball-glow': BALLS.ok.glow, color: BALLS.ok.ink } as CSSProperties}
+          >
+            <span key={startIn} className="qd-count">
+              {startIn}
+            </span>
+          </span>
+        ) : (
+          <VsBadge />
+        )}
+        <ReactionBubble userId={me.userId} side="me" className="-top-4 left-3.5" />
+        <ReactionBubble userId={opp.userId} side="opp" className="-top-4 right-3.5" />
       </div>
 
-      <section className="flex flex-col gap-2.5">
-        <span className="text-center text-[13px] font-extrabold text-hint">{t('s06.tease')}</span>
+      <section className="qd-in qd-d2 flex flex-col gap-2.5">
+        <span className="text-center text-[13px] font-semibold text-hint">{t('s06.tease')}</span>
         <Reactions />
       </section>
 
       <div className="grow" />
 
-      <div className="flex flex-col gap-3">
+      <div className="qd-in qd-d3 flex flex-col gap-3">
         {countdown ? (
           <Button disabled>{t('s06.starting')}</Button>
         ) : me.ready ? (
@@ -98,7 +124,7 @@ export function LobbyScreen({ game }: { game: GameView }) {
             {t('s06.unready')}
           </Button>
         ) : (
-          <Button disabled={readyBusy} icon={<Icon glyph="check" size={22} stroke={2.5} />} onClick={() => void gameActions.ready(true)}>
+          <Button disabled={readyBusy} icon={<Icon glyph="check" size={22} stroke={2.4} />} onClick={() => void gameActions.ready(true)}>
             {t('s06.ready')}
           </Button>
         )}

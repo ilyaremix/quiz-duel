@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { queueRange, type MeResponse } from '@quiz-duel/shared';
 import { Avatar } from '../components/Avatar';
+import { Ball, BALLS } from '../components/Ball';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { formatClock, useServerNow } from '../hooks/useServerNow';
@@ -27,33 +28,74 @@ export function SearchScreen({ me }: { me: MeResponse }) {
   const st = notFound ? 'notFound' : 'searching';
 
   return (
-    <main className="qd-screen qd-screen-in flex flex-col gap-[18px]">
-      <header className="flex flex-col items-center gap-2.5 text-center">
-        <span className="flex h-[30px] items-center gap-1.5 rounded-[15px] bg-section px-3 text-[13px] font-extrabold text-brand-text">
-          <Icon glyph="shuffle" size={14} stroke={2.5} />
+    <main className="qd-screen flex flex-col gap-[18px]">
+      <header className="qd-in flex flex-col items-center gap-2.5 text-center">
+        <span className="qd-chip" style={{ height: 30, padding: '0 12px 0 5px', borderRadius: 15 }}>
+          <Ball size={20} {...BALLS.brand} style={{ boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 10px var(--qd-brand-glow)' }}>
+            <Icon glyph="shuffle" size={12} stroke={2.6} />
+          </Ball>
           {t('s07.badge', { cat: t('cat.mix.title') })}
         </span>
-        <h1 className="m-0 text-[28px] font-black">{t(`s07.${st}.title`)}</h1>
-        <p className="m-0 max-w-[300px] text-[15px] leading-[1.35] font-semibold text-hint">{t(`s07.${st}.sub`)}</p>
+        <h1 className="m-0 text-[28px] font-bold tracking-[-0.02em]">{t(`s07.${st}.title`)}</h1>
+        <p className="m-0 max-w-[300px] text-[15px] leading-[1.35] font-medium text-hint">{t(`s07.${st}.sub`)}</p>
       </header>
 
       <div className="flex grow items-center justify-center">
         {notFound ? (
-          <div aria-hidden="true" className="qd-pop flex h-40 w-40 items-center justify-center rounded-full bg-section text-hint shadow-[0_4px_0_var(--qd-lip)]">
-            <Icon glyph="clock" size={64} stroke={2} />
+          <div
+            aria-hidden="true"
+            className="qd-pop flex h-40 w-40 items-center justify-center rounded-full"
+            style={{
+              background:
+                'linear-gradient(155deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.06) 55%), radial-gradient(circle at 50% 118%, var(--qd-brand-glow), rgba(155, 92, 255, 0) 64%), var(--qd-glass)',
+              boxShadow: 'inset 0 1.5px 0 rgba(255, 255, 255, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 0 60px var(--qd-brand-glow), 0 18px 36px rgba(3, 4, 20, 0.3)',
+              color: 'var(--qd-brand-text)',
+            }}
+          >
+            <span className="qd-bob flex">
+              <Icon glyph="clock" size={64} stroke={2} />
+            </span>
           </div>
         ) : (
+          // Радар: стеклянный диск с вращающимся лучом и волнами от аватара.
           <div role="img" aria-label={t('s07.aria')} className="relative h-[300px] w-[300px]">
-            <div aria-hidden="true" className="absolute inset-0 box-border rounded-full border-2 border-brand-tint" />
-            <div aria-hidden="true" className="absolute top-10 left-10 box-border h-[220px] w-[220px] rounded-full border-2 border-brand-tint bg-section" />
-            <div aria-hidden="true" className="qd-pulse absolute top-20 left-20 h-[140px] w-[140px] rounded-full bg-brand-tint" />
+            <div aria-hidden="true" className="absolute inset-0 box-border rounded-full" style={{ border: '1.5px dashed var(--qd-dash)' }} />
+            <div aria-hidden="true" className="qd-glass absolute top-10 left-10 h-[220px] w-[220px] rounded-full" />
+            <div
+              aria-hidden="true"
+              className="qd-turn absolute top-10 left-10 h-[220px] w-[220px] rounded-full"
+              style={{
+                background: 'conic-gradient(from 0deg, rgba(155, 92, 255, 0) 0deg, rgba(155, 92, 255, 0) 270deg, rgba(155, 92, 255, 0.55) 360deg)',
+                animationDuration: '2400ms',
+              }}
+            />
+            <div
+              aria-hidden="true"
+              className="qd-halo absolute top-[70px] left-[70px] h-40 w-40 rounded-full"
+              style={{ background: 'radial-gradient(closest-side, var(--qd-me-glow), rgba(79, 141, 255, 0))' }}
+            />
+            {['', 'qd-r2', 'qd-r3'].map((r) => (
+              <span
+                key={r || 'r1'}
+                aria-hidden="true"
+                className={`qd-ripple ${r} absolute top-[106px] left-[106px] box-border h-[88px] w-[88px] rounded-full`}
+                style={{ borderColor: 'rgba(170, 190, 255, 0.75)' }}
+              />
+            ))}
             <div className="absolute top-[106px] left-[106px]">
-              <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={88} ring="me" />
+              <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={88} ring="me" on="none" />
             </div>
-            <div aria-hidden="true" className="qd-dots absolute top-6 left-[236px] flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-[17px] font-black text-hint">
+            <div
+              aria-hidden="true"
+              className="qd-dots qd-glass absolute top-[22px] left-[234px] flex h-[42px] w-[42px] items-center justify-center rounded-full text-[18px] font-bold"
+              style={{ color: 'var(--qd-opp-text)' }}
+            >
               ?
             </div>
-            <div aria-hidden="true" className="absolute top-[176px] left-[30px] flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-[14px] font-black text-hint">
+            <div
+              aria-hidden="true"
+              className="qd-glass absolute top-[178px] left-7 flex h-8 w-8 items-center justify-center rounded-full text-[14px] font-bold text-hint"
+            >
               ?
             </div>
           </div>
@@ -61,11 +103,16 @@ export function SearchScreen({ me }: { me: MeResponse }) {
       </div>
 
       {notFound ? (
-        <div className="flex flex-col gap-3">
-          <Button icon={<Icon glyph="duel" size={22} stroke={2.5} />} onClick={() => (gameActions.quickLeave(), gameActions.openCreate(me.docsAccepted))}>
+        <div className="qd-in qd-d1 flex flex-col gap-3">
+          <Button icon={<Icon glyph="duel" size={22} stroke={2.4} />} onClick={() => (gameActions.quickLeave(), gameActions.openCreate(me.docsAccepted))}>
             {t('s07.create')}
           </Button>
-          <Button variant="secondary" size="m" icon={<Icon glyph="target" size={20} stroke={2.5} />} onClick={() => (gameActions.quickLeave(), gameActions.openSolo(me.docsAccepted))}>
+          <Button
+            variant="secondary"
+            size="m"
+            icon={<Icon glyph="target" size={20} stroke={2.4} />}
+            onClick={() => (gameActions.quickLeave(), gameActions.openSolo(me.docsAccepted))}
+          >
             {t('s07.training')}
           </Button>
           <Button variant="ghost" size="s" onClick={() => void gameActions.quickJoin(me.docsAccepted)}>
@@ -74,20 +121,20 @@ export function SearchScreen({ me }: { me: MeResponse }) {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1 rounded-[20px] bg-section px-4 py-3.5">
-              <span className="text-[13px] font-bold text-hint">{t('s07.elapsed')}</span>
-              <span role="timer" className="qd-num text-[28px] font-black">
+          <div className="qd-in qd-d1 grid grid-cols-2 gap-3">
+            <div className="qd-card flex flex-col gap-1 rounded-[24px] px-4 py-3.5">
+              <span className="text-[13px] font-medium text-hint">{t('s07.elapsed')}</span>
+              <span role="timer" className="qd-num text-[28px] font-bold tracking-[-0.02em]">
                 {formatClock(Math.floor(elapsed / 1000) * 1000)}
               </span>
             </div>
-            <div className="flex flex-col gap-1 rounded-[20px] bg-section px-4 py-3.5">
-              <span className="text-[13px] font-bold text-hint">{t('s07.range')}</span>
-              <span className="qd-num flex items-center gap-[5px] text-[20px] font-black whitespace-nowrap text-gold-text">
+            <div className="qd-card flex flex-col gap-1 rounded-[24px] px-4 py-3.5">
+              <span className="text-[13px] font-medium text-hint">{t('s07.range')}</span>
+              <span className="qd-num flex items-center gap-[5px] text-[20px] font-bold whitespace-nowrap text-gold-text">
                 <Icon glyph="rating" size={16} stroke={2.5} />
                 {formatNumber(Math.max(0, rating - w), lang)} - {formatNumber(rating + w, lang)}
               </span>
-              <span className="text-[12px] font-semibold text-hint">{t('s07.widen')}</span>
+              <span className="text-[12px] font-medium text-hint">{t('s07.widen')}</span>
             </div>
           </div>
           <Button variant="secondary" disabled={leaving} onClick={gameActions.quickLeave}>

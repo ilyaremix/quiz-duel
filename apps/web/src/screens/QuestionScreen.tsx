@@ -1,12 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TIMINGS, type GameView } from '@quiz-duel/shared';
 import { Answer, type AnswerState } from '../components/Answer';
 import { Avatar } from '../components/Avatar';
+import { Ball, BALLS } from '../components/Ball';
 import { DisconnectBanner, OfflineStrip } from '../components/Banner';
-import { CATEGORY_LOOK } from '../components/Category';
+import { CategoryChip } from '../components/CategoryTile';
 import { Icon, type IconGlyph } from '../components/Icon';
-import { ReactionBubble, Reactions } from '../components/Reactions';
+import { Reactions, useLiveReaction } from '../components/Reactions';
 import { ScoreBar } from '../components/ScoreBar';
 import { Timer } from '../components/Timer';
 import { formatClock, useServerNow } from '../hooks/useServerNow';
@@ -15,17 +16,44 @@ import { formatNumber } from '../i18n';
 import { gameActions, useGame } from '../lib/game';
 import { haptic } from '../lib/telegram';
 
-type Pill = { text: string; label: string; bg: string; fg: string; glyph: IconGlyph };
+const LETTERS = ['A', 'B', 'C', 'D'];
 
-const OK = { bg: 'var(--qd-correct-tint)', fg: 'var(--qd-correct-text)', glyph: 'check' } as const;
-const BAD = { bg: 'var(--qd-wrong-tint)', fg: 'var(--qd-wrong-text)', glyph: 'close' } as const;
-const LATE = { bg: 'var(--qd-surface-2)', fg: 'var(--tg-theme-hint-color)', glyph: 'clock' } as const;
+type PillLook = { bg: string; edge: string; fg: string; ic: string; icFg: string; glyph: IconGlyph };
+type Pill = PillLook & { text: string; label: string };
+
+/** Плашки итога вопроса: верно - зелёное стекло, неверно - красное, не успел - простое стекло. */
+const OK: PillLook = { bg: 'var(--qd-ok-glass)', edge: 'var(--qd-ok-edge)', fg: 'var(--tg-theme-text-color)', ic: '#3BE58B', icFg: '#04261A', glyph: 'check' };
+const BAD: PillLook = { bg: 'var(--qd-bad-glass)', edge: 'var(--qd-bad-edge)', fg: 'var(--tg-theme-text-color)', ic: '#FF5A7A', icFg: '#2E0310', glyph: 'close' };
+const LATE: PillLook = {
+  bg: 'var(--qd-sheen), var(--qd-glass)',
+  edge: 'var(--qd-glass-edge-flat)',
+  fg: 'var(--tg-theme-hint-color)',
+  ic: 'var(--qd-chip)',
+  icFg: 'var(--tg-theme-hint-color)',
+  glyph: 'clock',
+};
+
+/** Кромка живой зоны; «соперник уже ответил» - горячая оранжевая. */
+const EDGE = 'var(--qd-glass-edge)';
+const HOT = 'inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 0 0 1.5px var(--qd-opp-ring), 0 0 26px var(--qd-opp-glow), 0 12px 30px rgba(3, 4, 20, 0.3)';
+
+/** Что показывает живая зона между таймером и вопросом. */
+type Presence = {
+  mode: 'think' | 'done' | 'ball';
+  glyph?: IconGlyph;
+  title: string;
+  sub: string;
+  edge: string;
+  color?: string;
+  dots?: boolean;
+};
 
 /**
  * Экраны 9-11, 21 и 22 - один экран партии, который рисуется только из снимка сервера:
- * вопрос и таймер → мой выбор («Ждём соперника…») → раскрытие с верным вариантом,
+ * вопрос и таймер → мой выбор («Ответ принят») → раскрытие с верным вариантом,
  * выбором обоих и очками. Таймер считается по часам сервера (с поправкой на сбитые
- * часы телефона), поэтому у обоих игроков он одинаковый.
+ * часы телефона), поэтому у обоих игроков он одинаковый. Между таймером и вопросом -
+ * живая зона: что делает соперник прямо сейчас, на раскрытии - итог вопроса у обоих.
  */
 export function QuestionScreen({ game }: { game: GameView }) {
   const { t, i18n } = useTranslation();
@@ -36,6 +64,7 @@ export function QuestionScreen({ game }: { game: GameView }) {
   const picked = useGame((s) => s.picked);
   const q = game.question!;
   const opp = game.opponent;
+  const solo = game.mode === 'solo';
   const reveal = game.phase === 'reveal' ? game.reveal : null;
 
   // Мой выбор: из снимка или только что нажатый (ещё летит на сервер).
@@ -67,9 +96,9 @@ export function QuestionScreen({ game }: { game: GameView }) {
   }, [reveal]);
 
   const oppOffline = Boolean(opp && !opp.online);
-  const oppState = oppOffline ? 'offline' : !reveal && game.opponentAnswered ? 'answered' : 'none';
-
-  const look = CATEGORY_LOOK[q.category];
+  const oppAnswered = !reveal && game.opponentAnswered;
+  const oppState = oppOffline ? 'offline' : oppAnswered ? 'answered' : 'none';
+  const oppName = opp?.name || t('score.opp');
 
   const options = q.options.map((text, i) => {
     let state: AnswerState = 'default';
@@ -94,21 +123,32 @@ export function QuestionScreen({ game }: { game: GameView }) {
     return { text: '+0', label: t('s09.pillBad', { who }), ...BAD };
   };
 
-  const status: { glyph: IconGlyph; text: string } | null = offline
-    ? { glyph: 'offline', text: t('s09.offline') }
-    : !reveal && answered
-      ? { glyph: 'clock', text: t('s09.waiting') }
-      : null;
+  // Очки взлетают у счёта в момент раскрытия - только за верный ответ.
+  const meGain = reveal && reveal.me.position === reveal.correctPosition && reveal.me.points > 0 ? `+${formatNumber(reveal.me.points, lang)}` : '';
+  const oppGain =
+    reveal && opp && reveal.opponent && reveal.opponent.position === reveal.correctPosition && reveal.opponent.points > 0
+      ? `+${formatNumber(reveal.opponent.points, lang)}`
+      : '';
+
+  let presence: Presence | null = null;
+  if (!reveal) {
+    if (offline) presence = { mode: 'ball', glyph: 'offline', title: t('s09.offline'), sub: '', edge: EDGE, color: 'var(--qd-gold-text)' };
+    else if (solo || !opp) presence = { mode: 'ball', glyph: 'bolt', title: t('s09.fast'), sub: t('s09.soloHint'), edge: EDGE };
+    else if (oppOffline) presence = null;
+    else if (answered) presence = { mode: oppAnswered ? 'done' : 'think', title: t('s09.locked'), sub: t('s09.waiting'), edge: EDGE };
+    else if (oppAnswered)
+      presence = { mode: 'done', title: t('s09.oppDone', { opp: oppName }), sub: t('s09.yourMove'), edge: HOT, color: 'var(--qd-opp-text)' };
+    else presence = { mode: 'think', title: t('s09.thinking', { opp: oppName }), sub: t('s09.fast'), edge: EDGE, dots: true };
+  }
 
   return (
-    <main className="qd-screen qd-fade-in flex flex-col gap-4">
+    <main className="qd-screen qd-fade-in flex flex-col gap-3">
       {offline && (
         <div className="qd-strip-in -mx-4 -mt-4">
           <OfflineStrip title={t('banner.offline.title')} />
         </div>
       )}
 
-      <div className="relative">
       <ScoreBar
         me={{ id: game.me.userId, name: game.me.name, photoUrl: game.me.photoUrl, score: formatNumber(meScore, lang) }}
         opp={opp ? { id: opp.userId, name: opp.name, photoUrl: opp.photoUrl, score: formatNumber(oppScore, lang) } : null}
@@ -116,11 +156,11 @@ export function QuestionScreen({ game }: { game: GameView }) {
         total={q.total}
         oppState={oppState}
         meState={!reveal && answered ? 'answered' : 'none'}
-        best={game.mode === 'solo' ? (game.soloBest ? formatNumber(game.soloBest, lang) : '-') : undefined}
+        best={solo ? (game.soloBest ? formatNumber(game.soloBest, lang) : '-') : undefined}
+        meGain={meGain}
+        oppGain={oppGain}
+        hideNote
       />
-        <ReactionBubble userId={game.me.userId} side="me" className="top-[46px] left-0" />
-        {opp && <ReactionBubble userId={opp.userId} side="opp" className="top-[46px] right-0" />}
-      </div>
 
       {!reveal && <Timer seconds={sec} pct={pct} live={!reduced} />}
 
@@ -130,31 +170,33 @@ export function QuestionScreen({ game }: { game: GameView }) {
         </div>
       )}
 
-      {reveal && (
-        <div className={`grid gap-2.5 ${opp ? 'grid-cols-2' : 'grid-cols-1'}`}>
-          <RevealPill side="me" pill={pill(reveal.me.position, reveal.me.points, t('common.you'))} avatar={game.me} />
-          {opp && reveal.opponent && (
-            <RevealPill side="opp" pill={pill(reveal.opponent.position, reveal.opponent.points, opp.name || t('score.opp'))} avatar={opp} />
-          )}
-        </div>
-      )}
+      {/* Живая зона: соперник думает / уже ответил, мой ответ принят; на раскрытии - итог вопроса у обоих. */}
+      <div className="relative flex min-h-[72px] grow flex-col items-center justify-center">
+        {presence && <PresencePill key={`${presence.mode}:${presence.title}`} presence={presence} opp={opp ?? null} />}
 
-      <section className="flex flex-col items-center gap-3 rounded-[24px] bg-section px-5 pt-5 pb-6 text-center shadow-[0_4px_0_var(--qd-lip)]">
-        <span className="flex h-7 items-center gap-1.5 rounded-[14px] bg-surface-2 px-3 text-[13px] font-extrabold" style={{ color: look.fg }}>
-          <Icon glyph={look.glyph} size={14} stroke={2.5} />
-          {t(`cat.${q.category}.title`)}
-        </span>
-        <h1 className="m-0 text-[22px] leading-[1.3] font-extrabold">{q.text}</h1>
+        {reveal && (
+          <div className={`qd-pop grid w-full gap-2.5 ${opp && reveal.opponent ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            <RevealPill side="me" pill={pill(reveal.me.position, reveal.me.points, t('common.you'))} avatar={game.me} />
+            {opp && reveal.opponent && <RevealPill side="opp" pill={pill(reveal.opponent.position, reveal.opponent.points, oppName)} avatar={opp} />}
+          </div>
+        )}
+
+        {!solo && <LiveReaction userId={game.me.userId} side="me" />}
+        {!solo && opp && <LiveReaction userId={opp.userId} side="opp" />}
+      </div>
+
+      <section className="qd-card flex flex-col items-center gap-3 rounded-[30px] px-5 pt-5 pb-6 text-center">
+        <CategoryChip cat={q.category} />
+        <h1 className="m-0 text-[22px] leading-[1.3] font-semibold tracking-[-0.01em]">{q.text}</h1>
       </section>
 
-      <div className="grow" />
-
       {/* Новый вопрос - новые элементы: варианты заново выезжают каскадом по 50 мс. */}
-      <div key={q.index} role="group" aria-label={t('s09.optionsAria')} className="flex flex-col gap-3.5">
+      <div key={q.index} role="group" aria-label={t('s09.optionsAria')} className="flex flex-col gap-3">
         {options.map((o) => (
           <div key={o.i} className={o.cls} style={o.cls === 'qd-cascade' ? { animationDelay: `${o.i * 50}ms` } : undefined}>
             <Answer
               text={o.text}
+              letter={LETTERS[o.i]}
               state={o.state}
               disabled={offline}
               me={reveal && o.i === reveal.me.position ? { id: game.me.userId, name: game.me.name, photoUrl: game.me.photoUrl } : undefined}
@@ -165,38 +207,112 @@ export function QuestionScreen({ game }: { game: GameView }) {
         ))}
       </div>
 
-      {/* На раскрытии - строка реакций вместо статуса (во время вопроса реакций нет). */}
-      {reveal && opp && game.mode !== 'solo' && !offline ? (
+      {/* На раскрытии - строка реакций (во время вопроса реакций нет). */}
+      {reveal && opp && !solo && !offline && (
         <div className="qd-rise-2">
           <Reactions size="s" />
         </div>
-      ) : (
-      <div role="status" className="flex h-7 items-center justify-center gap-2 text-[15px] font-bold text-hint">
-        {status && (
-          <span key={status.text} className="qd-rise flex items-center gap-2">
-            <Icon glyph={status.glyph} size={16} stroke={2.5} />
-            {status.text}
-          </span>
-        )}
-      </div>
       )}
     </main>
   );
 }
 
+/** Плашка живой зоны: аватар соперника с крутящейся дугой (думает) или галочкой (ответил), либо шар-иконка. */
+function PresencePill({ presence: p, opp }: { presence: Presence; opp: { userId: number; name: string; photoUrl: string | null } | null }) {
+  return (
+    <div
+      role="status"
+      className="qd-card qd-pop box-border flex max-w-full items-center gap-3 rounded-[26px] py-[9px] pr-[18px] pl-[9px]"
+      style={{ boxShadow: p.edge, transition: 'box-shadow 200ms ease' }}
+    >
+      <div className="relative h-10 w-10 shrink-0">
+        {p.mode === 'ball' || !opp ? (
+          <Ball size={40} {...BALLS.gold}>
+            <Icon glyph={p.glyph ?? 'bolt'} size={20} stroke={2.4} />
+          </Ball>
+        ) : (
+          <>
+            <Avatar id={opp.userId} name={opp.name} photoUrl={opp.photoUrl} size={40} ring="opp" on="none" />
+            {p.mode === 'think' && (
+              <svg className="qd-spin absolute -top-[5px] -left-[5px]" aria-hidden="true" width="50" height="50" viewBox="0 0 50 50">
+                <circle cx="25" cy="25" r="23" fill="none" strokeWidth="2.5" style={{ stroke: 'var(--qd-opp)', strokeOpacity: 0.22 }} />
+                <path d="M25 2a23 23 0 0 1 23 23" fill="none" strokeWidth="2.5" strokeLinecap="round" style={{ stroke: 'var(--qd-opp)' }} />
+              </svg>
+            )}
+            {p.mode === 'done' && (
+              <span
+                aria-hidden="true"
+                className="qd-pop qd-ball absolute -right-[5px] -bottom-[5px] h-5 w-5"
+                style={{ '--qd-ball': '#3BE58B', color: '#04261A', boxShadow: '0 0 0 2.5px var(--qd-ring-gap), 0 0 10px var(--qd-ok-glow)' } as CSSProperties}
+              >
+                <Icon glyph="check" size={11} stroke={3.5} />
+              </span>
+            )}
+          </>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="flex items-center text-[15px] leading-[1.25] font-semibold" style={{ color: p.color ?? 'var(--tg-theme-text-color)' }}>
+          <span className="min-w-0">{p.title}</span>
+          {p.dots && (
+            <span className="qd-wait" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+          )}
+        </span>
+        {p.sub && <span className="text-[12px] font-medium text-hint">{p.sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Реакция всплывает в живой зоне и тает за 1,8 с: соперника - справа (оранжевое кольцо), моя - слева (синее). */
+function LiveReaction({ userId, side }: { userId: number; side: 'me' | 'opp' }) {
+  const { t } = useTranslation();
+  const live = useLiveReaction(userId);
+  if (!live) return null;
+  const me = side === 'me';
+  return (
+    <div
+      key={live.id}
+      role="img"
+      aria-label={t('reactions.from', { r: live.emoji })}
+      className={`qd-react-up qd-emoji pointer-events-none absolute bottom-1 z-[3] flex h-[54px] w-[54px] items-center justify-center rounded-full text-[27px] ${me ? 'left-5' : 'right-5'}`}
+      style={{
+        background: 'var(--qd-sheen), var(--qd-glass-solid)',
+        boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 0 0 2px var(${me ? '--qd-me' : '--qd-opp'}), 0 0 22px var(${me ? '--qd-me-glow' : '--qd-opp-glow'}), 0 10px 24px rgba(3, 4, 20, 0.35)`,
+      }}
+    >
+      {live.emoji}
+    </div>
+  );
+}
+
 function RevealPill({ side, pill, avatar }: { side: 'me' | 'opp'; pill: Pill; avatar: { userId: number; name: string; photoUrl: string | null } }) {
   const me = side === 'me';
-  const av = <Avatar id={avatar.userId} name={avatar.name} photoUrl={avatar.photoUrl} size={28} ring={side} on="none" />;
+  const av = <Avatar id={avatar.userId} name={avatar.name} photoUrl={avatar.photoUrl} size={30} ring={side} on="none" />;
+  const ic = (
+    <span
+      aria-hidden="true"
+      className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full"
+      style={{ background: pill.ic, color: pill.icFg, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.5)' }}
+    >
+      <Icon glyph={pill.glyph} size={13} stroke={3.2} />
+    </span>
+  );
   return (
     <div
       role="status"
       aria-label={pill.label}
-      className={`qd-num box-border flex h-10 items-center gap-2 rounded-[20px] text-[15px] font-extrabold whitespace-nowrap ${me ? 'pr-3 pl-1.5' : 'justify-end pr-1.5 pl-3'}`}
-      style={{ background: pill.bg, color: pill.fg }}
+      className={`qd-num box-border flex h-12 min-w-0 items-center gap-1.5 rounded-[24px] text-[15px] font-bold whitespace-nowrap ${me ? 'pr-3 pl-[7px]' : 'justify-end pr-[7px] pl-3'}`}
+      style={{ background: pill.bg, boxShadow: pill.edge, color: pill.fg }}
     >
       {me && av}
-      <Icon glyph={pill.glyph} size={16} stroke={3} />
-      <span className={me ? 'qd-pts' : 'qd-pts-2'}>{pill.text}</span>
+      {me && ic}
+      <span className={`${me ? 'qd-pts' : 'qd-pts-2'} min-w-0 truncate`}>{pill.text}</span>
+      {!me && ic}
       {!me && av}
     </div>
   );

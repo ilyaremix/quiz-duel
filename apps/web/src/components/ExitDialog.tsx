@@ -40,9 +40,10 @@ export function ExitDialog() {
           role="alertdialog"
           aria-modal="true"
           aria-label={t(`${k}.title`)}
-          className={`${leaving ? 'qd-pop-out' : 'qd-pop'} pointer-events-auto box-border flex w-full max-w-[420px] flex-col gap-2 rounded-[24px] bg-section px-[18px] pt-[22px] pb-[18px] text-center shadow-[0_4px_0_var(--qd-lip)]`}
+          className={`${leaving ? 'qd-pop-out' : 'qd-pop'} pointer-events-auto box-border flex w-full max-w-[420px] flex-col gap-2 rounded-[28px] px-[18px] pt-[22px] pb-[18px] text-center text-text`}
+          style={{ background: 'var(--qd-sheen), var(--qd-glass-solid)', boxShadow: 'var(--qd-glass-edge), 0 24px 60px rgba(3, 4, 20, 0.45)' }}
         >
-          <h2 className="m-0 text-[20px] font-black">{t(`${k}.title`)}</h2>
+          <h2 className="m-0 text-[20px] font-bold tracking-[-0.02em]">{t(`${k}.title`)}</h2>
           <p className="m-0 mb-2.5 text-[15px] leading-[1.35] font-semibold text-hint">{t(`${k}.text`)}</p>
           <div className="grid grid-cols-2 gap-2.5">
             <Button variant="secondary" size="m" onClick={gameActions.closeExit}>

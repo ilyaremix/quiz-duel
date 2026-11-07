@@ -1,19 +1,22 @@
-import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 const SIZES = {
-  l: { h: 56, fs: 17, r: 18, lip: 4 },
-  m: { h: 48, fs: 16, r: 16, lip: 4 },
-  s: { h: 44, fs: 15, r: 14, lip: 3 },
+  l: { h: 56, fs: 17 },
+  m: { h: 48, fs: 16 },
+  s: { h: 44, fs: 15 },
 } as const;
 
+const EDGE = 'var(--qd-glass-edge-flat)';
+
 const VARIANTS = {
-  primary: { bg: 'var(--tg-theme-button-color)', fg: 'var(--tg-theme-button-text-color)', lip: 'var(--qd-button-lip)' },
-  secondary: { bg: 'var(--qd-surface-2)', fg: 'var(--tg-theme-text-color)', lip: 'var(--qd-lip)' },
-  brand: { bg: 'var(--qd-brand-tint)', fg: 'var(--qd-brand-text)', lip: 'var(--qd-lip)' },
-  ghost: { bg: 'transparent', fg: 'var(--tg-theme-link-color)', lip: '' },
-  danger: { bg: 'var(--qd-wrong-tint)', fg: 'var(--qd-wrong-text)', lip: 'var(--qd-lip)' },
-  /** Белая кнопка на синем блоке «Дуэль с другом». */
-  onColor: { bg: '#FFFFFF', fg: '#1F4DB0', lip: '#1B3F8F' },
+  /** Главная: белая капсула (в светлой теме - тёмная) с радужной кромкой. */
+  primary: { bg: 'var(--qd-cta-bg)', fg: 'var(--qd-cta-fg)', shadow: 'var(--qd-cta-edge)' },
+  secondary: { bg: 'var(--qd-glass)', fg: 'var(--tg-theme-text-color)', shadow: EDGE },
+  brand: { bg: 'var(--qd-brand-tint)', fg: 'var(--qd-brand-text)', shadow: EDGE },
+  ghost: { bg: 'transparent', fg: 'var(--tg-theme-link-color)', shadow: 'none' },
+  danger: { bg: 'var(--qd-wrong-tint)', fg: 'var(--qd-wrong-text)', shadow: EDGE },
+  /** Белая кнопка на цветном блоке. */
+  onColor: { bg: '#FFFFFF', fg: '#0B0D24', shadow: '0 8px 22px rgba(0, 0, 0, 0.22)' },
 } as const;
 
 interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'style'> {
@@ -23,33 +26,38 @@ interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'sty
   icon?: ReactNode;
 }
 
-/** «Объёмная» кнопка с подложкой снизу; при нажатии утапливается и сжимается до 0.97. */
+/**
+ * Кнопка-капсула стиля C. Главная большая «дышит» свечением, по ней раз в 3,6 с проходит блик
+ * (в режиме без анимаций - нет). Нажатие - scale(0.97) за 120 мс.
+ */
 export function Button({ variant = 'primary', size = 'l', full = true, icon, children, disabled, ...rest }: ButtonProps) {
   const s = SIZES[size];
   const v = VARIANTS[variant];
-  const style = {
-    width: full ? '100%' : 'auto',
-    height: s.h,
-    borderRadius: s.r,
-    fontSize: s.fs,
-    background: v.bg,
-    color: v.fg,
-    '--qd-shadow': v.lip && !disabled ? `0 ${s.lip}px 0 ${v.lip}` : 'none',
-    opacity: disabled ? 0.4 : 1,
-    '--qd-lip-press': `${s.lip - 1}px`,
-    '--qd-lip-color': v.lip || 'transparent',
-  } as CSSProperties;
-
+  const primary = variant === 'primary';
+  const live = primary && size === 'l' && !disabled;
+  const cls = `qd-press qd-btn${primary ? ' qd-btn-iris' : ''}${live ? ' qd-btn-glow' : ''}`;
   return (
     <button
       type="button"
       disabled={disabled}
-      className="qd-press flex min-w-11 cursor-pointer items-center justify-center gap-2 border-0 px-5 font-extrabold leading-none whitespace-nowrap disabled:cursor-default"
-      style={style}
+      className={`${cls} box-border flex min-w-11 cursor-pointer items-center justify-center border-0 px-[22px] leading-none font-bold tracking-[-0.01em] whitespace-nowrap disabled:cursor-default`}
+      style={{
+        width: full ? '100%' : 'auto',
+        height: s.h,
+        borderRadius: s.h / 2,
+        fontSize: s.fs,
+        background: v.bg,
+        color: v.fg,
+        boxShadow: disabled ? 'none' : v.shadow,
+        opacity: disabled ? 0.4 : 1,
+      }}
       {...rest}
     >
-      {icon}
-      <span className="truncate">{children}</span>
+      {live && <span className="qd-btn-shine" aria-hidden="true" />}
+      <span className="relative z-[2] flex min-w-0 items-center justify-center gap-2">
+        {icon}
+        <span className="truncate">{children}</span>
+      </span>
     </button>
   );
 }

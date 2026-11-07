@@ -1,29 +1,34 @@
-import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from './Icon';
 
 export type Tab = 'home' | 'rating' | 'profile';
 
-const LENS = {
-  bg: 'linear-gradient(180deg, rgba(255, 255, 255, 0.26) 0%, rgba(255, 255, 255, 0.06) 60%, rgba(255, 255, 255, 0) 100%), var(--qd-brand-tint)',
-  border: '1px solid var(--qd-glass-rim)',
-  shadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -3px 6px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.22)',
-};
+const TABS = ['home', 'rating', 'profile'] as const;
 
-/** Нижнее меню «стекло» без blur: непрозрачный фон с бликом, активная вкладка - «линза». */
+/**
+ * Нижнее меню - плотное стекло капсулой (без blur). Под активной вкладкой светлая «линза»,
+ * она переезжает за 300 мс (без анимаций - сразу).
+ */
 export function TabBar({ active, onTab }: { active: Tab; onTab: (tab: Tab) => void }) {
   const { t } = useTranslation();
+  const i = Math.max(0, TABS.indexOf(active));
   return (
     <nav
       aria-label={t('tabs.aria')}
-      className="box-border grid w-full grid-cols-3 gap-1 rounded-[32px] p-1.5"
-      style={{
-        border: '1px solid var(--qd-glass-rim)',
-        background: 'linear-gradient(180deg, var(--qd-glass-hi) 0%, rgba(255, 255, 255, 0) 55%), var(--qd-glass-bg)',
-        boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.24), inset 0 -1px 0 rgba(0, 0, 0, 0.18), var(--qd-glass-shadow)',
-      }}
+      className="relative box-border grid h-[68px] w-full grid-cols-3 gap-1 rounded-[34px] p-1.5"
+      style={{ background: 'var(--qd-bar)', boxShadow: 'var(--qd-glass-edge)' }}
     >
-      {(['home', 'rating', 'profile'] as const).map((id) => {
+      <span
+        aria-hidden="true"
+        className="qd-tab-lens absolute top-1.5 bottom-1.5 left-1.5 rounded-[28px]"
+        style={{
+          width: 'calc((100% - 20px) / 3)',
+          background: 'var(--qd-lens)',
+          boxShadow: 'var(--qd-lens-edge)',
+          transform: i === 0 ? 'translateX(0px)' : `translateX(calc(${i * 100}% + ${i * 4}px))`,
+        }}
+      />
+      {TABS.map((id) => {
         const on = id === active;
         return (
           <button
@@ -31,13 +36,8 @@ export function TabBar({ active, onTab }: { active: Tab; onTab: (tab: Tab) => vo
             type="button"
             aria-current={on ? 'page' : undefined}
             onClick={() => onTab(id)}
-            className="qd-press box-border flex h-[54px] cursor-pointer flex-col items-center justify-center gap-[3px] rounded-[26px] font-[inherit] text-[11px] font-extrabold"
-            style={{
-              border: on ? LENS.border : '1px solid transparent',
-              background: on ? LENS.bg : 'transparent',
-              '--qd-shadow': on ? LENS.shadow : 'none',
-              color: on ? 'var(--qd-brand-text)' : 'var(--tg-theme-hint-color)',
-            } as CSSProperties}
+            className="qd-press relative z-[1] box-border flex h-14 cursor-pointer flex-col items-center justify-center gap-[3px] rounded-[28px] border-0 bg-transparent p-0 text-[12px] font-semibold"
+            style={{ color: on ? 'var(--qd-lens-fg)' : 'var(--tg-theme-hint-color)', transition: 'color 200ms ease' }}
           >
             <Icon glyph={id} size={22} stroke={2.2} />
             {t(`tabs.${id}`)}

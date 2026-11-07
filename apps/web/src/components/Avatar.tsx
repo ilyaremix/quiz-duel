@@ -22,28 +22,37 @@ interface AvatarProps {
   photoUrl?: string | null;
   size?: number;
   ring?: 'none' | 'me' | 'opp';
-  /** На каком фоне стоит аватар: зазор кольца и бейджа красится в этот цвет. */
+  /** none - тонкое кольцо вплотную; page / card - кольцо через зазор и свечение. */
   on?: 'page' | 'card' | 'none';
   badge?: AvatarBadge;
 }
 
 const BADGES = {
-  online: { bg: 'var(--qd-correct)', fg: 'var(--qd-on-fill)', glyph: null },
-  ready: { bg: 'var(--qd-correct)', fg: 'var(--qd-on-fill)', glyph: 'check' },
+  online: { bg: 'var(--qd-correct)', fg: 'var(--qd-on-fill)', glyph: null, glow: 'var(--qd-ok-glow)' },
+  ready: { bg: 'var(--qd-correct)', fg: 'var(--qd-on-fill)', glyph: 'check', glow: 'var(--qd-ok-glow)' },
   /** Ответил на текущий вопрос (какой вариант - не видно). */
-  answered: { bg: 'var(--qd-brand)', fg: '#FFFFFF', glyph: 'check' },
-  offline: { bg: 'var(--tg-theme-hint-color)', fg: 'var(--qd-on-fill)', glyph: 'offline' },
+  answered: { bg: 'var(--qd-brand)', fg: '#FFFFFF', glyph: 'check', glow: 'var(--qd-brand-glow)' },
+  offline: { bg: 'var(--tg-theme-hint-color)', fg: 'var(--qd-on-fill)', glyph: 'offline', glow: 'transparent' },
 } as const;
 
-/** Аватар из Telegram; без фото - цветной круг с инициалом. Бейдж: в сети, готов, ответил, не в сети. */
+/**
+ * Аватар из Telegram; без фото - глянцевая «сфера» с инициалом. Кольцо со свечением - чей игрок
+ * (я - синий, соперник - оранжевый). Бейдж: в сети, готов, ответил, не в сети.
+ */
 export function Avatar({ id, name, photoUrl, size = 44, ring = 'none', on = 'page', badge = 'none' }: AvatarProps) {
   const { t } = useTranslation();
   const [broken, setBroken] = useState(false);
   const gap = size >= 40 ? 3 : 2;
-  const gapColor = on === 'card' ? 'var(--tg-theme-section-bg-color)' : 'var(--tg-theme-secondary-bg-color)';
   const ringColor = ring === 'me' ? 'var(--qd-me)' : 'var(--qd-opp)';
-  const shadow =
-    ring === 'none' ? undefined : on === 'none' ? `0 0 0 2px ${ringColor}` : `0 0 0 ${gap}px ${gapColor}, 0 0 0 ${gap * 2}px ${ringColor}`;
+  const glow = ring === 'me' ? 'var(--qd-me-glow)' : 'var(--qd-opp-glow)';
+  const inner = `inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -${Math.max(3, Math.round(size * 0.08))}px ${Math.max(6, Math.round(size * 0.2))}px rgba(0, 0, 0, 0.2)`;
+  const outer =
+    ring === 'none'
+      ? ''
+      : on === 'none'
+        ? `0 0 0 2px ${ringColor}, 0 0 12px ${glow}`
+        : `0 0 0 ${gap}px var(--qd-ring-gap), 0 0 0 ${gap * 2}px ${ringColor}, 0 0 ${Math.round(size * 0.45)}px ${glow}`;
+  const photo = Boolean(photoUrl && !broken);
 
   const b = badge === 'none' ? null : BADGES[badge];
   const border = size >= 40 ? 3 : 2;
@@ -53,12 +62,20 @@ export function Avatar({ id, name, photoUrl, size = 44, ring = 'none', on = 'pag
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <div
-        className="flex items-center justify-center overflow-hidden rounded-full font-extrabold leading-none text-white"
-        style={{ width: size, height: size, fontSize: Math.round(size * 0.42), background: avatarColor(id), boxShadow: shadow }}
+        className="flex items-center justify-center rounded-full leading-none font-bold text-white"
+        style={{
+          width: size,
+          height: size,
+          fontSize: Math.round(size * 0.42),
+          background: `radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 48%), ${avatarColor(id)}`,
+          // У фото внутренний блик не рисуем - только кольцо.
+          boxShadow: [photo ? '' : inner, outer].filter(Boolean).join(', ') || undefined,
+          textShadow: '0 1px 2px rgba(0, 0, 0, 0.25)',
+        }}
       >
-        {photoUrl && !broken ? (
+        {photo ? (
           <img
-            src={photoUrl}
+            src={photoUrl!}
             alt=""
             width={size}
             height={size}
@@ -76,7 +93,16 @@ export function Avatar({ id, name, photoUrl, size = 44, ring = 'none', on = 'pag
           role="img"
           aria-label={t(`badge.${badge}`)}
           className="qd-pop absolute box-border flex items-center justify-center rounded-full"
-          style={{ right: bOff, bottom: bOff, width: bs, height: bs, border: `${border}px solid ${gapColor}`, background: b.bg, color: b.fg }}
+          style={{
+            right: bOff,
+            bottom: bOff,
+            width: bs,
+            height: bs,
+            border: `${border}px solid var(--qd-ring-gap)`,
+            background: b.bg,
+            color: b.fg,
+            boxShadow: `0 0 10px ${b.glow}`,
+          }}
         >
           {b.glyph && <Icon glyph={b.glyph} size={Math.max(8, Math.round((bs - border * 2) * 0.75))} stroke={3.5} />}
         </div>

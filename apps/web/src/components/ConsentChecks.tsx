@@ -9,11 +9,7 @@ function DocLine({ checked, before, link, onToggle, onOpen }: { checked: boolean
       <Checkbox on={checked} label={before + link} onToggle={onToggle} />
       <p className="m-0 py-1.5 text-[14px] leading-[1.35] font-semibold">
         {before}
-        <button
-          type="button"
-          onClick={onOpen}
-          className="inline cursor-pointer border-0 bg-transparent p-0 text-left font-[inherit] whitespace-nowrap text-link underline underline-offset-2"
-        >
+        <button type="button" onClick={onOpen} className="qd-link whitespace-nowrap">
           {link}
         </button>
       </p>
@@ -33,7 +29,7 @@ interface ConsentChecksProps {
 export function ConsentChecks({ docs, terms, policy, onTerms, onPolicy }: ConsentChecksProps) {
   const { t } = useTranslation();
   return (
-    <div role="group" aria-label={t('consent.hint')} className="flex flex-col rounded-[20px] bg-section py-1.5 pr-3.5 pl-1">
+    <div role="group" aria-label={t('consent.hint')} className="qd-card flex flex-col rounded-[24px] py-1.5 pr-3.5 pl-1">
       <DocLine
         checked={terms}
         before={t('consent.terms.before')}

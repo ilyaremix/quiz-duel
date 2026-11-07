@@ -19,7 +19,7 @@ interface Drag {
 }
 
 /**
- * Нижняя шторка: вход 380 мс, выход 240 мс по кривой шторки.
+ * Нижняя шторка - плотное стекло со скруглением 32 px: вход 380 мс, выход 240 мс по кривой шторки.
  * Закрывается тапом по фону или быстрым свайпом вниз - по скорости жеста, а не по пройденному расстоянию.
  */
 export function Sheet({ open, label, onClose, children }: SheetProps) {
@@ -106,10 +106,10 @@ export function Sheet({ open, label, onClose, children }: SheetProps) {
           role="dialog"
           aria-modal="true"
           aria-label={label}
-          className={`${leaving ? 'qd-sheet-out' : 'qd-sheet-in'} mx-auto box-border flex max-w-[560px] flex-col gap-4 rounded-t-[28px] bg-bg px-4 pt-2.5 text-text`}
+          className={`${leaving ? 'qd-sheet-out' : 'qd-sheet-in'} qd-sheet mx-auto box-border flex max-w-[560px] flex-col gap-4 rounded-t-[32px] px-4 pt-2.5 text-text`}
           style={{ paddingBottom: 'calc(var(--tg-viewport-safe-area-inset-bottom, 0px) + 32px)' }}
         >
-          <div aria-hidden="true" className="h-[5px] w-10 self-center rounded-[3px] bg-surface-2" />
+          <div aria-hidden="true" className="qd-grab" />
           {children}
         </section>
       </div>

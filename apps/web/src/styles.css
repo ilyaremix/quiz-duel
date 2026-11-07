@@ -1,139 +1,244 @@
 @import 'tailwindcss';
 
 /*
- * Цвета. Две группы, как в утверждённом дизайне (Base.dc.html):
- * --tg-theme-* - тема Telegram. Ниже только запасные значения: в Telegram
- *   SDK пишет настоящие значения прямо в style у <html>, и они главнее классов.
- * --qd-*       - игровые цвета, одинаковые везде (я - синий, соперник - оранжевый…).
+ * Шрифт Onest - локальные файлы (без запросов к Google Fonts): кириллица и латиница,
+ * одна вариативная начертка на все веса 400-800.
+ */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/onest/files/onest-cyrillic-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/onest/files/onest-cyrillic-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/onest/files/onest-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/onest/files/onest-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/*
+ * Цвета - стиль C «Жидкое стекло» из утверждённого дизайна (Base.dc.html).
+ * Светлая или тёмная схема берётся из Telegram, а сами цвета - наши: тему Telegram
+ * в CSS не подключаем (lib/telegram.ts), поэтому --tg-theme-* ниже - это и есть итоговые значения.
+ * Игровые цвета (я - синий, соперник - оранжевый, верно - зелёный…) одинаковы по смыслу в обеих темах.
  */
 .qd-dark {
   color-scheme: dark;
-  --tg-theme-bg-color: #1a1626;
-  --tg-theme-secondary-bg-color: #14111d;
-  --tg-theme-section-bg-color: #221d30;
-  --tg-theme-text-color: #f7f4ff;
-  --tg-theme-hint-color: #a59dc0;
-  --tg-theme-link-color: #b9a8ff;
+  --qd-font: 'Onest', -apple-system, BlinkMacSystemFont, Roboto, 'Segoe UI', sans-serif;
+  --qd-glass: linear-gradient(155deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.05) 45%, rgba(255, 255, 255, 0.09)), rgba(14, 16, 44, 0.42);
+  --qd-glass-press: linear-gradient(155deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.09) 45%, rgba(255, 255, 255, 0.14)), rgba(14, 16, 44, 0.42);
+  --qd-glass-solid: linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04) 50%), #131535;
+  --qd-glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.38), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 12px 30px rgba(3, 4, 20, 0.35);
+  --qd-glass-edge-flat: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  --qd-glass-rim: rgba(255, 255, 255, 0.16);
+  --qd-chip: rgba(255, 255, 255, 0.14);
+  --qd-track: rgba(255, 255, 255, 0.1);
+  --qd-ring-gap: rgba(7, 8, 24, 0.9);
+  --qd-cta-bg: linear-gradient(180deg, #ffffff, #e6eaff);
+  --qd-cta-fg: #0b0d24;
+  --qd-cta-edge: inset 0 -2px 0 rgba(120, 130, 220, 0.25), 0 10px 28px rgba(120, 140, 255, 0.35);
+  --qd-cta-glow: inset 0 -2px 0 rgba(120, 130, 220, 0.25), 0 10px 40px rgba(155, 92, 255, 0.6), 0 0 0 6px rgba(190, 160, 255, 0.2);
+  --qd-iris: conic-gradient(from 200deg, #4f8dff, #9b5cff, #ff6a88, #ffd36b, #22d3ee, #4f8dff);
+  --qd-timer: linear-gradient(90deg, #4f8dff, #9b5cff, #ff6a88);
+  --qd-me-glow: rgba(79, 141, 255, 0.6);
+  --qd-opp-glow: rgba(255, 138, 61, 0.55);
+  --qd-ok-glow: rgba(59, 229, 139, 0.5);
+  --qd-bad-glow: rgba(255, 90, 122, 0.45);
+  --qd-gold-glow: rgba(255, 211, 107, 0.55);
+  --qd-brand-glow: rgba(155, 92, 255, 0.55);
+  --qd-me-glass: linear-gradient(155deg, rgba(130, 175, 255, 0.5), rgba(79, 141, 255, 0.2)), rgba(20, 30, 90, 0.45);
+  --qd-ok-glass: linear-gradient(155deg, rgba(100, 245, 165, 0.48), rgba(59, 229, 139, 0.16)), rgba(8, 45, 30, 0.45);
+  --qd-bad-glass: linear-gradient(155deg, rgba(255, 120, 150, 0.45), rgba(255, 90, 122, 0.15)), rgba(60, 8, 25, 0.45);
+  --qd-gold-glass: linear-gradient(155deg, rgba(255, 211, 107, 0.32), rgba(255, 211, 107, 0.07) 55%), rgba(30, 24, 10, 0.42);
+  --qd-brand-glass: linear-gradient(155deg, rgba(190, 150, 255, 0.42), rgba(155, 92, 255, 0.14)), rgba(30, 16, 70, 0.45);
+  --qd-me-edge: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 0 0 1.5px rgba(150, 190, 255, 0.85), 0 0 28px rgba(79, 141, 255, 0.5);
+  --qd-ok-edge: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 0 0 1.5px rgba(120, 248, 180, 0.9), 0 0 30px rgba(59, 229, 139, 0.5);
+  --qd-bad-edge: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 0 0 1.5px rgba(255, 140, 165, 0.85), 0 0 26px rgba(255, 90, 122, 0.45);
+  --qd-gold-edge: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 0 0 1px rgba(255, 211, 107, 0.38), 0 12px 30px rgba(3, 4, 20, 0.35);
+  --qd-brand-edge: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 0 0 1.5px rgba(195, 166, 255, 0.75), 0 0 26px rgba(155, 92, 255, 0.45);
+  --qd-me-tint: rgba(79, 141, 255, 0.22);
+  --qd-opp-tint: rgba(255, 138, 61, 0.2);
+  --qd-ok-ring: rgba(59, 229, 139, 0.45);
+  --qd-bad-ring: rgba(255, 90, 122, 0.45);
+  --qd-gold-ring: rgba(255, 211, 107, 0.4);
+  --qd-brand-ring: rgba(155, 92, 255, 0.5);
+  --qd-me-ring: rgba(140, 180, 255, 0.45);
+  --qd-opp-ring: rgba(255, 138, 61, 0.42);
+  --qd-text-glow: 0 0 34px rgba(255, 255, 255, 0.35);
+  --qd-bg: #070818;
+  --qd-au1: rgba(79, 141, 255, 0.8);
+  --qd-au2: rgba(155, 92, 255, 0.74);
+  --qd-au3: rgba(255, 106, 136, 0.6);
+  --qd-au4: rgba(34, 211, 238, 0.52);
+  --qd-veil: linear-gradient(180deg, rgba(7, 8, 24, 0), rgba(7, 8, 24, 0.1) 45%, rgba(7, 8, 24, 0.5));
+  --qd-sheen: radial-gradient(110% 70% at 0% 0%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 55%);
+  --qd-bar: linear-gradient(155deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05) 45%, rgba(255, 255, 255, 0.1)), rgba(14, 16, 44, 0.74);
+  --qd-lens: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.08));
+  --qd-lens-edge: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.18), 0 6px 16px rgba(0, 0, 0, 0.3);
+  --qd-lens-fg: #ffffff;
+  --qd-toast: linear-gradient(155deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06) 50%), rgba(24, 27, 70, 0.95);
+  --qd-sheet: linear-gradient(180deg, rgba(36, 40, 92, 0.98), rgba(13, 15, 38, 0.99) 60%);
+  --qd-sheet-edge: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 -18px 48px rgba(0, 0, 0, 0.45);
+  --qd-scrim: rgba(4, 5, 16, 0.6);
+  --qd-dash: rgba(255, 255, 255, 0.3);
+  --qd-ripple: rgba(255, 180, 130, 0.85);
+  --qd-fade: rgba(7, 8, 24, 0.9);
+  --tg-theme-bg-color: #12142e;
+  --tg-theme-secondary-bg-color: transparent;
+  --tg-theme-section-bg-color: rgba(255, 255, 255, 0.09);
+  --tg-theme-text-color: #ffffff;
+  --tg-theme-hint-color: rgba(232, 236, 255, 0.68);
+  --tg-theme-link-color: #a8c8ff;
   --tg-theme-button-color: #2f6feb;
   --tg-theme-button-text-color: #ffffff;
-  --tg-theme-accent-text-color: #b9a8ff;
-  --tg-theme-destructive-text-color: #ff8a8e;
-  --tg-theme-section-separator-color: #2d2740;
-  --qd-surface-2: #2d2740;
-  --qd-lip: #0d0b14;
-  --qd-button-lip: #1b3f8f;
-  --qd-brand: #8f75ff;
-  --qd-brand-tint: #3a2f66;
-  --qd-brand-text: #d3c8ff;
+  --tg-theme-accent-text-color: #c3a6ff;
+  --tg-theme-destructive-text-color: #ffa3b5;
+  --tg-theme-section-separator-color: rgba(255, 255, 255, 0.1);
+  --qd-surface-2: rgba(255, 255, 255, 0.12);
+  --qd-brand: #9b5cff;
+  --qd-brand-tint: rgba(155, 92, 255, 0.24);
+  --qd-brand-text: #d9c8ff;
   --qd-me: #2f6feb;
-  --qd-me-text: #7db0ff;
+  --qd-me-text: #b4d0ff;
   --qd-opp: #ff8a3d;
-  --qd-opp-text: #ff9f5e;
-  --qd-correct: #2fcb7a;
-  --qd-correct-tint: #143826;
-  --qd-correct-text: #5fe39a;
-  --qd-wrong: #ff6b73;
-  --qd-wrong-tint: #3f1a22;
-  --qd-wrong-text: #ff8a8e;
-  --qd-gold: #ffc94a;
-  --qd-silver: #c9c3dd;
-  --qd-bronze: #d89a5f;
-  --qd-gold-tint: #3a3016;
-  --qd-gold-text: #ffc94a;
-  --qd-on-fill: #14101c;
-  --qd-me-lip: #1b3f8f;
-  --qd-correct-lip: #1a8a51;
-  --qd-wrong-lip: #c0414a;
-  --qd-inverse-bg: #f7f4ff;
-  --qd-inverse-text: #14101c;
-  --qd-inverse-hint: #6e6787;
-  --qd-cat-science-bg: #163a3d;
-  --qd-cat-science-fg: #5ed4de;
-  --qd-cat-history-bg: #3b2e1c;
-  --qd-cat-history-fg: #f0b96a;
-  --qd-cat-culture-bg: #3d1d35;
-  --qd-cat-culture-fg: #f59ad6;
-  --qd-cat-sport-bg: #2a3516;
-  --qd-cat-sport-fg: #b8e05a;
-  --qd-cat-tech-bg: #1d2a4a;
-  --qd-cat-tech-fg: #8fb2ff;
-  --qd-glass-bg: rgba(38, 32, 54, 0.95);
-  --qd-glass-hi: rgba(255, 255, 255, 0.12);
-  --qd-glass-rim: rgba(255, 255, 255, 0.14);
-  --qd-glass-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
-  --qd-scrim: rgba(8, 6, 14, 0.62);
+  --qd-opp-text: #ffc59a;
+  --qd-correct: #3be58b;
+  --qd-correct-tint: rgba(59, 229, 139, 0.2);
+  --qd-correct-text: #8df7bf;
+  --qd-wrong: #ff5a7a;
+  --qd-wrong-tint: rgba(255, 90, 122, 0.2);
+  --qd-wrong-text: #ffa3b5;
+  --qd-gold: #ffd36b;
+  --qd-gold-tint: rgba(255, 211, 107, 0.2);
+  --qd-gold-text: #ffe3a3;
+  --qd-silver: #d5daf0;
+  --qd-bronze: #e8a56a;
+  --qd-on-fill: #0b0d24;
+  --qd-inverse-bg: #ffffff;
+  --qd-inverse-text: #0b0d24;
+  --qd-inverse-hint: #5a5f80;
 }
 
 .qd-light {
   color-scheme: light;
+  --qd-font: 'Onest', -apple-system, BlinkMacSystemFont, Roboto, 'Segoe UI', sans-serif;
+  --qd-glass: linear-gradient(155deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.55) 50%, rgba(255, 255, 255, 0.72));
+  --qd-glass-press: linear-gradient(155deg, #ffffff, rgba(255, 255, 255, 0.75) 50%, rgba(255, 255, 255, 0.85));
+  --qd-glass-solid: linear-gradient(155deg, #ffffff, #f4f5fd);
+  --qd-glass-edge: inset 0 1px 0 #ffffff, inset 0 0 0 1px rgba(255, 255, 255, 0.8), 0 0 0 1px rgba(11, 13, 36, 0.06), 0 12px 28px rgba(60, 70, 140, 0.14);
+  --qd-glass-edge-flat: inset 0 1px 0 #ffffff, 0 0 0 1px rgba(11, 13, 36, 0.07);
+  --qd-glass-rim: rgba(11, 13, 36, 0.07);
+  --qd-chip: rgba(11, 13, 36, 0.06);
+  --qd-track: rgba(11, 13, 36, 0.08);
+  --qd-ring-gap: rgba(255, 255, 255, 0.95);
+  --qd-cta-bg: linear-gradient(180deg, #22264d, #0b0d24);
+  --qd-cta-fg: #ffffff;
+  --qd-cta-edge: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 26px rgba(30, 40, 110, 0.3);
+  --qd-cta-glow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 34px rgba(100, 80, 220, 0.45), 0 0 0 6px rgba(155, 92, 255, 0.16);
+  --qd-iris: conic-gradient(from 200deg, #4f8dff, #9b5cff, #ff6a88, #ffd36b, #22d3ee, #4f8dff);
+  --qd-timer: linear-gradient(90deg, #4f8dff, #9b5cff, #ff6a88);
+  --qd-me-glow: rgba(47, 111, 235, 0.35);
+  --qd-opp-glow: rgba(255, 122, 26, 0.35);
+  --qd-ok-glow: rgba(31, 184, 105, 0.3);
+  --qd-bad-glow: rgba(240, 69, 95, 0.3);
+  --qd-gold-glow: rgba(242, 178, 48, 0.4);
+  --qd-brand-glow: rgba(123, 77, 255, 0.35);
+  --qd-me-glass: linear-gradient(155deg, rgba(200, 220, 255, 0.95), rgba(160, 192, 255, 0.72));
+  --qd-ok-glass: linear-gradient(155deg, rgba(200, 246, 222, 0.95), rgba(150, 232, 188, 0.72));
+  --qd-bad-glass: linear-gradient(155deg, rgba(255, 212, 221, 0.95), rgba(255, 168, 186, 0.72));
+  --qd-gold-glass: linear-gradient(155deg, rgba(255, 240, 200, 0.96), rgba(255, 224, 150, 0.72));
+  --qd-brand-glass: linear-gradient(155deg, rgba(230, 220, 255, 0.96), rgba(204, 186, 255, 0.74));
+  --qd-me-edge: inset 0 1px 0 #ffffff, inset 0 0 0 1.5px #2f6feb, 0 8px 22px rgba(47, 111, 235, 0.3);
+  --qd-ok-edge: inset 0 1px 0 #ffffff, inset 0 0 0 1.5px #1fb869, 0 8px 22px rgba(31, 184, 105, 0.28);
+  --qd-bad-edge: inset 0 1px 0 #ffffff, inset 0 0 0 1.5px #f0455f, 0 8px 22px rgba(240, 69, 95, 0.28);
+  --qd-gold-edge: inset 0 1px 0 #ffffff, inset 0 0 0 1px rgba(242, 178, 48, 0.45), 0 10px 24px rgba(160, 110, 20, 0.16);
+  --qd-brand-edge: inset 0 1px 0 #ffffff, inset 0 0 0 1.5px #7b4dff, 0 8px 22px rgba(123, 77, 255, 0.28);
+  --qd-me-tint: rgba(47, 111, 235, 0.12);
+  --qd-opp-tint: rgba(255, 122, 26, 0.14);
+  --qd-ok-ring: rgba(31, 184, 105, 0.4);
+  --qd-bad-ring: rgba(240, 69, 95, 0.38);
+  --qd-gold-ring: rgba(242, 178, 48, 0.5);
+  --qd-brand-ring: rgba(123, 77, 255, 0.4);
+  --qd-me-ring: rgba(47, 111, 235, 0.35);
+  --qd-opp-ring: rgba(255, 122, 26, 0.4);
+  --qd-text-glow: 0 0 30px rgba(123, 77, 255, 0.22);
+  --qd-bg: #eef0fa;
+  --qd-au1: rgba(79, 141, 255, 0.42);
+  --qd-au2: rgba(155, 92, 255, 0.36);
+  --qd-au3: rgba(255, 106, 136, 0.32);
+  --qd-au4: rgba(34, 211, 238, 0.32);
+  --qd-veil: linear-gradient(180deg, rgba(238, 240, 250, 0), rgba(238, 240, 250, 0.12) 50%, rgba(238, 240, 250, 0.5));
+  --qd-sheen: radial-gradient(110% 70% at 0% 0%, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 55%);
+  --qd-bar: linear-gradient(155deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.82) 50%, rgba(255, 255, 255, 0.9));
+  --qd-lens: linear-gradient(180deg, #ffffff, #eef0fb);
+  --qd-lens-edge: inset 0 1px 0 #ffffff, 0 0 0 1px rgba(11, 13, 36, 0.06), 0 6px 14px rgba(60, 70, 140, 0.18);
+  --qd-lens-fg: #0b0d24;
+  --qd-toast: linear-gradient(155deg, #ffffff, #f4f5fd);
+  --qd-sheet: linear-gradient(180deg, #ffffff, #f2f3fb 60%);
+  --qd-sheet-edge: inset 0 1px 0 #ffffff, 0 -14px 40px rgba(40, 50, 120, 0.18);
+  --qd-scrim: rgba(20, 24, 60, 0.34);
+  --qd-dash: rgba(11, 13, 36, 0.22);
+  --qd-ripple: rgba(242, 106, 27, 0.55);
+  --qd-fade: rgba(238, 240, 250, 0.9);
   --tg-theme-bg-color: #ffffff;
-  --tg-theme-secondary-bg-color: #f4f1fb;
-  --tg-theme-section-bg-color: #ffffff;
-  --tg-theme-text-color: #1b1530;
-  --tg-theme-hint-color: #6e6787;
-  --tg-theme-link-color: #5b3be0;
+  --tg-theme-secondary-bg-color: transparent;
+  --tg-theme-section-bg-color: rgba(255, 255, 255, 0.7);
+  --tg-theme-text-color: #0b0d24;
+  --tg-theme-hint-color: #5a5f80;
+  --tg-theme-link-color: #3d5bd9;
   --tg-theme-button-color: #2f6feb;
   --tg-theme-button-text-color: #ffffff;
-  --tg-theme-accent-text-color: #5b3be0;
+  --tg-theme-accent-text-color: #6a3fe0;
   --tg-theme-destructive-text-color: #c0262f;
-  --tg-theme-section-separator-color: #e6e1f2;
-  --qd-surface-2: #eeeaf7;
-  --qd-lip: #d6cfe8;
-  --qd-button-lip: #1f4db0;
-  --qd-brand: #6c4cf0;
-  --qd-brand-tint: #e9e3ff;
-  --qd-brand-text: #4b2fc9;
+  --tg-theme-section-separator-color: rgba(11, 13, 36, 0.08);
+  --qd-surface-2: rgba(255, 255, 255, 0.75);
+  --qd-brand: #7b4dff;
+  --qd-brand-tint: rgba(123, 77, 255, 0.14);
+  --qd-brand-text: #5b2fd6;
   --qd-me: #2f6feb;
   --qd-me-text: #1f5fd6;
-  --qd-opp: #ff8a3d;
+  --qd-opp: #ff7a1a;
   --qd-opp-text: #c2530f;
-  --qd-correct: #2fcb7a;
-  --qd-correct-tint: #ddf6e8;
-  --qd-correct-text: #127a43;
-  --qd-wrong: #ff6b73;
-  --qd-wrong-tint: #fde2e3;
+  --qd-correct: #1fb869;
+  --qd-correct-tint: rgba(31, 184, 105, 0.14);
+  --qd-correct-text: #0f7a43;
+  --qd-wrong: #f0455f;
+  --qd-wrong-tint: rgba(240, 69, 95, 0.12);
   --qd-wrong-text: #c0262f;
-  --qd-gold: #ffc94a;
-  --qd-silver: #8c86a3;
-  --qd-bronze: #b26b2e;
-  --qd-gold-tint: #fff1cc;
+  --qd-gold: #f2b230;
+  --qd-gold-tint: rgba(242, 178, 48, 0.18);
   --qd-gold-text: #8a5a00;
-  --qd-on-fill: #14101c;
-  --qd-me-lip: #1f4db0;
-  --qd-correct-lip: #1e9a5b;
-  --qd-wrong-lip: #d9434d;
-  --qd-inverse-bg: #1b1530;
+  --qd-silver: #8e93ae;
+  --qd-bronze: #b06a2c;
+  --qd-on-fill: #0b0d24;
+  --qd-inverse-bg: #0b0d24;
   --qd-inverse-text: #ffffff;
-  --qd-inverse-hint: #a59dc0;
-  --qd-cat-science-bg: #d9f3f4;
-  --qd-cat-science-fg: #0b6f78;
-  --qd-cat-history-bg: #fbebd2;
-  --qd-cat-history-fg: #8e530a;
-  --qd-cat-culture-bg: #fbe0f1;
-  --qd-cat-culture-fg: #a02d77;
-  --qd-cat-sport-bg: #e8f4cf;
-  --qd-cat-sport-fg: #46700b;
-  --qd-cat-tech-bg: #e0e8ff;
-  --qd-cat-tech-fg: #2b50bf;
-  --qd-glass-bg: rgba(255, 255, 255, 0.94);
-  --qd-glass-hi: rgba(255, 255, 255, 0.9);
-  --qd-glass-rim: rgba(27, 21, 48, 0.08);
-  --qd-glass-shadow: 0 14px 30px rgba(60, 40, 120, 0.16);
-  --qd-scrim: rgba(8, 6, 14, 0.62);
-}
-
-/*
- * В Telegram фон и карточки берутся из темы пользователя, поэтому «объёмные»
- * поверхности тоже выводим из неё, а не из фиолетовой палитры прототипа.
- */
-.qd-tg-theme {
-  --qd-surface-2: color-mix(in srgb, var(--tg-theme-text-color) 9%, var(--tg-theme-section-bg-color));
-}
-.qd-tg-theme.qd-dark {
-  --qd-lip: color-mix(in srgb, #000 45%, var(--tg-theme-secondary-bg-color));
-}
-.qd-tg-theme.qd-light {
-  --qd-lip: color-mix(in srgb, var(--tg-theme-text-color) 14%, var(--tg-theme-secondary-bg-color));
+  --qd-inverse-hint: #a9aecb;
 }
 
 /* Кривые и длительности - токены из дизайна. ease-in не используем. */
@@ -150,7 +255,7 @@
 }
 
 @theme inline {
-  --font-sans: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, Roboto, 'Segoe UI', sans-serif;
+  --font-sans: var(--qd-font);
 
   --color-page: var(--tg-theme-secondary-bg-color);
   --color-bg: var(--tg-theme-bg-color);
@@ -163,8 +268,9 @@
   --color-separator: var(--tg-theme-section-separator-color);
 
   --color-surface-2: var(--qd-surface-2);
-  --color-lip: var(--qd-lip);
-  --color-button-lip: var(--qd-button-lip);
+  --color-chip: var(--qd-chip);
+  --color-track: var(--qd-track);
+  --color-dash: var(--qd-dash);
   --color-brand: var(--qd-brand);
   --color-brand-tint: var(--qd-brand-tint);
   --color-brand-text: var(--qd-brand-text);
@@ -192,13 +298,24 @@ body,
 
 body {
   margin: 0;
-  background: var(--tg-theme-secondary-bg-color);
+  background: var(--qd-bg);
   color: var(--tg-theme-text-color);
-  font-family: var(--font-sans);
+  font-family: var(--qd-font);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
   user-select: none;
+}
+button,
+input {
+  font-family: inherit;
+}
+button:focus {
+  outline: none;
+}
+button:focus-visible {
+  outline: 3px solid var(--qd-brand);
+  outline-offset: 2px;
 }
 
 /* Экран с учётом выреза и панелей Telegram (переменные ставит SDK). */
@@ -211,37 +328,672 @@ body {
   padding-right: calc(var(--tg-viewport-safe-area-inset-right, 0px) + 16px);
 }
 
+/*
+ * ===== Стиль C: общий набор =====
+ * Фон-аврора: 4 цветных пятна медленно дрейфуют (12-16 с), сверху вуаль для читаемости.
+ * Один слой на всё приложение (components/Aurora.tsx), под всеми экранами (z-index: -1 над фоном body);
+ * варианты - VS и победа.
+ */
+.qd-aurora {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+  background: var(--qd-bg);
+}
+.qd-aurora i {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+}
+.qd-aurora i:nth-child(1) {
+  width: 560px;
+  height: 560px;
+  left: -250px;
+  top: -230px;
+  background: radial-gradient(closest-side, var(--qd-au1), rgba(79, 141, 255, 0));
+  animation: qd-au-a 12s var(--qd-ease-move) infinite alternate;
+}
+.qd-aurora i:nth-child(2) {
+  width: 500px;
+  height: 500px;
+  right: -240px;
+  top: 70px;
+  background: radial-gradient(closest-side, var(--qd-au2), rgba(155, 92, 255, 0));
+  animation: qd-au-b 14s var(--qd-ease-move) -4s infinite alternate;
+}
+.qd-aurora i:nth-child(3) {
+  width: 520px;
+  height: 520px;
+  left: -200px;
+  bottom: -240px;
+  background: radial-gradient(closest-side, var(--qd-au3), rgba(255, 106, 136, 0));
+  animation: qd-au-a 16s var(--qd-ease-move) -7s infinite alternate-reverse;
+}
+.qd-aurora i:nth-child(4) {
+  width: 420px;
+  height: 420px;
+  right: -180px;
+  bottom: 100px;
+  background: radial-gradient(closest-side, var(--qd-au4), rgba(34, 211, 238, 0));
+  animation: qd-au-b 13s var(--qd-ease-move) -9s infinite alternate;
+}
+.qd-aurora::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--qd-veil);
+}
+/* VS - синий против оранжевого, победа и ачивки - с золотом. */
+.qd-au-vs i:nth-child(1),
+.qd-au-vs i:nth-child(3) {
+  background: radial-gradient(closest-side, var(--qd-me-glow), rgba(79, 141, 255, 0));
+}
+.qd-au-vs i:nth-child(2),
+.qd-au-vs i:nth-child(4) {
+  background: radial-gradient(closest-side, var(--qd-opp-glow), rgba(255, 138, 61, 0));
+}
+.qd-au-gold i:nth-child(2),
+.qd-au-gold i:nth-child(4) {
+  background: radial-gradient(closest-side, var(--qd-gold-glow), rgba(255, 211, 107, 0));
+}
+@keyframes qd-au-a {
+  to {
+    transform: translate(70px, 60px) scale(1.12);
+  }
+}
+@keyframes qd-au-b {
+  to {
+    transform: translate(-60px, 50px) scale(0.9);
+  }
+}
+
+/* Поверхности: стекло без blur - заливка, блик сверху слева и тонкая светлая кромка. */
+.qd-glass {
+  background: var(--qd-glass);
+  box-shadow: var(--qd-glass-edge-flat);
+}
+.qd-card {
+  position: relative;
+  background: var(--qd-sheen), var(--qd-glass);
+  box-shadow: var(--qd-glass-edge);
+}
+.qd-card-gold {
+  background: var(--qd-gold-glass);
+  box-shadow: var(--qd-gold-edge);
+}
+.qd-card-brand {
+  background: var(--qd-brand-glass);
+  box-shadow: var(--qd-brand-edge);
+}
+.qd-card-me {
+  background: var(--qd-me-glass);
+  box-shadow: var(--qd-me-edge);
+}
+.qd-card-ok {
+  background: var(--qd-ok-glass);
+  box-shadow: var(--qd-ok-edge);
+}
+.qd-card-bad {
+  background: var(--qd-bad-glass);
+  box-shadow: var(--qd-bad-edge);
+}
+.qd-sheet {
+  background: var(--qd-sheet);
+  box-shadow: var(--qd-sheet-edge);
+}
+
+/* Глянцевый шар-иконка: цвет и свечение задаются на месте через --qd-ball и --qd-ball-glow. */
+.qd-ball {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: radial-gradient(circle at 32% 25%, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0) 50%), var(--qd-ball, #9b5cff);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -5px 12px rgba(0, 0, 0, 0.16),
+    0 0 22px var(--qd-ball-glow, rgba(155, 92, 255, 0.55));
+}
+
+/* Чипы-капсулы: стекло и тонированные варианты. */
+.qd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 14px;
+  box-sizing: border-box;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--tg-theme-text-color);
+  background: var(--qd-glass);
+  box-shadow: var(--qd-glass-edge-flat);
+}
+.qd-chip-gold {
+  color: var(--qd-gold-text);
+  background: var(--qd-gold-glass);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 0 0 1px var(--qd-gold-ring);
+}
+.qd-chip-ok {
+  color: var(--qd-correct-text);
+  background: var(--qd-correct-tint);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 0 0 1px var(--qd-ok-ring);
+}
+.qd-chip-bad {
+  color: var(--qd-wrong-text);
+  background: var(--qd-wrong-tint);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 0 0 1px var(--qd-bad-ring);
+}
+.qd-chip-brand {
+  color: var(--qd-brand-text);
+  background: var(--qd-brand-tint);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 0 0 1px var(--qd-brand-ring);
+}
+.qd-chip-me {
+  color: var(--qd-me-text);
+  background: var(--qd-me-tint);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 0 0 1px var(--qd-me-ring);
+}
+.qd-chip-opp {
+  color: var(--qd-opp-text);
+  background: var(--qd-opp-tint);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 0 0 1px var(--qd-opp-ring);
+}
+.qd-vs {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 12px;
+  box-sizing: border-box;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #0b0d24;
+  background: linear-gradient(180deg, #ffffff, #e4e8ff);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+.qd-icon-btn {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--tg-theme-text-color);
+  background: var(--qd-sheen), var(--qd-glass);
+  box-shadow: var(--qd-glass-edge);
+}
+.qd-grab {
+  align-self: center;
+  width: 40px;
+  height: 5px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  background: var(--qd-dash);
+}
+.qd-link {
+  display: inline;
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: var(--tg-theme-link-color);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-align: left;
+  cursor: pointer;
+}
+.qd-grad-text {
+  background: var(--qd-timer);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.qd-glow-text {
+  text-shadow: var(--qd-text-glow);
+}
 .qd-num {
   font-variant-numeric: tabular-nums;
 }
-
-/* Появление экрана: от scale(0.95) и прозрачности, никогда от нуля. */
-@keyframes qd-screen-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.98);
-  }
+.qd-ell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.qd-screen-in {
-  animation: qd-screen-in var(--qd-dur-screen) var(--qd-ease-ui) both;
+/*
+ * Вуаль под закреплёнными снизу элементами (нижнее меню, моя строка рейтинга): содержимое,
+ * которое прокручивается под ними, плавно гаснет - стекло без blur остаётся читаемым.
+ */
+.qd-veil {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0), var(--qd-fade) var(--qd-veil-at, 62%));
 }
 
-/* Нажатие кнопки: 120 мс, scale(0.97) и «утапливание» на высоту подложки. */
+/* Эмодзи реакций - цветным системным шрифтом, а не текстовым. */
+.qd-emoji {
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+}
+
+/*
+ * ===== Движение =====
+ * Кривые и длительности по брифу, ease-in нигде. Появление от scale(0.95) и прозрачности, никогда от нуля;
+ * выход всегда быстрее входа. Hover - только на устройствах с мышью.
+ */
+
+/* Нажатие: 120 мс, scale(0.97). Цвет и свечение поверхности не меняются. */
 .qd-press {
-  box-shadow: var(--qd-shadow, none);
   transition:
     transform var(--qd-dur-press) var(--qd-ease-ui),
-    box-shadow var(--qd-dur-press) var(--qd-ease-ui);
+    opacity 150ms ease,
+    filter 150ms ease;
 }
 .qd-press:active:not(:disabled) {
-  transform: translateY(var(--qd-lip-press, 3px)) scale(0.97);
-  box-shadow: 0 1px 0 var(--qd-lip-color, transparent);
+  transform: scale(0.97);
 }
 @media (hover: hover) and (pointer: fine) {
   .qd-press:hover:not(:disabled) {
     filter: brightness(1.06);
-    transition: filter 150ms ease;
   }
+}
+
+/* Главная кнопка: радужная кромка, у большой - «дыхание» свечения и блик раз в 3,6 с. */
+.qd-btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.qd-btn-iris::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: var(--qd-iris);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+.qd-btn:not(:disabled):active {
+  filter: brightness(1.06);
+}
+@keyframes qd-btn-breathe {
+  0%,
+  100% {
+    box-shadow: var(--qd-cta-edge);
+  }
+  50% {
+    box-shadow: var(--qd-cta-glow);
+  }
+}
+.qd-btn-glow {
+  animation: qd-btn-breathe 2400ms ease infinite;
+}
+@keyframes qd-btn-shine {
+  0% {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+  30%,
+  100% {
+    transform: translateX(330%) skewX(-18deg);
+  }
+}
+.qd-btn-shine {
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 40%;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(90deg, rgba(155, 92, 255, 0), rgba(155, 92, 255, 0.24), rgba(34, 211, 238, 0.24), rgba(34, 211, 238, 0));
+  transform: translateX(-140%) skewX(-18deg);
+  animation: qd-btn-shine 3600ms var(--qd-ease-move) 900ms infinite;
+}
+
+/* Вариант ответа: при нажатии сразу окрашивается синим стеклом «моего выбора». */
+.qd-ans:not(:disabled):active {
+  background: var(--qd-me-glass) !important;
+  box-shadow: var(--qd-me-edge) !important;
+}
+.qd-ans:not(:disabled):active .qd-ans-ic {
+  background: #4f8dff !important;
+  color: #ffffff !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  .qd-ans:not(:disabled):hover {
+    filter: brightness(1.1);
+  }
+}
+
+/* Реакции: отклик яркостью. */
+.qd-react:not(:disabled):active {
+  filter: brightness(1.25);
+}
+@media (hover: hover) and (pointer: fine) {
+  .qd-react:not(:disabled):hover {
+    filter: brightness(1.12);
+  }
+}
+
+/* Линза активной вкладки и выбранного сегмента переезжает: 300 мс, кривая интерфейса. */
+.qd-tab-lens,
+.qd-seg-lens {
+  transition: transform 300ms var(--qd-ease-ui);
+}
+
+/* Каскад появления на редких экранах. */
+@keyframes qd-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+}
+.qd-in {
+  animation: qd-in 300ms var(--qd-ease-ui) both;
+}
+.qd-d1 {
+  animation-delay: 40ms;
+}
+.qd-d2 {
+  animation-delay: 80ms;
+}
+.qd-d3 {
+  animation-delay: 120ms;
+}
+.qd-d4 {
+  animation-delay: 160ms;
+}
+.qd-d5 {
+  animation-delay: 200ms;
+}
+.qd-d6 {
+  animation-delay: 240ms;
+}
+
+/* Блик-проход по стеклу раз в 7 с (герой, большие карточки). */
+.qd-glint {
+  position: relative;
+  overflow: hidden;
+}
+.qd-glint::after {
+  content: '';
+  position: absolute;
+  top: -40%;
+  bottom: -40%;
+  left: 0;
+  width: 36%;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0));
+  transform: translateX(-160%) rotate(18deg);
+  animation: qd-glint 7s var(--qd-ease-move) 1.4s infinite;
+}
+@keyframes qd-glint {
+  0% {
+    transform: translateX(-160%) rotate(18deg);
+  }
+  24%,
+  100% {
+    transform: translateX(420%) rotate(18deg);
+  }
+}
+
+/* Покачивание, волны «ждём соперника», вращение, свечение-дыхание, ореол. */
+@keyframes qd-bob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-6px);
+  }
+}
+.qd-bob {
+  animation: qd-bob 1800ms var(--qd-ease-move) infinite alternate;
+}
+@keyframes qd-ripple {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  12% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+.qd-ripple {
+  border: 1.5px solid var(--qd-ripple);
+  animation: qd-ripple 1800ms var(--qd-ease-ui) infinite backwards;
+}
+.qd-ripple.qd-r2 {
+  animation-delay: 600ms;
+}
+.qd-ripple.qd-r3 {
+  animation-delay: 1200ms;
+}
+@keyframes qd-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.qd-turn {
+  animation: qd-turn 6s linear infinite;
+}
+@keyframes qd-breathe {
+  0%,
+  100% {
+    box-shadow: var(--qd-ga);
+  }
+  50% {
+    box-shadow: var(--qd-gb);
+  }
+}
+.qd-breathe {
+  animation: qd-breathe 2400ms ease infinite;
+}
+@keyframes qd-halo {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+.qd-halo {
+  animation: qd-halo 3200ms ease infinite;
+}
+
+/* Очки взлетают у счёта, кубок выпрыгивает, пульс сердцебиения. */
+@keyframes qd-float {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+  22% {
+    opacity: 1;
+    transform: none;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-22px);
+  }
+}
+.qd-float {
+  animation: qd-float 900ms var(--qd-ease-ui) both;
+}
+@keyframes qd-trophy {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+.qd-trophy {
+  animation: qd-trophy 560ms var(--qd-ease-ui) 60ms both;
+}
+@keyframes qd-beat {
+  0% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: none;
+  }
+}
+.qd-beat {
+  animation: qd-beat 1000ms var(--qd-ease-ui) infinite;
+}
+
+/* Ожидание: три точки и бегущий сегмент загрузки. */
+.qd-wait {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 4px;
+}
+.qd-wait i {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: qd-wait 1100ms ease infinite;
+}
+.qd-wait i:nth-child(2) {
+  animation-delay: 180ms;
+}
+.qd-wait i:nth-child(3) {
+  animation-delay: 360ms;
+}
+@keyframes qd-wait {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes qd-load {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(96px);
+  }
+}
+.qd-load {
+  animation: qd-load 1400ms var(--qd-ease-move) infinite alternate;
+}
+
+/* «Живая» точка идущей партии на плашке «Вернуться». */
+@keyframes qd-bn-live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+.qd-bn-live {
+  animation: qd-bn-live 1400ms ease infinite;
+}
+
+/* Реакция соперника всплывает в живой зоне экрана вопроса и тает (живёт 1,8 с). */
+@keyframes qd-react-up {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.95);
+  }
+  14% {
+    opacity: 1;
+    transform: none;
+  }
+  75% {
+    opacity: 1;
+    transform: translateY(-30px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-46px);
+  }
+}
+.qd-react-up {
+  animation: qd-react-up 1800ms var(--qd-ease-ui) both;
+}
+
+/* Конфетти итогов: подлёт вверх и падение; параметры частицы - --qd-dx, --qd-up, --qd-rot, --qd-cd, --qd-cdl. */
+@keyframes qd-burst {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(0.95);
+  }
+  6% {
+    opacity: 1;
+  }
+  32% {
+    transform: translate3d(var(--qd-dx, 0px), var(--qd-up, -200px), 0) rotate(calc(var(--qd-rot, 240deg) * 0.35));
+    animation-timing-function: linear;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(var(--qd-dx, 0px) * 1.5), 560px, 0) rotate(var(--qd-rot, 240deg));
+  }
+}
+.qd-burst {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  margin-left: -4px;
+  animation: qd-burst var(--qd-cd, 2400ms) var(--qd-ease-ui) var(--qd-cdl, 0ms) both;
 }
 
 @keyframes qd-spin {
@@ -262,10 +1014,7 @@ body {
   animation: qd-fade-in 300ms var(--qd-ease-ui) both;
 }
 
-/*
- * Анимации из прототипа (Proto.dc.html). Появление от scale(0.95) и прозрачности,
- * выход всегда быстрее входа, ease-in не используем.
- */
+/* Шторки, тосты, плашки, прилёт соперника. */
 @keyframes qd-fade-out {
   to {
     opacity: 0;
@@ -316,17 +1065,6 @@ body {
     transform: translateX(36px) scale(0.95);
   }
 }
-@keyframes qd-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.08);
-    opacity: 0.7;
-  }
-}
 
 .qd-backdrop-in {
   animation: qd-fade-in 300ms var(--qd-ease-ui) both;
@@ -367,13 +1105,9 @@ body {
 .qd-arrive {
   animation: qd-arrive 300ms var(--qd-ease-ui) both;
 }
-/* Пульсация пустого места: непрерывное движение. */
-.qd-pulse {
-  animation: qd-pulse 1600ms var(--qd-ease-move) infinite;
-}
 
 /*
- * Партия (этап 5). Частое действие - мало движения: варианты ответа (10 раз за партию)
+ * Партия. Частое действие - мало движения: варианты ответа (10 раз за партию)
  * получают только каскад появления и отклик на нажатие. Редкие моменты (VS, итоги) - ярче.
  */
 @keyframes qd-slide-l {
@@ -467,22 +1201,6 @@ body {
     transform: scale(0.97);
   }
 }
-@keyframes qd-confetti {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, -150px, 0) rotate(0deg);
-  }
-  12% {
-    opacity: 1;
-  }
-  70% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(var(--qd-dx, 0px), 110px, 0) rotate(var(--qd-rot, 240deg));
-  }
-}
 
 /* VS: карточки съезжаются (перемещение по экрану), цифра отсчёта увеличивается. */
 .qd-slide-l {
@@ -524,12 +1242,8 @@ body {
 .qd-tick {
   animation: qd-tick 1000ms linear infinite;
 }
-/* Итоги - редкий момент: конфетти разлетаются один раз. */
-.qd-confetti {
-  animation: qd-confetti var(--qd-cd, 2000ms) var(--qd-ease-ui) var(--qd-cdl, 0ms) both;
-}
 
-/* Скелетоны загрузки (рейтинг, разбор) с бегущим бликом - непрерывное движение, linear. */
+/* Скелетоны загрузки (рейтинг, разбор): мягкое мерцание - непрерывное движение, linear. */
 @keyframes qd-skel {
   0% {
     opacity: 1;
@@ -619,9 +1333,9 @@ body {
   animation: qd-shine 900ms var(--qd-ease-ui) 700ms 2 both;
 }
 
-/* Кружок тумблера: перемещение по экрану - кривая move, 200 мс. */
+/* Кружок тумблера: перемещение по экрану - 200 мс. */
 .qd-knob {
-  transition: transform 200ms var(--qd-ease-move);
+  transition: transform 200ms var(--qd-ease-ui);
 }
 
 /* Шторка: перетаскивание без анимации, возврат на место - по кривой шторки. */
@@ -633,9 +1347,10 @@ body {
  * Режим без анимаций (класс qd-rm на <html>, его ставит lib/motion.ts по настройке
  * «Авто / Вкл / Выкл»; «Авто» = системное «Уменьшить движение» или слабый Android).
  * Меньше движения, а не ноль: остаются мягкие fade по прозрачности (вход 160 мс, выход 120 мс),
- * убираются сдвиги, масштаб, частицы и пульсация. Цвета и вибрация остаются, тайминги игры не меняются.
+ * убираются сдвиги, масштаб, частицы, блики, дрейф фона и пульсация. Цвета и вибрация остаются,
+ * тайминги игры не меняются.
  */
-.qd-rm .qd-screen-in,
+.qd-rm .qd-in,
 .qd-rm .qd-fade-in,
 .qd-rm .qd-pop,
 .qd-rm .qd-rise,
@@ -652,7 +1367,9 @@ body {
 .qd-rm .qd-cascade,
 .qd-rm .qd-pts,
 .qd-rm .qd-pts-2,
-.qd-rm .qd-ach-in {
+.qd-rm .qd-ach-in,
+.qd-rm .qd-trophy,
+.qd-rm .qd-float {
   animation: qd-rm-in 160ms var(--qd-ease-ui) both;
   animation-delay: 0ms !important;
 }
@@ -662,34 +1379,54 @@ body {
 .qd-rm .qd-pop-out {
   animation: qd-rm-out 120ms var(--qd-ease-ui) both;
 }
-.qd-rm .qd-pulse,
+.qd-rm .qd-aurora i,
 .qd-rm .qd-dots,
 .qd-rm .qd-tick,
 .qd-rm .qd-flash,
 .qd-rm .qd-shake,
-.qd-rm .qd-skel {
+.qd-rm .qd-skel,
+.qd-rm .qd-bob,
+.qd-rm .qd-turn,
+.qd-rm .qd-breathe,
+.qd-rm .qd-halo,
+.qd-rm .qd-beat,
+.qd-rm .qd-btn-glow,
+.qd-rm .qd-bn-live {
   animation: none;
 }
-.qd-rm .qd-confetti,
+.qd-rm .qd-load {
+  animation: none;
+  transform: translateX(48px);
+}
+.qd-rm .qd-wait i {
+  animation: none;
+  opacity: 0.6;
+}
+.qd-rm .qd-ripple,
+.qd-rm .qd-burst,
+.qd-rm .qd-glint::after,
+.qd-rm .qd-btn-shine,
 .qd-rm .qd-shine::after {
   display: none;
 }
 /* Реакция появляется и исчезает без подъёма. */
-.qd-rm .qd-bubble {
+.qd-rm .qd-bubble,
+.qd-rm .qd-react-up {
   animation: qd-bubble-fade 1800ms linear both;
 }
-/* Нажатие: без сжатия и утапливания, только отклик прозрачностью. */
+/* Нажатие: без сжатия, только отклик прозрачностью. */
 .qd-rm .qd-press:active:not(:disabled) {
   transform: none;
-  box-shadow: var(--qd-shadow, none);
   opacity: 0.7;
 }
 .qd-rm .qd-press {
   transition: opacity var(--qd-dur-press) ease;
 }
-/* Шторка возвращается на место без «доезда», индикатор загрузки крутится медленнее. */
+/* Шторка возвращается на место без «доезда», линзы и тумблер переключаются сразу. */
 .qd-rm .qd-sheet-drag,
-.qd-rm .qd-knob {
+.qd-rm .qd-knob,
+.qd-rm .qd-tab-lens,
+.qd-rm .qd-seg-lens {
   transition: none !important;
 }
 .qd-rm .qd-spin {

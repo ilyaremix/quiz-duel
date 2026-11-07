@@ -7,7 +7,9 @@ import { gameActions, useGame } from './lib/game';
 import { setLang } from './i18n';
 import { setMotionSetting } from './lib/motion';
 import { useTranslation } from 'react-i18next';
+import { Aurora } from './components/Aurora';
 import { OfflineStrip } from './components/Banner';
+import { TabDock } from './components/TabDock';
 import { ToastHost } from './components/ToastHost';
 import { LoadingScreen } from './screens/LoadingScreen';
 import { FallbackScreen } from './screens/FallbackScreen';
@@ -76,7 +78,14 @@ function GameRoute({ game, me, review }: { game: GameView; me: MeResponse; revie
     case 'cancelled':
       if (game.mode === 'solo') return <SoloResultScreen game={game} />;
       if (game.cancelReason === 'creator') {
-        return iAmCreator ? <HomeScreen me={me} /> : <LinkErrorScreen kind="cancelled" docsAccepted={me.docsAccepted} />;
+        return iAmCreator ? (
+          <>
+            <HomeScreen me={me} />
+            <TabDock active="home" />
+          </>
+        ) : (
+          <LinkErrorScreen kind="cancelled" docsAccepted={me.docsAccepted} />
+        );
       }
       return <ResultScreen game={game} />;
   }
@@ -100,18 +109,32 @@ function useGameChrome(game: GameView | null, onScreen: boolean) {
   useEffect(() => (back ? onBack(gameActions.openExit) : undefined), [back]);
 }
 
-/** Вкладки нижнего меню, когда партии на экране нет. */
+/**
+ * Вкладки нижнего меню, когда партии на экране нет. Меню одно на все вкладки (стоит после экрана),
+ * поэтому при переключении оно не перерисовывается и линза активной вкладки переезжает плавно.
+ */
 function TabsRoute({ me }: { me: MeResponse }) {
   const tab = useGame((s) => s.tab);
   const review = useGame((s) => s.review);
   const achievements = useGame((s) => s.achievements);
   const settings = useGame((s) => s.settings);
-  if (review) return <ReviewScreen gameId={review} />;
-  if (settings && tab === 'home') return <SettingsScreen me={me} />;
-  if (achievements && tab === 'profile') return <AchievementsScreen />;
-  if (tab === 'rating') return <LeaderboardScreen me={me} />;
-  if (tab === 'profile') return <ProfileScreen me={me} />;
-  return <HomeScreen me={me} />;
+  let screen;
+  let dock = false;
+  if (review) screen = <ReviewScreen gameId={review} />;
+  else if (settings && tab === 'home') screen = <SettingsScreen me={me} />;
+  else if (achievements && tab === 'profile') screen = <AchievementsScreen />;
+  else {
+    dock = true;
+    if (tab === 'rating') screen = <LeaderboardScreen me={me} />;
+    else if (tab === 'profile') screen = <ProfileScreen me={me} />;
+    else screen = <HomeScreen me={me} />;
+  }
+  return (
+    <>
+      {screen}
+      {dock && <TabDock active={tab} />}
+    </>
+  );
 }
 
 /** Итоги посчитаны (пришёл рейтинг) - профиль, история и лидерборд перезапрашиваются. */
@@ -228,7 +251,7 @@ function InTelegram({ session }: { session: TelegramSession }) {
       {/* На экране вопроса полоса «Переподключаемся…» встроена в сам экран. */}
       {(conn === 'reconnecting' || !net) && !(gameOnScreen && (game?.phase === 'question' || game?.phase === 'reveal')) && (
         <div className="qd-strip-in fixed inset-x-0 top-0 z-50">
-          <OfflineStrip title={t('banner.offline.title')} />
+          <OfflineStrip title={t('banner.offline.title')} safeTop />
         </div>
       )}
       {screen}
@@ -242,5 +265,10 @@ function InTelegram({ session }: { session: TelegramSession }) {
 }
 
 export function App({ session }: { session: TelegramSession | null }) {
-  return session ? <InTelegram session={session} /> : <OutsideTelegram />;
+  return (
+    <>
+      <Aurora />
+      {session ? <InTelegram session={session} /> : <OutsideTelegram />}
+    </>
+  );
 }

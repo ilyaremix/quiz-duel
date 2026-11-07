@@ -5,40 +5,61 @@ interface LogoProps {
   wordmark?: boolean;
 }
 
-/** Логотип: «?» игрока и «!» соперника + надпись Quiz Duel. */
+/** Логотип: два глянцевых «пузыря» - «?» игрока (синий) и «!» соперника (оранжевый) со свечением; «Duel» - градиентом. */
 export function Logo({ size = 'm', wordmark = true }: LogoProps) {
   const k = SIZES[size];
   const r = (n: number) => Math.round(n * k);
-  const bubble = r(40);
+  const c = r(40);
+  const glow = r(16);
+  const bubble = 'radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 48%)';
 
   return (
     <div role="img" aria-label="Quiz Duel" className="inline-flex items-center text-text" style={{ gap: r(12) }}>
       <div aria-hidden="true" className="relative shrink-0" style={{ width: r(66), height: r(54) }}>
         <div
-          className="absolute left-0 top-0 flex items-center justify-center bg-me font-black leading-none text-white"
-          style={{ width: bubble, height: bubble, borderRadius: '50% 50% 50% 18%', fontSize: r(22) }}
+          className="absolute top-0 left-0 flex items-center justify-center leading-none font-extrabold text-white"
+          style={{
+            width: c,
+            height: c,
+            borderRadius: '50% 50% 50% 18%',
+            fontSize: r(22),
+            background: `${bubble}, linear-gradient(160deg, #5B95FF, #2A55C8)`,
+            boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 0 ${glow}px rgba(79, 141, 255, 0.6)`,
+          }}
         >
           ?
         </div>
         <div
-          className="absolute box-border flex items-center justify-center bg-opp font-black leading-none text-on-fill"
+          className="absolute box-border flex items-center justify-center leading-none font-extrabold"
           style={{
             left: r(26),
             top: r(14),
-            width: bubble,
-            height: bubble,
+            width: c,
+            height: c,
             borderRadius: '50% 50% 18% 50%',
-            border: `${Math.max(3, r(4))}px solid var(--tg-theme-secondary-bg-color)`,
+            border: `${Math.max(3, r(4))}px solid var(--qd-ring-gap)`,
             fontSize: r(22),
+            color: '#2A1405',
+            background: `${bubble}, linear-gradient(160deg, #FFB067, #F26A1B)`,
+            boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 0 ${glow}px rgba(255, 138, 61, 0.55)`,
           }}
         >
           !
         </div>
       </div>
       {wordmark && (
-        <div className="flex items-baseline font-black leading-none tracking-[-0.02em]" style={{ gap: r(6), fontSize: r(28) }}>
+        <div className="flex items-baseline leading-[1.05] font-bold tracking-[-0.03em]" style={{ gap: r(6), fontSize: r(28) }}>
           <span>Quiz</span>
-          <span className="text-brand-text">Duel</span>
+          <span
+            style={{
+              backgroundImage: 'linear-gradient(90deg, #6FA3FF, #A779FF 55%, #FF7D9B)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+            }}
+          >
+            Duel
+          </span>
         </div>
       )}
     </div>

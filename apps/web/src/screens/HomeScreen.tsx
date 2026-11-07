@@ -1,13 +1,12 @@
-import type { CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { MeResponse } from '@quiz-duel/shared';
-import { Avatar, initialsOf } from '../components/Avatar';
+import { Avatar } from '../components/Avatar';
+import { Ball, BALLS } from '../components/Ball';
 import { ResumeBanner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { Icon, type IconGlyph } from '../components/Icon';
 import { MatchRow } from '../components/MatchRow';
-import { TabDock } from '../components/TabDock';
 import { formatNumber } from '../i18n';
 import { api, queryKeys } from '../lib/api';
 import { gameActions, useGame } from '../lib/game';
@@ -17,20 +16,13 @@ function ModeCard({ glyph, tone, title, hint, onPress }: { glyph: IconGlyph; ton
     <button
       type="button"
       onClick={onPress}
-      className="qd-press flex min-h-[104px] cursor-pointer flex-col items-start gap-2.5 rounded-[20px] border-0 bg-section p-4 text-left font-[inherit] text-text"
-      style={{ '--qd-shadow': '0 4px 0 var(--qd-lip)' } as CSSProperties}
+      className="qd-press qd-card flex min-h-[116px] cursor-pointer flex-col items-start gap-[3px] rounded-[26px] border-0 px-3.5 pt-3.5 pb-4 text-left text-text"
     >
-      <span
-        aria-hidden="true"
-        className="flex h-10 w-10 items-center justify-center rounded-full"
-        style={tone === 'brand' ? { background: 'var(--qd-brand-tint)', color: 'var(--qd-brand-text)' } : { background: 'var(--qd-gold-tint)', color: 'var(--qd-gold-text)' }}
-      >
-        <Icon glyph={glyph} size={20} stroke={2.2} />
-      </span>
-      <span className="flex flex-col gap-0.5">
-        <span className="text-[16px] font-extrabold">{title}</span>
-        <span className="text-[13px] font-semibold text-hint">{hint}</span>
-      </span>
+      <Ball size={42} {...BALLS[tone]} className="mb-2">
+        <Icon glyph={glyph} size={22} stroke={2.2} />
+      </Ball>
+      <span className="text-[17px] font-bold tracking-[-0.01em]">{title}</span>
+      <span className="text-[13px] font-medium text-hint">{hint}</span>
     </button>
   );
 }
@@ -53,36 +45,36 @@ export function HomeScreen({ me }: { me: MeResponse }) {
 
   return (
     <div className="relative min-h-[var(--tg-viewport-stable-height,100dvh)]">
-      <main className="qd-screen qd-screen-in flex flex-col gap-4 pb-[120px]!">
-        <header className="flex items-center gap-3">
-          <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={52} />
-          <div className="flex min-w-0 grow flex-col gap-1">
-            <div className="truncate text-[20px] font-extrabold">{t('s03.greeting', { me: me.firstName })}</div>
-            <div className="qd-num flex items-center gap-1.5">
-              <span className="flex h-6 items-center gap-1 rounded-xl px-2.5 text-[13px] font-extrabold" style={{ background: 'var(--qd-gold-tint)', color: 'var(--qd-gold-text)' }}>
-                <Icon glyph="rating" size={13} stroke={2.5} />
+      <main className="qd-screen flex flex-col gap-3.5 pb-[120px]!">
+        <header className="qd-in flex items-center gap-3">
+          <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={52} ring="me" on="none" />
+          <div className="flex min-w-0 grow flex-col gap-[7px]">
+            <h1 className="m-0 truncate text-[23px] font-bold tracking-[-0.02em]">{t('s03.greeting', { me: me.firstName })}</h1>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="qd-chip qd-chip-gold qd-num">
+                <Icon glyph="rating" size={14} stroke={2.6} />
                 {formatNumber(rating, i18n.language)}
               </span>
               {stats?.place ? (
-                <span className="flex h-6 items-center rounded-xl bg-section px-2.5 text-[13px] font-bold text-hint">
+                <span className="qd-chip qd-num" style={{ color: 'var(--tg-theme-hint-color)' }}>
                   {t('s03.place', { n: formatNumber(stats.place, i18n.language) })}
                 </span>
               ) : (
-                (newbie || stats) && <span className="flex h-6 items-center rounded-xl bg-section px-2.5 text-[13px] font-bold text-hint">{t('s03.newbie')}</span>
+                (newbie || stats) && (
+                  <span className="qd-chip" style={{ color: 'var(--tg-theme-hint-color)' }}>
+                    {t('s03.newbie')}
+                  </span>
+                )
               )}
             </div>
           </div>
-          <button
-            type="button"
-            aria-label={t('s03.settings')}
-            onClick={gameActions.openSettings}
-            className="qd-press flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-0 bg-section p-0 text-hint"
-          >
-            <Icon glyph="settings" size={22} />
+          <button type="button" aria-label={t('s03.settings')} onClick={gameActions.openSettings} className="qd-press qd-icon-btn">
+            <Icon glyph="settings" size={22} stroke={2.2} />
           </button>
         </header>
 
         {resume && (
+          <div className="qd-in qd-d1">
           <ResumeBanner
             title={ended ? t('banner.resume.endedTitle') : t('banner.resume.title')}
             text={
@@ -99,39 +91,57 @@ export function HomeScreen({ me }: { me: MeResponse }) {
             action={ended ? t('banner.resume.endedAction') : t('banner.resume.action')}
             onAction={gameActions.returnToGame}
           />
+          </div>
         )}
 
-        <section className="relative flex flex-col gap-3.5 overflow-hidden rounded-[24px] p-5 text-white" style={{ background: 'var(--qd-me)' }}>
-          <div aria-hidden="true" className="absolute top-[18px] right-[18px] h-[60px] w-[104px]">
-            <div className="absolute top-1 left-0 box-border flex h-[52px] w-[52px] items-center justify-center rounded-full border-[3px] text-[20px] font-extrabold" style={{ background: '#5B9DFF', borderColor: 'var(--qd-me)' }}>
-              {initialsOf(me.firstName)}
+        <section aria-label={t('s03.heroTitle')} className="qd-card qd-glint qd-in qd-d1 rounded-[32px]">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 rounded-[32px]"
+            style={{
+              background:
+                'radial-gradient(80% 70% at 100% 0%, rgba(155, 92, 255, 0.5), rgba(155, 92, 255, 0) 70%), radial-gradient(70% 70% at 0% 100%, rgba(79, 141, 255, 0.38), rgba(79, 141, 255, 0) 70%)',
+            }}
+          />
+          <div className="relative z-[1] flex flex-col gap-4 p-[22px]">
+            <div aria-hidden="true" className="flex h-[60px] items-center">
+              <div className="qd-bob">
+                <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={56} ring="me" on="none" />
+              </div>
+              <span className="qd-vs relative z-[2] -mx-2">VS</span>
+              <div className="relative h-14 w-14">
+                <span className="qd-ripple absolute inset-0 rounded-full" />
+                <span className="qd-ripple qd-r2 absolute inset-0 rounded-full" />
+                <div
+                  className="relative flex h-14 w-14 items-center justify-center rounded-full text-[24px] font-bold"
+                  style={{
+                    background: 'linear-gradient(155deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.05)), var(--qd-glass)',
+                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.18), 0 0 22px var(--qd-opp-glow)',
+                    color: 'var(--qd-opp-text)',
+                  }}
+                >
+                  ?
+                </div>
+              </div>
             </div>
-            <div className="absolute top-1 left-[46px] box-border flex h-[52px] w-[52px] items-center justify-center rounded-full border-[3px] text-[20px] font-extrabold" style={{ background: 'var(--qd-opp)', borderColor: 'var(--qd-me)', color: '#2A1405' }}>
-              ?
+            <div className="flex flex-col gap-2">
+              <h2 className="m-0 text-[30px] leading-[1.05] font-bold tracking-[-0.03em] whitespace-nowrap">{t('s03.heroTitle')}</h2>
+              <p className="m-0 text-[15px] leading-[1.4] font-medium text-hint">{t('s03.heroText')}</p>
             </div>
-            <div className="absolute top-10 left-9 flex h-[22px] items-center rounded-[11px] px-[7px] text-[11px] font-black" style={{ background: 'var(--qd-gold)', color: '#2A1F05' }}>
-              VS
-            </div>
+            <Button icon={<Icon glyph="duel" size={22} stroke={2.4} />} onClick={() => gameActions.openCreate(me.docsAccepted)}>
+              {t('s03.create')}
+            </Button>
           </div>
-          <div className="flex max-w-[210px] flex-col gap-1.5">
-            <h1 className="m-0 text-[24px] leading-[1.15] font-extrabold">{t('s03.heroTitle')}</h1>
-            <p className="m-0 text-[14px] leading-[1.35] font-semibold" style={{ color: '#E3ECFF' }}>
-              {t('s03.heroText')}
-            </p>
-          </div>
-          <Button variant="onColor" onClick={() => gameActions.openCreate(me.docsAccepted)}>
-            {t('s03.create')}
-          </Button>
         </section>
 
-        <section className="grid grid-cols-2 gap-3">
+        <section className="qd-in qd-d2 grid grid-cols-2 gap-3">
           <ModeCard glyph="bolt" tone="brand" title={t('s03.quick')} hint={t('s03.quickHint')} onPress={() => void gameActions.quickJoin(me.docsAccepted)} />
           <ModeCard glyph="target" tone="gold" title={t('s03.training')} hint={t('s03.trainingHint')} onPress={() => gameActions.openSolo(me.docsAccepted)} />
         </section>
 
-        <section className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <h2 className="m-0 ml-1 text-[17px] font-extrabold">{t('s03.recent')}</h2>
+        <section className="qd-in qd-d3 mt-1 flex flex-col gap-2.5">
+          <div className="flex min-h-11 items-center justify-between">
+            <h2 className="m-0 ml-1 text-[19px] font-bold tracking-[-0.02em]">{t('s03.recent')}</h2>
             {recent.length > 0 && (
               <Button variant="ghost" size="s" full={false} onClick={() => gameActions.setTab('profile')}>
                 {t('s03.recentAll')}
@@ -142,11 +152,11 @@ export function HomeScreen({ me }: { me: MeResponse }) {
             <MatchRow key={m.gameId} match={m} onPress={() => gameActions.openReview(m.gameId)} />
           ))}
           {profile.isError && !profile.data && (
-            <div className="flex items-center gap-3 rounded-[20px] bg-section p-4">
-              <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-wrong-tint text-wrong-text">
+            <div className="qd-card flex items-center gap-3 rounded-[26px] p-4">
+              <Ball size={40} {...BALLS.bad}>
                 <Icon glyph="alert" size={20} stroke={2.2} />
-              </span>
-              <span className="min-w-0 grow text-[14px] leading-[1.35] font-semibold text-hint">{t('s03.recentFailed')}</span>
+              </Ball>
+              <span className="min-w-0 grow text-[14px] leading-[1.35] font-medium text-hint">{t('s03.recentFailed')}</span>
               <div className="shrink-0">
                 <Button variant="secondary" size="s" full={false} onClick={() => void profile.refetch()} disabled={profile.isFetching}>
                   {t('common.retry')}
@@ -155,19 +165,18 @@ export function HomeScreen({ me }: { me: MeResponse }) {
             </div>
           )}
           {profile.data && recent.length === 0 && (
-          <div className="flex flex-col items-center gap-2 rounded-[20px] bg-section p-5 text-center">
-            <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-tint text-brand-text">
-              <Icon glyph="medal" size={24} stroke={2.2} />
-            </span>
-            <span className="text-[16px] font-extrabold">{t('s03.emptyTitle')}</span>
-            <span className="max-w-[280px] text-[13px] leading-[1.4] font-semibold text-hint">{t('s03.emptyText')}</span>
-          </div>
+            <div className="qd-card flex flex-col items-center gap-2 rounded-[26px] p-5 text-center">
+              <Ball size={48} {...BALLS.brand} className="mb-1">
+                <Icon glyph="medal" size={24} stroke={2.2} />
+              </Ball>
+              <span className="text-[16px] font-bold">{t('s03.emptyTitle')}</span>
+              <span className="max-w-[280px] text-[13px] leading-[1.4] font-medium text-hint">{t('s03.emptyText')}</span>
+            </div>
           )}
-          {profile.isPending && [0, 1, 2].map((i) => <div key={i} aria-hidden="true" className="qd-skel h-[58px] rounded-[18px] bg-section" />)}
+          {profile.isPending &&
+            [0, 1, 2].map((i) => <div key={i} aria-hidden="true" className="qd-skel qd-glass h-[58px] rounded-[24px]" />)}
         </section>
       </main>
-
-      <TabDock active="home" />
     </div>
   );
 }

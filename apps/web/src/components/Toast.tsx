@@ -1,28 +1,46 @@
+import { Ball } from './Ball';
 import { Icon, type IconGlyph } from './Icon';
 
 export type ToastKind = 'success' | 'error' | 'info' | 'achievement';
 
-const KINDS: Record<ToastKind, { bg: string; fg: string; glyph: IconGlyph }> = {
-  success: { bg: 'var(--qd-correct)', fg: 'var(--qd-on-fill)', glyph: 'check' },
-  error: { bg: 'var(--qd-wrong)', fg: 'var(--qd-on-fill)', glyph: 'close' },
-  info: { bg: 'var(--qd-brand)', fg: '#FFFFFF', glyph: 'info' },
-  achievement: { bg: 'var(--qd-gold)', fg: '#2A1F05', glyph: 'medal' },
+const KINDS: Record<ToastKind, { color: string; ink: string; glow: string; glyph: IconGlyph }> = {
+  success: { color: '#3BE58B', ink: '#04261A', glow: 'var(--qd-ok-glow)', glyph: 'check' },
+  error: { color: '#FF5A7A', ink: '#2E0310', glow: 'var(--qd-bad-glow)', glyph: 'close' },
+  info: { color: '#9B5CFF', ink: '#FFFFFF', glow: 'var(--qd-brand-glow)', glyph: 'info' },
+  achievement: { color: '#FFD36B', ink: '#3A2600', glow: 'var(--qd-gold-glow)', glyph: 'medal' },
 };
 
-/** Тост: тёмная «таблетка» на светлой теме и наоборот (инверсные цвета), иконка по типу. */
-export function Toast({ kind, text, glyph }: { kind: ToastKind; text: string; glyph?: IconGlyph }) {
+/**
+ * Тост - плотная стеклянная капсула, иконка - глянцевый шар со свечением цвета типа.
+ * У ачивки сверху подпись «Новая ачивка» золотом.
+ */
+export function Toast({ kind, text, title, glyph }: { kind: ToastKind; text: string; title?: string; glyph?: IconGlyph }) {
   const k = KINDS[kind];
   return (
     <div className="flex w-full justify-center">
       <div
         role="status"
-        className="box-border flex min-h-[52px] max-w-full items-center gap-2.5 rounded-[26px] py-2 pr-[18px] pl-2"
-        style={{ background: 'var(--qd-inverse-bg)', color: 'var(--qd-inverse-text)', boxShadow: '0 10px 24px rgba(10, 8, 16, 0.28)' }}
+        className="box-border flex min-h-[52px] max-w-full items-center gap-[11px] rounded-[26px] py-2 pr-[18px] pl-2"
+        style={{
+          background: 'var(--qd-toast)',
+          color: 'var(--tg-theme-text-color)',
+          boxShadow: 'var(--qd-glass-edge), 0 18px 40px rgba(3, 4, 20, 0.25)',
+        }}
       >
-        <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: k.bg, color: k.fg }}>
-          <Icon glyph={glyph ?? k.glyph} size={18} stroke={kind === 'achievement' ? 2.5 : 3} />
-        </span>
-        <span className="text-[15px] font-extrabold">{text}</span>
+        <Ball size={36} color={k.color} glow={k.glow} ink={k.ink}>
+          <Icon glyph={glyph ?? k.glyph} size={18} stroke={3} />
+        </Ball>
+        <div className="flex min-w-0 flex-col gap-px">
+          {title && (
+            <span
+              className="text-[11px] font-semibold tracking-[0.06em] uppercase"
+              style={{ color: kind === 'achievement' ? 'var(--qd-gold-text)' : 'var(--tg-theme-hint-color)' }}
+            >
+              {title}
+            </span>
+          )}
+          <span className="text-[15px] font-semibold">{text}</span>
+        </div>
       </div>
     </div>
   );

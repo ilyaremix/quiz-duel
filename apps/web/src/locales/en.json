@@ -77,11 +77,13 @@
     "rmAccepted": "Rematch accepted - let’s go!",
     "rmGone": "Your opponent has already left",
     "loadFailed": "Couldn’t load - check your connection",
-    "ach": "New achievement: {{name}}",
-    "achMany": "New achievements: {{name}} and {{n}} more",
+    "ach": "{{name}}",
+    "achMany": "{{name}} and {{n}} more",
     "shared": "Result card sent to the chat",
     "copiedResult": "Result copied",
-    "settingsFailed": "Couldn’t save the setting - check your connection"
+    "settingsFailed": "Couldn’t save the setting - check your connection",
+    "achTitle": "New achievement",
+    "achTitleMany": "New achievements"
   },
   "banner": {
     "resume": {
@@ -292,7 +294,7 @@
   },
   "score": {
     "aria": "Score",
-    "answered": "Opponent answered",
+    "answered": "{{opp}} answered",
     "offline": "Offline",
     "opp": "Opponent",
     "best": "Best"
@@ -315,6 +317,12 @@
     "waiting": "Waiting for opponent…",
     "offline": "No connection - you can’t answer yet",
     "timeout": "Time’s up",
+    "thinking": "{{opp}} is thinking",
+    "oppDone": "{{opp}} has answered",
+    "yourMove": "Your move - there’s still time",
+    "fast": "The faster you answer, the more points",
+    "locked": "Answer locked in",
+    "soloHint": "Practice: just you and the clock",
     "pillOk": "{{who}}: correct, +{{n}}",
     "pillBad": "{{who}}: wrong, 0 points",
     "pillLate": "{{who}}: time’s up",
@@ -347,6 +355,9 @@
     "scoreAria": "Score",
     "correct": "{{n}} correct",
     "avg": "{{t}} avg",
+    "ratingLabel": "Rating",
+    "correctLabel": "Correct",
+    "avgLabel": "Avg time",
     "rematch": "Rematch",
     "share": "Share result",
     "review": "Review",

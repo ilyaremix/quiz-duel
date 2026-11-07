@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource-variable/onest": "^5.3.1",
     "@quiz-duel/shared": "*",
     "@tanstack/react-query": "^5.106.1",
     "@tma.js/sdk-react": "^3.0.23",

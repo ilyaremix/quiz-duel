@@ -18,15 +18,16 @@ export function CategorySheet() {
   return (
     <Sheet open={open} label={t('s04.aria')} onClose={gameActions.closeCategory}>
       <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h2 className="m-0 text-[22px] font-black">{t('s04.title')}</h2>
-          <p className="m-0 text-[14px] font-semibold text-hint">{t(solo ? 's04.trainSub' : 's04.sub')}</p>
+        <div className="flex min-w-0 flex-col gap-1">
+          <h2 className="m-0 text-[22px] font-bold tracking-[-0.02em]">{t('s04.title')}</h2>
+          <p className="m-0 text-[14px] font-medium text-hint">{t(solo ? 's04.trainSub' : 's04.sub')}</p>
         </div>
         <button
           type="button"
           aria-label={t('common.close')}
           onClick={gameActions.closeCategory}
-          className="qd-press flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-surface-2 p-0 text-hint"
+          className="qd-press qd-icon-btn"
+          style={{ width: 44, height: 44 }}
         >
           <Icon glyph="close" size={18} stroke={2.5} />
         </button>
@@ -39,6 +40,7 @@ export function CategorySheet() {
       <div className="mt-1">
         <Button
           disabled={!selected || creating}
+          icon={<Icon glyph={solo ? 'target' : 'duel'} size={22} stroke={2.4} />}
           onClick={() => selected && void (solo ? gameActions.startSolo(selected) : gameActions.create(selected))}
         >
           {t(solo ? 's04.train' : 's04.create')}

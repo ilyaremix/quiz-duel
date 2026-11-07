@@ -31,12 +31,12 @@ export function ConsentSheet({ docs }: { docs: DocsInfo | undefined }) {
           <Logo size="m" wordmark={false} />
         )}
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="m-0 text-[22px] leading-[1.2] font-black">{title}</h2>
-          <p className="m-0 text-[14px] leading-[1.4] font-semibold text-hint">{t('consent.text')}</p>
+          <h2 className="m-0 text-[22px] leading-[1.2] font-bold tracking-[-0.02em]">{title}</h2>
+          <p className="m-0 text-[14px] leading-[1.4] font-medium text-hint">{t('consent.text')}</p>
         </div>
       </div>
       <ConsentChecks docs={docs} terms={terms} policy={policy} onTerms={() => setTerms((v) => !v)} onPolicy={() => setPolicy((v) => !v)} />
-      {!both && <span className="-mt-1.5 text-center text-[13px] font-semibold text-hint">{t('consent.hint')}</span>}
+      {!both && <span className="-mt-1.5 text-center text-[13px] font-medium text-hint">{t('consent.hint')}</span>}
       <Button disabled={!both || sending || !docs} onClick={() => void gameActions.acceptConsent()}>
         {inviter ? t('consent.play') : t('consent.playSelf')}
       </Button>

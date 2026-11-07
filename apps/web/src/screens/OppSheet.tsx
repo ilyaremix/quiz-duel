@@ -31,35 +31,43 @@ export function OppSheet({ me }: { me: MeResponse }) {
       {player && (
         <div className="flex flex-col items-center gap-4">
           <div className="flex flex-col items-center gap-2 text-center">
-            <Avatar id={player.id} name={player.name} photoUrl={player.photoUrl} size={72} ring="opp" on="page" badge={known ? (known.online && !known.left ? 'online' : 'offline') : 'none'} />
+            <Avatar
+              id={player.id}
+              name={player.name}
+              photoUrl={player.photoUrl}
+              size={76}
+              ring="opp"
+              on="none"
+              badge={known ? (known.online && !known.left ? 'online' : 'offline') : 'none'}
+            />
             <div className="mt-1 flex flex-col">
-              <span className="max-w-[300px] truncate text-[22px] font-black">{player.name}</span>
-              {player.username && <span className="text-[14px] font-semibold text-hint">@{player.username}</span>}
+              <span className="max-w-[300px] truncate text-[23px] font-bold tracking-[-0.02em]">{player.name}</span>
+              {player.username && <span className="text-[14px] font-medium text-hint">@{player.username}</span>}
             </div>
-            <div className="qd-num flex items-center gap-1.5">
-              <span className="flex h-6 items-center gap-1 rounded-xl px-2.5 text-[13px] font-extrabold" style={{ background: 'var(--qd-gold-tint)', color: 'var(--qd-gold-text)' }}>
-                <Icon glyph="rating" size={13} stroke={2.5} />
+            <div className="flex items-center gap-1.5">
+              <span className="qd-chip qd-chip-gold qd-num">
+                <Icon glyph="rating" size={14} stroke={2.6} />
                 {formatNumber(q.data?.stats.rating ?? player.rating, lang)}
               </span>
-              <span className="flex h-6 items-center rounded-xl bg-surface-2 px-2.5 text-[13px] font-bold text-hint">
+              <span className="qd-chip qd-num" style={{ color: 'var(--tg-theme-hint-color)' }}>
                 {q.data?.stats.place ? t('s03.place', { n: formatNumber(q.data.stats.place, lang) }) : t('s03.newbie')}
               </span>
             </div>
           </div>
 
-          <div className="box-border flex w-full flex-col items-center gap-2 rounded-[20px] bg-surface-2 px-4 py-3.5" aria-busy={q.isPending}>
-            <span className="text-[13px] font-extrabold text-hint">{t('s17.h2h')}</span>
+          <div className="qd-card box-border flex w-full flex-col items-center gap-2 rounded-[26px] px-4 py-3.5" aria-busy={q.isPending}>
+            <span className="text-[13px] font-semibold text-hint">{t('s17.h2h')}</span>
             <div className="flex items-center gap-3.5">
-              <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={36} ring="me" on="none" />
-              <span className="qd-num text-[36px] leading-none font-black">
-                <span className="text-me-text">{h ? h.me : '·'}</span>
-                <span className="text-hint"> : </span>
-                <span className="text-opp-text">{h ? h.opp : '·'}</span>
+              <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={38} ring="me" on="none" />
+              <span className="qd-num text-[38px] leading-none font-bold tracking-[-0.02em]">
+                <span style={{ color: 'var(--qd-me-text)', textShadow: '0 0 18px var(--qd-me-glow)' }}>{h ? h.me : '·'}</span>
+                <span style={{ color: 'var(--qd-dash)' }}> : </span>
+                <span style={{ color: 'var(--qd-opp-text)', textShadow: '0 0 18px var(--qd-opp-glow)' }}>{h ? h.opp : '·'}</span>
               </span>
-              <Avatar id={player.id} name={player.name} photoUrl={player.photoUrl} size={36} ring="opp" on="none" />
+              <Avatar id={player.id} name={player.name} photoUrl={player.photoUrl} size={38} ring="opp" on="none" />
             </div>
-            <span className="text-[13px] font-semibold text-hint">
-              {q.isError ? t('s17.error') : !h ? ' ' : h.games === 0 || h.lastAt === null ? t('s17.first') : t('s17.meta', { count: h.games, when: formatWhen(h.lastAt, t, lang) })}
+            <span className="text-[13px] font-medium text-hint">
+              {q.isError ? t('s17.error') : !h ? ' ' : h.games === 0 || h.lastAt === null ? t('s17.first') : t('s17.meta', { count: h.games, when: formatWhen(h.lastAt, t, lang) })}
             </span>
           </div>
 
@@ -70,7 +78,7 @@ export function OppSheet({ me }: { me: MeResponse }) {
           </div>
 
           <div className="w-full">
-            <Button variant="ghost" size="s" onClick={gameActions.closeOpp}>
+            <Button variant="secondary" size="m" onClick={gameActions.closeOpp}>
               {t('common.close')}
             </Button>
           </div>

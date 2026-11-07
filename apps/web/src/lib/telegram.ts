@@ -19,10 +19,25 @@ export interface TelegramSession {
   startParam: string | undefined;
 }
 
+/** Фон приложения в стиле C (--qd-bg в styles.css) - им же красим шапку и низ Telegram. */
+const CHROME_BG = { dark: '#070818', light: '#EEF0FA' } as const;
+
 function applyColorScheme(isDark: boolean) {
   const root = document.documentElement;
   root.classList.toggle('qd-dark', isDark);
   root.classList.toggle('qd-light', !isDark);
+}
+
+/** Шапка, фон под приложением и нижняя панель Telegram - в цвет нашего фона, а не темы Telegram. */
+function applyChromeColors(isDark: boolean) {
+  const bg = isDark ? CHROME_BG.dark : CHROME_BG.light;
+  safe(() => {
+    // Старые клиенты не умеют произвольный цвет шапки - тогда ключ темы.
+    const rgb = miniApp.setHeaderColor.supports('rgb');
+    miniApp.setHeaderColor.ifAvailable(rgb ? bg : 'bg_color');
+  });
+  safe(() => miniApp.setBgColor.ifAvailable(bg));
+  safe(() => miniApp.setBottomBarColor.ifAvailable(bg));
 }
 
 /** Поля initData нужны клиенту только для подсказок (язык до ответа сервера); доверяет он серверу. */
@@ -41,16 +56,17 @@ function readUnverified(initDataRaw: string) {
 function setupSdk() {
   init();
 
-  // --tg-theme-* на <html>; класс тёмной/светлой схемы следит за сменой темы.
+  // Из темы Telegram берём только схему - тёмная или светлая. Цвета свои (стиль C, styles.css),
+  // поэтому --tg-theme-* от Telegram на <html> не подключаем.
   themeParams.mount.ifAvailable();
-  themeParams.bindCssVars.ifAvailable();
-  document.documentElement.classList.add('qd-tg-theme');
   applyColorScheme(themeParams.isDark());
-  themeParams.isDark.sub(() => applyColorScheme(themeParams.isDark()));
 
   miniApp.mount.ifAvailable();
-  miniApp.setHeaderColor.ifAvailable('secondary_bg_color');
-  miniApp.setBgColor.ifAvailable('secondary_bg_color');
+  applyChromeColors(themeParams.isDark());
+  themeParams.isDark.sub(() => {
+    applyColorScheme(themeParams.isDark());
+    applyChromeColors(themeParams.isDark());
+  });
 
   // Высота и отступы под вырез в --tg-viewport-*.
   const mounting = viewport.mount.ifAvailable();

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { LangSetting, MeResponse, MotionSetting } from '@quiz-duel/shared';
+import { Ball, BALLS } from '../components/Ball';
 import { Button } from '../components/Button';
 import { Icon, type IconGlyph } from '../components/Icon';
 import { Segmented } from '../components/Segmented';
@@ -15,7 +16,7 @@ import { askWriteAccess, haptic, onBack, setHapticsEnabled } from '../lib/telegr
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2.5">
-      <h2 className="m-0 mt-2 ml-1 text-[13px] font-extrabold tracking-[0.04em] text-hint uppercase">{title}</h2>
+      <h2 className="m-0 mt-2 ml-1 text-[12px] font-semibold tracking-[0.08em] text-hint uppercase">{title}</h2>
       {children}
     </section>
   );
@@ -25,19 +26,20 @@ function ToggleRow({ title, hint, on, onToggle }: { title: string; hint: string;
   return (
     <div className="flex min-h-[66px] items-center gap-3">
       <div className="flex min-w-0 grow flex-col gap-0.5">
-        <span className="text-[16px] font-extrabold">{title}</span>
-        <span className="text-[13px] leading-[1.35] font-semibold text-hint">{hint}</span>
+        <span className="text-[16px] font-semibold">{title}</span>
+        <span className="text-[13px] leading-[1.35] font-medium text-hint">{hint}</span>
       </div>
       <Switch on={on} label={title} onToggle={onToggle} />
     </div>
   );
 }
 
-const RULES: { glyph: IconGlyph; bg: string; fg: string }[] = [
-  { glyph: 'duel', bg: 'var(--qd-brand-tint)', fg: 'var(--qd-brand-text)' },
-  { glyph: 'clock', bg: 'var(--qd-surface-2)', fg: 'var(--tg-theme-text-color)' },
-  { glyph: 'bolt', bg: 'var(--qd-gold-tint)', fg: 'var(--qd-gold)' },
-  { glyph: 'rating', bg: 'var(--qd-correct-tint)', fg: 'var(--qd-correct-text)' },
+/** Правила «Как играть» - у каждого свой глянцевый шар. */
+const RULES: { glyph: IconGlyph; ball: keyof typeof BALLS }[] = [
+  { glyph: 'duel', ball: 'brand' },
+  { glyph: 'clock', ball: 'me' },
+  { glyph: 'bolt', ball: 'gold' },
+  { glyph: 'rating', ball: 'ok' },
 ];
 
 /** Шторка «Как играть»: 4 правила и «Понятно». */
@@ -46,25 +48,20 @@ function HowToSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Sheet open={open} label={t('s20.howTo')} onClose={onClose}>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="m-0 text-[22px] font-black">{t('s20.howTo')}</h2>
-        <button
-          type="button"
-          aria-label={t('common.close')}
-          onClick={onClose}
-          className="qd-press flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-surface-2 p-0 text-hint"
-        >
+        <h2 className="m-0 text-[22px] font-bold tracking-[-0.02em]">{t('s20.howTo')}</h2>
+        <button type="button" aria-label={t('common.close')} onClick={onClose} className="qd-press qd-icon-btn" style={{ width: 44, height: 44 }}>
           <Icon glyph="close" size={18} stroke={2.5} />
         </button>
       </div>
       <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
         {RULES.map((r, i) => (
-          <li key={r.glyph} className="flex items-start gap-3.5 rounded-[20px] bg-section p-3">
-            <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full" style={{ background: r.bg, color: r.fg }}>
+          <li key={r.glyph} className="qd-card flex items-start gap-3.5 rounded-[24px] p-3">
+            <Ball size={44} {...BALLS[r.ball]}>
               <Icon glyph={r.glyph} size={22} stroke={2.2} />
-            </span>
+            </Ball>
             <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="text-[16px] font-extrabold">{t(`s20.rules.${i}.t`)}</span>
-              <span className="text-[13px] leading-[1.4] font-semibold text-hint">{t(`s20.rules.${i}.d`)}</span>
+              <span className="text-[16px] font-bold">{t(`s20.rules.${i}.t`)}</span>
+              <span className="text-[13px] leading-[1.4] font-medium text-hint">{t(`s20.rules.${i}.d`)}</span>
             </div>
           </li>
         ))}
@@ -128,45 +125,51 @@ export function SettingsScreen({ me }: { me: MeResponse }) {
 
   return (
     <div className="relative min-h-[var(--tg-viewport-stable-height,100dvh)]">
-      <main className="qd-screen qd-screen-in flex flex-col gap-2.5">
-        <h1 className="m-0 mt-1 mb-1.5 ml-1 text-[28px] font-black">{t('s20.title')}</h1>
+      <main className="qd-screen flex flex-col gap-2.5">
+        <h1 className="qd-in m-0 mt-1 mb-1.5 ml-1 text-[28px] font-bold tracking-[-0.02em]">{t('s20.title')}</h1>
 
-        <Group title={t('s20.lang')}>
-          <div className="flex flex-col gap-2.5 rounded-[20px] bg-section p-3">
-            <Segmented label={t('s20.lang')} options={langOptions} value={me.language} onPick={(language) => void saveSettings(queryClient, { language })} />
-            <p className="m-0 mx-1 text-[13px] leading-[1.4] font-semibold text-hint">{langHint}</p>
-          </div>
-        </Group>
+        <div className="qd-in qd-d1">
+          <Group title={t('s20.lang')}>
+            <div className="qd-card flex flex-col gap-2.5 rounded-[26px] p-3">
+              <Segmented label={t('s20.lang')} options={langOptions} value={me.language} onPick={(language) => void saveSettings(queryClient, { language })} />
+              <p className="m-0 mx-1.5 text-[13px] leading-[1.4] font-medium text-hint">{langHint}</p>
+            </div>
+          </Group>
+        </div>
 
-        <Group title={t('s20.motion')}>
-          <div className="flex flex-col gap-2.5 rounded-[20px] bg-section p-3">
-            <Segmented
-              label={t('s20.motion')}
-              options={motionOptions}
-              value={me.reducedMotion}
-              onPick={(reducedMotion) => void saveSettings(queryClient, { reducedMotion })}
-            />
-            <p className="m-0 mx-1 text-[13px] leading-[1.4] font-semibold text-hint">{motionHint}</p>
-          </div>
-        </Group>
+        <div className="qd-in qd-d2">
+          <Group title={t('s20.motion')}>
+            <div className="qd-card flex flex-col gap-2.5 rounded-[26px] p-3">
+              <Segmented
+                label={t('s20.motion')}
+                options={motionOptions}
+                value={me.reducedMotion}
+                onPick={(reducedMotion) => void saveSettings(queryClient, { reducedMotion })}
+              />
+              <p className="m-0 mx-1.5 text-[13px] leading-[1.4] font-medium text-hint">{motionHint}</p>
+            </div>
+          </Group>
+        </div>
 
-        <Group title={t('s20.feedback')}>
-          <div className="flex flex-col rounded-[20px] bg-section py-1 pr-1.5 pl-4">
-            <ToggleRow title={t('s20.haptics')} hint={t('s20.hapticsHint')} on={me.haptics} onToggle={toggleHaptics} />
-            <div aria-hidden="true" className="h-px bg-surface-2" />
-            <ToggleRow title={t('s20.notif')} hint={notifHint} on={notifOn} onToggle={toggleNotif} />
-          </div>
-        </Group>
+        <div className="qd-in qd-d3">
+          <Group title={t('s20.feedback')}>
+            <div className="qd-card flex flex-col rounded-[26px] py-1 pr-2 pl-4">
+              <ToggleRow title={t('s20.haptics')} hint={t('s20.hapticsHint')} on={me.haptics} onToggle={toggleHaptics} />
+              <div aria-hidden="true" className="h-px bg-separator" />
+              <ToggleRow title={t('s20.notif')} hint={notifHint} on={notifOn} onToggle={toggleNotif} />
+            </div>
+          </Group>
+        </div>
 
         <button
           type="button"
           onClick={() => setHowTo(true)}
-          className="qd-press mt-2.5 box-border flex min-h-[60px] w-full cursor-pointer items-center gap-3 rounded-[20px] border-0 bg-section px-3 py-2 text-left font-[inherit] text-text"
+          className="qd-press qd-card qd-in qd-d4 mt-2.5 box-border flex min-h-[62px] w-full cursor-pointer items-center gap-3 rounded-[26px] border-0 py-[9px] pr-3.5 pl-2.5 text-left text-text"
         >
-          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand-text">
-            <Icon glyph="info" size={18} stroke={2.5} />
-          </span>
-          <span className="grow text-[16px] font-extrabold">{t('s20.howTo')}</span>
+          <Ball size={42} {...BALLS.brand}>
+            <Icon glyph="info" size={20} stroke={2.4} />
+          </Ball>
+          <span className="grow text-[16px] font-semibold">{t('s20.howTo')}</span>
           <span aria-hidden="true" className="flex text-hint">
             <Icon glyph="chevron" size={18} stroke={2.5} />
           </span>
