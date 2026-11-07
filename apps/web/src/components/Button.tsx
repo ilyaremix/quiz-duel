@@ -35,7 +35,9 @@ export function Button({ variant = 'primary', size = 'l', full = true, icon, chi
   const v = VARIANTS[variant];
   const primary = variant === 'primary';
   const live = primary && size === 'l' && !disabled;
-  const cls = `qd-press qd-btn${primary ? ' qd-btn-iris' : ''}${live ? ' qd-btn-glow' : ''}`;
+  // Кнопка по ширине текста не сжимается в строке рядом с текстом (иначе «Изменить» превращалась в «Изм…»):
+  // сжимается соседний текст, он переносится.
+  const cls = `qd-press qd-btn${primary ? ' qd-btn-iris' : ''}${live ? ' qd-btn-glow' : ''}${full ? '' : ' shrink-0 max-w-full'}`;
   return (
     <button
       type="button"

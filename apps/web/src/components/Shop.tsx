@@ -238,7 +238,7 @@ export function TaskRow({ task, state, onAction, busy }: { task: TaskView; state
       </span>
       <div className="flex min-w-0 grow flex-col gap-[5px]">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="min-w-0 truncate text-[15px] leading-[1.2] font-bold tracking-[-0.01em]">{title}</span>
+          <span className="line-clamp-2 min-w-0 text-[15px] leading-[1.2] font-bold tracking-[-0.01em]">{title}</span>
           {task.type === 'story' && (
             <span className="box-border inline-flex h-5 shrink-0 items-center gap-[3px] rounded-[10px] pr-[7px] pl-[5px] text-[11px] font-bold text-white" style={{ background: 'linear-gradient(120deg, #9B5CFF, #4F8DFF)' }}>
               <Icon glyph="star" size={11} stroke={2.6} />
@@ -253,7 +253,7 @@ export function TaskRow({ task, state, onAction, busy }: { task: TaskView; state
           >
             <CoinDot size={14} />+{formatNumber(task.reward, i18n.language)}
           </span>
-          <span className="min-w-0 truncate">{sub}</span>
+          <span className="line-clamp-2 min-w-0">{sub}</span>
         </span>
         {progress && (
           <div role="progressbar" aria-label={title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-[5px] overflow-hidden rounded-[3px]" style={{ background: 'var(--qd-track)' }}>

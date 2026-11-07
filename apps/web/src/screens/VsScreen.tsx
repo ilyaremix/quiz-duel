@@ -42,10 +42,10 @@ export function VsScreen({ game, count }: { game: GameView; count: 1 | 2 | 3 }) 
         <div className="qd-slide-r">
           <PlayerCard id={opp.userId} name={opp.name} photoUrl={opp.photoUrl} glow={opp.glow} rating={opp.rating} side="opp" status="ready" />
         </div>
-        {/* VS - белая глянцевая сфера. */}
+        {/* VS - белая глянцевая сфера на уровне аватарок: там по бокам пусто, а длинные имена ниже она не закрывает. */}
         <div
           aria-hidden="true"
-          className="qd-pop-late absolute top-1/2 left-1/2 z-[2] -mt-8 -ml-8 flex h-16 w-16 items-center justify-center rounded-full text-[20px] font-extrabold tracking-[0.02em]"
+          className="qd-pop-late absolute top-[22px] left-1/2 z-[2] -ml-8 flex h-16 w-16 items-center justify-center rounded-full text-[20px] font-extrabold tracking-[0.02em]"
           style={{
             background: 'radial-gradient(circle at 32% 25%, #FFFFFF, #E4E8FF 60%, #C9D0FF)',
             boxShadow: 'inset 0 -3px 8px rgba(60, 70, 160, 0.25), 0 0 0 4px var(--qd-ring-gap), 0 0 34px rgba(255, 255, 255, 0.5), 0 10px 26px rgba(0, 0, 0, 0.35)',
