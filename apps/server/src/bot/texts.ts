@@ -100,6 +100,8 @@ export const alertTexts: Record<Lang, { render: (a: GameAlert) => { text: string
           const rating = r.ratingAfter !== null && r.delta !== null ? `\nРейтинг ${ru(r.ratingAfter)} (${signed(r.delta, ru)})` : '';
           return { text: `${head} - вы против ${opp}: ${ru(r.me)} : ${ru(r.opp)}${rating}`, button: 'Итоги' };
         }
+        case 'friendInvite':
+          return { text: `⚔️ ${opp} зовёт вас на дуэль! Вызов действует 15 минут.`, button: 'Принять вызов' };
       }
     },
   },
@@ -122,6 +124,8 @@ export const alertTexts: Record<Lang, { render: (a: GameAlert) => { text: string
           const rating = r.ratingAfter !== null && r.delta !== null ? `\nRating ${en(r.ratingAfter)} (${signed(r.delta, en)})` : '';
           return { text: `${head} - you vs ${opp}: ${en(r.me)} : ${en(r.opp)}${rating}`, button: 'Results' };
         }
+        case 'friendInvite':
+          return { text: `⚔️ ${opp} challenges you to a duel! The challenge is open for 15 minutes.`, button: 'Accept the challenge' };
       }
     },
   },

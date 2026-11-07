@@ -1,3 +1,4 @@
+import type { GlowId } from './economy.js';
 import type { Lang, LangSetting } from './lang.js';
 import type { Category, GameCategory } from './categories.js';
 import type { GameMode } from './game.js';
@@ -114,6 +115,8 @@ export interface PlayerBrief {
   username: string | null;
   photoUrl: string | null;
   rating: number;
+  /** Свечение аватарки из магазина. */
+  glow: GlowId;
 }
 
 /** Цифры игрока по рейтинговым дуэлям. */
@@ -288,4 +291,39 @@ export interface SettingsResponse {
   reducedMotion: MotionSetting;
   haptics: boolean;
   onboarded: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Обновление 2.0: друзья и приглашения
+
+export type FriendStatus = 'online' | 'ingame' | 'offline';
+
+export interface FriendView {
+  player: PlayerBrief;
+  status: FriendStatus;
+  /** Когда был в приложении (мс). */
+  lastSeenAt: number | null;
+  /** Заявка - когда пришла; недавний соперник - когда играли (мс). */
+  at: number | null;
+  /** Недавний соперник: моя заявка ему уже отправлена. */
+  sent?: boolean;
+}
+
+export interface FriendsResponse {
+  friends: FriendView[];
+  /** Входящие заявки в друзья. */
+  incoming: FriendView[];
+  /** Недавние соперники, которые ещё не в друзьях. */
+  recent: FriendView[];
+  /** Приглашено по ссылке (сыграли первую партию) и заработано на этом монет. */
+  ref: { invited: number; earned: number };
+}
+
+export interface FriendIdRequest {
+  id: number;
+}
+
+export interface FriendRespondRequest {
+  id: number;
+  accept: boolean;
 }

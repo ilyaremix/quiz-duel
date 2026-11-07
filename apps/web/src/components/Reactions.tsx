@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { REACTIONS, type Reaction } from '@quiz-duel/shared';
+import { REACTION_PACKS, type Reaction } from '@quiz-duel/shared';
 import { gameActions, useGame } from '../lib/game';
+import { useWallet } from '../lib/economy';
 
 /** Строка из 6 реакций - стеклянные кружки. После отправки 2 с полупрозрачны (кулдаун проверяет и сервер). */
 export function Reactions({ size = 'm' }: { size?: 'm' | 's' }) {
@@ -16,14 +17,17 @@ export function Reactions({ size = 'm' }: { size?: 'm' | 's' }) {
   }, [cooldown, until]);
 
   const d = size === 's' ? 44 : 50;
-  const names = t('reactions.list', { returnObjects: true }) as string[];
+  // Обновление 2.0: набор, надетый в магазине; подписи для чтения с экрана - только у базового.
+  const pack = useWallet().data?.pack ?? 'base';
+  const emojis = REACTION_PACKS[pack];
+  const names = pack === 'base' ? (t('reactions.list', { returnObjects: true }) as string[]) : [];
   return (
     <div role="group" aria-label={t('reactions.aria')} className="flex w-full justify-between gap-1.5">
-      {REACTIONS.map((emoji: Reaction, i) => (
+      {emojis.map((emoji: Reaction, i) => (
         <button
           key={emoji}
           type="button"
-          aria-label={`${t('reactions.prefix')}${names[i] ?? ''}`}
+          aria-label={`${t('reactions.prefix')}${names[i] ?? emoji}`}
           disabled={cooldown}
           onClick={() => void gameActions.react(emoji)}
           className="qd-press qd-react qd-emoji flex aspect-square min-w-0 cursor-pointer items-center justify-center rounded-full border-0 p-0 leading-none disabled:cursor-default"

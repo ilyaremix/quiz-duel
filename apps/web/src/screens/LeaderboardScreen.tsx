@@ -9,6 +9,7 @@ import { LeaderRow, LeaderRowSkeleton } from '../components/LeaderRow';
 import { Notice } from '../components/Notice';
 import { formatNumber } from '../i18n';
 import { api, queryKeys } from '../lib/api';
+import { useWallet } from '../lib/economy';
 
 /** Пьедестал стиля C: золотой глянцевый столб с бликом, серебряное и бронзовое стекло; у первого места - золотой ореол. */
 const PILLAR = [
@@ -50,7 +51,7 @@ function Podium({ top, meId }: { top: LeaderRowView[]; meId: number }) {
         return (
           <div key={i} className="flex min-w-0 flex-col items-center gap-1">
             <div className="rounded-full" style={{ boxShadow: k.halo }}>
-              <Avatar id={row.player.id} name={row.player.name} photoUrl={row.player.photoUrl} size={i === 0 ? 64 : 52} ring={me ? 'me' : 'none'} on="none" />
+              <Avatar id={row.player.id} name={row.player.name} photoUrl={row.player.photoUrl} size={i === 0 ? 64 : 52} ring={me ? 'me' : 'none'} on="none" glow={row.player.glow} />
             </div>
             <span className="mt-1 max-w-full truncate text-[14px] font-semibold">{row.player.name}</span>
             <span className="qd-num flex items-center gap-[3px] text-[13px] font-bold text-gold-text">
@@ -88,8 +89,9 @@ function PodiumSkeleton() {
 export function LeaderboardScreen({ me }: { me: MeResponse }) {
   const { t } = useTranslation();
   const board = useQuery({ queryKey: queryKeys.leaderboard, queryFn: api.leaderboard });
+  const wallet = useWallet();
   const data = board.data;
-  const meBrief = { id: me.id, name: me.firstName, username: me.username, photoUrl: me.photoUrl, rating: data?.me.rating ?? me.rating };
+  const meBrief = { id: me.id, name: me.firstName, username: me.username, photoUrl: me.photoUrl, rating: data?.me.rating ?? me.rating, glow: wallet.data?.glow ?? ('none' as const) };
   const inTop = Boolean(data?.top.some((r) => r.player.id === me.id));
   const pinned = !inTop && (board.isPending || Boolean(data));
 

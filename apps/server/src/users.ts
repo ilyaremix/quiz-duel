@@ -1,4 +1,5 @@
 import {
+  isGlow,
   langFromTelegram,
   resolveLang,
   type ConsentDoc,
@@ -168,6 +169,7 @@ export function createPrismaUsersRepo(prisma: PrismaClient): UsersRepo {
             username: row.username,
             photoUrl: row.photoUrl,
             rating: row.rating,
+            glow: isGlow(row.glow) ? row.glow : 'none',
             lang: resolveLang(row.language, row.tgLanguage),
             docsVersion: row.docsVersion,
           };

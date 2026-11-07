@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import type { GlowId } from '@quiz-duel/shared';
 import { Avatar, type AvatarBadge } from './Avatar';
 import { Ball, BALLS } from './Ball';
 import { Icon } from './Icon';
@@ -9,6 +10,7 @@ export interface ScoreSide {
   photoUrl: string | null;
   /** Уже отформатированный счёт («2 340»). */
   score: string;
+  glow?: GlowId;
 }
 
 interface ScoreBarProps {
@@ -47,7 +49,7 @@ export function ScoreBar({ me, opp, current, total, oppState, meState, best, meG
     <section aria-label={t('score.aria')} className="flex w-full flex-col gap-0.5">
       <div className="flex min-h-[58px] items-center gap-2">
         <div className="relative flex min-w-0 flex-1 items-center gap-2.5">
-          <Avatar id={me.id} name={me.name} photoUrl={me.photoUrl} size={46} ring="me" badge={meState === 'answered' ? 'answered' : 'none'} />
+          <Avatar id={me.id} name={me.name} photoUrl={me.photoUrl} size={46} ring="me" badge={meState === 'answered' ? 'answered' : 'none'} glow={me.glow} />
           <div className="flex min-w-0 flex-col">
             <span className="text-[13px] font-medium text-hint">{t('common.you')}</span>
             <span className={SCORE} style={{ color: 'var(--qd-me-text)', textShadow: '0 0 16px var(--qd-me-glow)' }}>
@@ -95,7 +97,7 @@ export function ScoreBar({ me, opp, current, total, oppState, meState, best, meG
                 {opp.score}
               </span>
             </div>
-            <Avatar id={opp.id} name={opp.name} photoUrl={opp.photoUrl} size={46} ring="opp" badge={oppBadge} />
+            <Avatar id={opp.id} name={opp.name} photoUrl={opp.photoUrl} size={46} ring="opp" badge={oppBadge} glow={opp.glow} />
           </div>
         )}
         {!opp && best !== undefined && (

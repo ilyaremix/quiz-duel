@@ -7,15 +7,18 @@ import { CONSENT_DOCS, type ConsentDoc } from './api.js';
 import { GAME_ID_RE } from './links.js';
 import { QUESTIONS_PER_GAME } from './questions.js';
 import { GAME_CATEGORIES, type GameCategory } from './categories.js';
-import { REACTIONS, type Reaction } from './game.js';
-import { PREMIUM_TOPICS, STARS_PRODUCTS, type PremiumTopic, type StarsProduct } from './economy.js';
+import type { Reaction } from './game.js';
+import { ALL_REACTIONS, PREMIUM_TOPICS, STARS_PRODUCTS, type PremiumTopic, type StarsProduct } from './economy.js';
 
 type Tuple<T> = readonly [T, ...T[]];
 
 const gameId = z.string().regex(GAME_ID_RE);
 
+const userId = z.number().int().positive().max(2 ** 52);
+
 export const CreateGamePayloadSchema = z.strictObject({
   category: z.enum(GAME_CATEGORIES as unknown as Tuple<GameCategory>),
+  friendId: userId.optional(),
 });
 
 export const GameIdPayloadSchema = z.strictObject({ gameId });
@@ -30,7 +33,7 @@ export const AnswerPayloadSchema = z.strictObject({
 
 export const ReadyPayloadSchema = z.strictObject({ gameId, ready: z.boolean() });
 
-export const ReactPayloadSchema = z.strictObject({ gameId, emoji: z.enum(REACTIONS as unknown as Tuple<Reaction>) });
+export const ReactPayloadSchema = z.strictObject({ gameId, emoji: z.enum(ALL_REACTIONS as unknown as Tuple<Reaction>) });
 
 export const RematchRespondPayloadSchema = z.strictObject({ gameId, accept: z.boolean() });
 
@@ -74,3 +77,7 @@ export const AdStartRequestSchema = z.strictObject({
 export const AdDoneRequestSchema = z.strictObject({ id: z.string().min(8).max(32).regex(/^[A-Za-z0-9_-]+$/) });
 
 export const InvoiceRequestSchema = z.strictObject({ product: z.enum(STARS_PRODUCTS as unknown as Tuple<StarsProduct>) });
+
+export const FriendIdSchema = z.strictObject({ id: userId });
+
+export const FriendRespondSchema = z.strictObject({ id: userId, accept: z.boolean() });

@@ -150,8 +150,8 @@ export function QuestionScreen({ game }: { game: GameView }) {
       )}
 
       <ScoreBar
-        me={{ id: game.me.userId, name: game.me.name, photoUrl: game.me.photoUrl, score: formatNumber(meScore, lang) }}
-        opp={opp ? { id: opp.userId, name: opp.name, photoUrl: opp.photoUrl, score: formatNumber(oppScore, lang) } : null}
+        me={{ id: game.me.userId, name: game.me.name, photoUrl: game.me.photoUrl, score: formatNumber(meScore, lang), glow: game.me.glow }}
+        opp={opp ? { id: opp.userId, name: opp.name, photoUrl: opp.photoUrl, score: formatNumber(oppScore, lang), glow: opp.glow } : null}
         current={q.index + 1}
         total={q.total}
         oppState={oppState}

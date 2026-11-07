@@ -1359,6 +1359,73 @@ button:focus-visible {
   transition: transform 200ms var(--qd-ease-ui);
 }
 
+/* Обновление 2.0: свечение аватарки из магазина. Ореол дышит, радужное кольцо крутится, пламя мерцает. */
+.qd-glow-pulse {
+  animation: qd-glow-pulse 2400ms ease infinite;
+}
+@keyframes qd-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.78;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.qd-glow-spin {
+  animation: qd-glow-turn 4s linear infinite;
+}
+@keyframes qd-glow-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.qd-glow-flame {
+  animation: qd-glow-flame 1300ms ease infinite alternate;
+}
+@keyframes qd-glow-flame {
+  from {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+.qd-glow-ring {
+  background: conic-gradient(from 0deg, #4f8dff, #9b5cff, #ff6a88, #ffd36b, #22d3ee, #4f8dff);
+  -webkit-mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+  mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+}
+
+/* Задание с готовой наградой: золотая кнопка «дышит» свечением. */
+.qd-task-ready {
+  animation: qd-task-ready 2200ms ease infinite;
+}
+@keyframes qd-task-ready {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      0 0 14px rgba(255, 211, 107, 0.45);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      0 0 28px rgba(255, 211, 107, 0.85);
+  }
+}
+.qd-gold-btn {
+  background: radial-gradient(circle at 30% 20%, #fff3c4, #ffd36b 55%, #f2b230);
+  color: #3a2600;
+}
+
+/* Полоса досмотра рекламы: идёт ровно. */
+.qd-ad-bar {
+  transition: width 120ms linear;
+}
+
 /* Шторка: перетаскивание без анимации, возврат на место - по кривой шторки. */
 .qd-sheet-drag {
   touch-action: none;
@@ -1393,6 +1460,15 @@ button:focus-visible {
 .qd-rm .qd-float {
   animation: qd-rm-in 160ms var(--qd-ease-ui) both;
   animation-delay: 0ms !important;
+}
+.qd-rm .qd-glow-pulse,
+.qd-rm .qd-glow-spin,
+.qd-rm .qd-glow-flame,
+.qd-rm .qd-task-ready {
+  animation: none;
+}
+.qd-rm .qd-ad-bar {
+  transition: none;
 }
 .qd-rm .qd-toast-out,
 .qd-rm .qd-sheet-out,

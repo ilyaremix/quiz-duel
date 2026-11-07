@@ -51,7 +51,7 @@ export function LeaderRow({ place, player, games, me = false, pinned = false }: 
           {rank}
         </span>
       )}
-      <Avatar id={player.id} name={player.name} photoUrl={player.photoUrl} size={38} ring={me ? 'me' : 'none'} on="none" />
+      <Avatar id={player.id} name={player.name} photoUrl={player.photoUrl} size={38} ring={me ? 'me' : 'none'} on="none" glow={player.glow} />
       <div className="flex min-w-0 grow flex-col gap-px">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-[15px] font-semibold">{player.name}</span>

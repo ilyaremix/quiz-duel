@@ -5,16 +5,19 @@
  */
 import { create } from 'zustand';
 import { copyTextToClipboard, openLink, shareMessage, shareURL } from '@tma.js/sdk-react';
+import { queryClient } from './queryClient';
 import {
   ACTIVE_PHASES,
   FINAL_PHASES,
   measureClockOffset,
   TIMINGS,
   type ClientToServerEvents,
+  type FriendInviteEvent,
   type GameCategory,
   type GameErrorCode,
   type GameStateMeta,
   type GameView,
+  type PlayerBrief,
   type PlayerProfile,
   type Reaction,
   REACTION_COOLDOWN_MS,
@@ -96,7 +99,7 @@ interface GameStore {
   search: { since: number; rating: number } | 'notFound' | null;
 }
 
-export type Tab = 'home' | 'rating' | 'profile';
+export type Tab = 'home' | 'friends' | 'shop' | 'rating' | 'profile';
 
 export const useGame = create<GameStore>(() => ({
   conn: 'connecting',
@@ -129,6 +132,21 @@ const get = useGame.getState;
 
 /** Время сервера по часам телефона с поправкой на их расхождение. */
 export const serverNow = () => Date.now() + get().clockOffset;
+
+/**
+ * Обязательная реклама перед новой игрой (после каждых 3 партий). Её ставит lib/economy:
+ * true - ролик открыт, игра начнётся после него.
+ */
+let adGate: ((then: () => void) => boolean) | null = null;
+export function setAdGate(gate: (then: () => void) => boolean) {
+  adGate = gate;
+}
+
+/** Пуши друзей: их обрабатывает lib/friends (он сам ставит себя сюда). */
+let friendHooks: { invite: (e: FriendInviteEvent) => void; changed: (kind: 'request' | 'accepted', from: PlayerBrief) => void } | null = null;
+export function setFriendHooks(hooks: NonNullable<typeof friendHooks>) {
+  friendHooks = hooks;
+}
 
 let toastSeq = 0;
 let bubbleSeq = 0;
@@ -375,6 +393,10 @@ export const gameActions = {
       set((st) => ({ bubbles: { ...st.bubbles, [userId]: { id: ++bubbleSeq, emoji, at: Date.now() } } }));
     });
     socket.on('session:replaced', () => set({ conn: 'replaced' }));
+    // Монеты изменились не по нашему запросу (оплата, награда за друга, конец партии).
+    socket.on('wallet:changed', () => void queryClient.invalidateQueries({ queryKey: ['wallet'] }));
+    socket.on('friend:invite', (event) => friendHooks?.invite(event));
+    socket.on('friend:changed', ({ kind, from }) => friendHooks?.changed(kind, from));
     socket.on('disconnect', () => {
       if (get().conn !== 'replaced') set({ conn: 'reconnecting' });
     });
@@ -425,8 +447,8 @@ export const gameActions = {
     } else if (res.error === 'not_found') set({ game: null });
   },
 
-  async create(category: GameCategory) {
-    const res = await request('game:create', { category });
+  async create(category: GameCategory, friendId?: number) {
+    const res = await request('game:create', friendId ? { category, friendId } : { category });
     if (res.ok) {
       set({ game: res.game, hidden: false, linkError: null, categorySheet: false, invite: null });
       void gameActions.prefetchInvite(res.game.id);
@@ -649,18 +671,21 @@ export const gameActions = {
 
   /** «Создать дуэль»: без принятых документов сначала шторка с галочками. */
   openCreate(docsAccepted: boolean) {
+    if (docsAccepted && adGate?.(() => gameActions.openCreate(true))) return;
     if (!docsAccepted) set({ consent: { inviter: null, gameId: null, category: null } });
     else set({ categorySheet: true, categoryMode: 'duel' });
   },
 
   /** «Тренировка»: та же шторка категорий, но кнопка «Начать тренировку». */
   openSolo(docsAccepted: boolean) {
+    if (docsAccepted && adGate?.(() => gameActions.openSolo(true))) return;
     if (!docsAccepted) set({ consent: { inviter: null, gameId: null, category: null, solo: true } });
     else set({ categorySheet: true, categoryMode: 'solo' });
   },
 
   /** «Быстрая игра»: встать в очередь (экран 7). Соперник найден - придёт снимок лобби. */
   async quickJoin(docsAccepted: boolean) {
+    if (docsAccepted && adGate?.(() => void gameActions.quickJoin(true))) return;
     if (!docsAccepted) return set({ consent: { inviter: null, gameId: null, category: null, quick: true } });
     const res = await request('queue:join', {}, 'queue');
     if (res.ok) {

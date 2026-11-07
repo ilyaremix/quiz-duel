@@ -8,6 +8,8 @@ import {
   CONSENT_DOCS,
   ConsentRequestSchema,
   EquipRequestSchema,
+  FriendIdSchema,
+  FriendRespondSchema,
   InvoiceRequestSchema,
   SettingsRequestSchema,
   TaskClaimSchema,
@@ -29,6 +31,7 @@ import { authErrorBody, requireTelegramAuth } from '../auth/fastify.js';
 import { toMeResponse, type UsersRepo } from '../users.js';
 import type { StatsRepo } from '../stats.js';
 import type { EcoFailure, EconomyRepo } from '../economy.js';
+import type { FriendsRepo, Presence } from '../friends.js';
 
 /** Счёт на оплату звёздами (createInvoiceLink у бота). */
 export interface InvoiceMaker {
@@ -61,6 +64,12 @@ export interface AppDeps {
   economy?: EconomyRepo;
   /** Счета на звёзды (нужен бот). */
   invoices?: InvoiceMaker;
+  /** Друзья, заявки, приглашения (без него маршруты не регистрируются). */
+  friends?: FriendsRepo;
+  /** В сети ли игрок и не в партии ли он (знает менеджер партий). */
+  presence?: Presence;
+  /** Пуши в приложение: заявка в друзья, принятие. */
+  onFriendChanged?: (userId: number, kind: 'request' | 'accepted', fromId: number) => void;
   /** Часы (тесты подставляют свои). */
   now?: () => number;
   /** false - без логов (тесты). */
@@ -79,7 +88,20 @@ function ecoStatus(error: EconomyErrorCode) {
   return error === 'not_found' ? 404 : 409;
 }
 
-export async function buildApp({ env, users, stats, economy, invoices, botUsername, onSettingsChanged, logger, now = Date.now }: AppDeps) {
+export async function buildApp({
+  env,
+  users,
+  stats,
+  economy,
+  invoices,
+  friends,
+  presence = () => 'offline',
+  onFriendChanged,
+  botUsername,
+  onSettingsChanged,
+  logger,
+  now = Date.now,
+}: AppDeps) {
   const app = Fastify({
     logger: logger ?? {
       level: env.LOG_LEVEL,
@@ -148,6 +170,15 @@ export async function buildApp({ env, users, stats, economy, invoices, botUserna
   app.get('/api/me', { onRequest: auth }, async (request) => {
     // request.tg гарантированно заполнен: без него хук auth отклонил бы запрос.
     const user = await users.upsertFromTelegram(request.tg!.user);
+    // Первый вход после обновления: откуда пришёл и кто пригласил (startapp=r_<id>).
+    if (friends) {
+      try {
+        const { inviterId } = await friends.attribute(user.id, request.tg!.startParam);
+        if (inviterId) onFriendChanged?.(inviterId, 'accepted', user.id);
+      } catch (error) {
+        request.log.warn({ err: error }, 'attribution failed');
+      }
+    }
     return toMeResponse(user, env.DOCS_VERSION);
   });
 
@@ -227,6 +258,40 @@ export async function buildApp({ env, users, stats, economy, invoices, botUserna
       if (!isGameId(request.params.id)) return reply.code(400).send({ error: 'bad_request' } satisfies ApiError);
       const review = await stats.review(request.tg!.user.id, request.params.id);
       return review ?? reply.code(404).send(notFound);
+    });
+  }
+
+  if (friends) {
+    const bad = { error: 'bad_request' } satisfies ApiError;
+    app.get('/api/friends', { onRequest: auth }, async (request) => friends.list(request.tg!.user.id, presence));
+
+    app.post('/api/friends/request', { onRequest: auth }, async (request, reply) => {
+      const parsed = FriendIdSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      const me = request.tg!.user.id;
+      const result = await friends.request(me, parsed.data.id);
+      if (result === 'not_found') return reply.code(404).send({ error: 'not_found' } satisfies ApiError);
+      if (result === 'not_allowed') return reply.code(403).send({ error: 'forbidden', reason: 'not_played' } satisfies ApiError);
+      if (result === 'sent') onFriendChanged?.(parsed.data.id, 'request', me);
+      if (result === 'accepted') onFriendChanged?.(parsed.data.id, 'accepted', me);
+      return { result };
+    });
+
+    app.post('/api/friends/respond', { onRequest: auth }, async (request, reply) => {
+      const parsed = FriendRespondSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      const me = request.tg!.user.id;
+      const ok = await friends.respond(me, parsed.data.id, parsed.data.accept);
+      if (!ok) return reply.code(404).send({ error: 'not_found' } satisfies ApiError);
+      if (parsed.data.accept) onFriendChanged?.(parsed.data.id, 'accepted', me);
+      return { ok: true };
+    });
+
+    app.post('/api/friends/remove', { onRequest: auth }, async (request, reply) => {
+      const parsed = FriendIdSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send(bad);
+      await friends.remove(request.tg!.user.id, parsed.data.id);
+      return { ok: true };
     });
   }
 

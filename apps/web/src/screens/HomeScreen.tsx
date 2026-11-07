@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { MeResponse } from '@quiz-duel/shared';
@@ -10,6 +11,7 @@ import { MatchRow } from '../components/MatchRow';
 import { formatNumber } from '../i18n';
 import { api, queryKeys } from '../lib/api';
 import { gameActions, useGame } from '../lib/game';
+import { pw, shop, useShop, useWallet } from '../lib/economy';
 
 function ModeCard({ glyph, tone, title, hint, onPress }: { glyph: IconGlyph; tone: 'brand' | 'gold'; title: string; hint: string; onPress: () => void }) {
   return (
@@ -33,6 +35,9 @@ export function HomeScreen({ me }: { me: MeResponse }) {
   const game = useGame((s) => s.game);
   const hidden = useGame((s) => s.hidden);
   const profile = useQuery({ queryKey: queryKeys.profile, queryFn: api.profile });
+  const wallet = useWallet();
+  const w = wallet.data;
+  const dailyBusy = useShop((s) => Boolean(s.busy.daily));
   const stats = profile.data?.stats;
   const recent = profile.data?.matches.slice(0, 3) ?? [];
   const newbie = (stats?.games ?? me.games) === 0;
@@ -47,31 +52,74 @@ export function HomeScreen({ me }: { me: MeResponse }) {
     <div className="relative min-h-[var(--tg-viewport-stable-height,100dvh)]">
       <main className="qd-screen flex flex-col gap-3.5 pb-[120px]!">
         <header className="qd-in flex items-center gap-3">
-          <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={52} ring="me" on="none" />
+          <button
+            type="button"
+            aria-label={t('s03.profileAria')}
+            onClick={() => gameActions.setTab('profile')}
+            className="qd-press -m-1 flex h-[60px] w-[60px] shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0"
+          >
+            <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={52} ring="me" on="none" glow={w?.glow} />
+          </button>
           <div className="flex min-w-0 grow flex-col gap-[7px]">
             <h1 className="m-0 truncate text-[23px] font-bold tracking-[-0.02em]">{t('s03.greeting', { me: me.firstName })}</h1>
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="qd-chip qd-chip-gold qd-num">
                 <Icon glyph="rating" size={14} stroke={2.6} />
                 {formatNumber(rating, i18n.language)}
+                {stats?.place ? (
+                  <span className="font-semibold opacity-75">· {t('s03.placeShort', { n: formatNumber(stats.place, i18n.language) })}</span>
+                ) : null}
               </span>
-              {stats?.place ? (
-                <span className="qd-chip qd-num" style={{ color: 'var(--tg-theme-hint-color)' }}>
-                  {t('s03.place', { n: formatNumber(stats.place, i18n.language) })}
+              <button
+                type="button"
+                aria-label={t('s03.coinsAria', { n: formatNumber(w?.coins ?? 0, i18n.language), coins: pw(t, w?.coins ?? 0, 'coin') })}
+                onClick={() => {
+                  shop.setSection('items');
+                  gameActions.setTab('shop');
+                }}
+                className="qd-press qd-chip qd-num cursor-pointer border-0 pr-2 pl-[3px]"
+              >
+                <span
+                  aria-hidden="true"
+                  className="qd-ball h-[22px] w-[22px]"
+                  style={{ '--qd-ball': '#FFD36B', '--qd-ball-glow': 'var(--qd-gold-glow)', color: '#3A2600', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.6), 0 0 10px var(--qd-gold-glow)' } as CSSProperties}
+                >
+                  <Icon glyph="coin" size={12} stroke={2.8} />
                 </span>
-              ) : (
-                (newbie || stats) && (
-                  <span className="qd-chip" style={{ color: 'var(--tg-theme-hint-color)' }}>
-                    {t('s03.newbie')}
-                  </span>
-                )
-              )}
+                {w ? formatNumber(w.coins, i18n.language) : '…'}
+                <span aria-hidden="true" className="flex" style={{ color: 'var(--qd-brand-text)' }}>
+                  <Icon glyph="plus" size={13} stroke={3} />
+                </span>
+              </button>
             </div>
           </div>
           <button type="button" aria-label={t('s03.settings')} onClick={gameActions.openSettings} className="qd-press qd-icon-btn">
             <Icon glyph="settings" size={22} stroke={2.2} />
           </button>
         </header>
+
+        {w && !w.daily.claimed && (
+          <div role="region" aria-label={t('s03.daily.title')} className="qd-card-gold qd-glint qd-in qd-d1 flex items-center gap-3 rounded-[26px] py-2.5 pr-2.5 pl-3">
+            <span aria-hidden="true" className="qd-ball qd-bob h-11 w-11" style={{ '--qd-ball': '#FFD36B', '--qd-ball-glow': 'var(--qd-gold-glow)', color: '#3A2600' } as CSSProperties}>
+              <Icon glyph="gift" size={22} stroke={2.3} />
+            </span>
+            <div className="flex min-w-0 grow flex-col gap-0.5">
+              <span className="text-[15px] font-bold">{t('s03.daily.title')}</span>
+              <span className="qd-num text-[13px] font-semibold" style={{ color: 'var(--qd-gold-text)' }}>
+                {t('s03.daily.text', { d: w.daily.day, n: w.daily.reward, coins: pw(t, w.daily.reward, 'coin') })}
+              </span>
+            </div>
+            <button
+              type="button"
+              disabled={dailyBusy}
+              onClick={() => void shop.claimDaily(t)}
+              className="qd-press box-border h-10 shrink-0 cursor-pointer rounded-[20px] border-0 px-4 text-[14px] font-bold disabled:opacity-60"
+              style={{ background: 'var(--qd-cta-bg)', boxShadow: 'var(--qd-cta-edge)', color: 'var(--qd-cta-fg)' }}
+            >
+              {t('s03.daily.action')}
+            </button>
+          </div>
+        )}
 
         {resume && (
           <div className="qd-in qd-d1">
@@ -106,7 +154,7 @@ export function HomeScreen({ me }: { me: MeResponse }) {
           <div className="relative z-[1] flex flex-col gap-4 p-[22px]">
             <div aria-hidden="true" className="flex h-[60px] items-center">
               <div className="qd-bob">
-                <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={56} ring="me" on="none" />
+                <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={56} ring="me" on="none" glow={w?.glow} />
               </div>
               <span className="qd-vs relative z-[2] -mx-2">VS</span>
               <div className="relative h-14 w-14">

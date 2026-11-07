@@ -3,6 +3,7 @@
  * профиль соперника и разбор партии. Только чтение - всё пишется в repo.settle.
  */
 import {
+  isGlow,
   ACHIEVEMENTS,
   achievementProgress,
   CATEGORIES,
@@ -46,6 +47,7 @@ interface UserRow {
   firstName: string;
   username: string | null;
   photoUrl: string | null;
+  glow: string;
   rating: number;
   games: number;
   wins: number;
@@ -63,6 +65,7 @@ const USER_SELECT = {
   firstName: true,
   username: true,
   photoUrl: true,
+  glow: true,
   rating: true,
   games: true,
   wins: true,
@@ -75,12 +78,13 @@ const USER_SELECT = {
   correctTimeMs: true,
 } as const;
 
-const brief = (u: Pick<UserRow, 'id' | 'firstName' | 'username' | 'photoUrl' | 'rating'>): PlayerBrief => ({
+const brief = (u: Pick<UserRow, 'id' | 'firstName' | 'username' | 'photoUrl' | 'rating' | 'glow'>): PlayerBrief => ({
   id: Number(u.id),
   name: u.firstName,
   username: u.username,
   photoUrl: u.photoUrl,
   rating: u.rating,
+  glow: isGlow(u.glow) ? u.glow : 'none',
 });
 
 function statsOf(u: UserRow, place: number | null): PlayerStats {
@@ -139,8 +143,8 @@ export function createPrismaStatsRepo(prisma: PrismaClient): StatsRepo {
         creatorRatingDelta: true,
         opponentRatingDelta: true,
         finishedAt: true,
-        creator: { select: { id: true, firstName: true, username: true, photoUrl: true, rating: true } },
-        opponent: { select: { id: true, firstName: true, username: true, photoUrl: true, rating: true } },
+        creator: { select: { id: true, firstName: true, username: true, photoUrl: true, rating: true, glow: true } },
+        opponent: { select: { id: true, firstName: true, username: true, photoUrl: true, rating: true, glow: true } },
       },
     });
     return rows.map((g) => {
@@ -208,7 +212,7 @@ export function createPrismaStatsRepo(prisma: PrismaClient): StatsRepo {
           where: { games: { gte: LEADERBOARD_MIN_GAMES } },
           orderBy: [{ rating: 'desc' }, { games: 'desc' }, { id: 'asc' }],
           take: LEADERBOARD_SIZE,
-          select: { id: true, firstName: true, username: true, photoUrl: true, rating: true, games: true },
+          select: { id: true, firstName: true, username: true, photoUrl: true, rating: true, games: true, glow: true },
         }),
         prisma.user.findUnique({ where: { id: BigInt(userId) }, select: { id: true, rating: true, games: true } }),
       ]);
@@ -273,7 +277,7 @@ export function createPrismaStatsRepo(prisma: PrismaClient): StatsRepo {
       const [users, questions] = await Promise.all([
         prisma.user.findMany({
           where: { id: { in: [BigInt(me.userId), BigInt(opp.userId)] } },
-          select: { id: true, firstName: true, username: true, photoUrl: true, rating: true, language: true, tgLanguage: true },
+          select: { id: true, firstName: true, username: true, photoUrl: true, rating: true, language: true, tgLanguage: true, glow: true },
         }),
         // Вопросы из таблицы, а не из файла: разбор старой партии не ломается, если файл потом изменили.
         prisma.question.findMany({ where: { id: { in: state.questions.map((q) => q.id) } } }),

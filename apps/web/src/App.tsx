@@ -33,6 +33,12 @@ import { AchievementsScreen } from './screens/AchievementsScreen';
 import { SoloResultScreen } from './screens/SoloResultScreen';
 import { SearchScreen } from './screens/SearchScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { ShopScreen } from './screens/ShopScreen';
+import { FriendsScreen } from './screens/FriendsScreen';
+import { ItemSheet } from './screens/ItemSheet';
+import { AdScreen } from './screens/AdScreen';
+import { InviteBanner } from './components/InviteBanner';
+import { shop, useShop, useWallet } from './lib/economy';
 
 /** Вне Telegram: заглушка с кнопкой, ведущей в мини-апп (адрес отдаёт сервер). */
 function OutsideTelegram() {
@@ -118,6 +124,7 @@ function TabsRoute({ me }: { me: MeResponse }) {
   const review = useGame((s) => s.review);
   const achievements = useGame((s) => s.achievements);
   const settings = useGame((s) => s.settings);
+  useForcedAd(me);
   let screen;
   let dock = false;
   if (review) screen = <ReviewScreen gameId={review} />;
@@ -127,6 +134,8 @@ function TabsRoute({ me }: { me: MeResponse }) {
     dock = true;
     if (tab === 'rating') screen = <LeaderboardScreen me={me} />;
     else if (tab === 'profile') screen = <ProfileScreen me={me} />;
+    else if (tab === 'shop') screen = <ShopScreen me={me} />;
+    else if (tab === 'friends') screen = <FriendsScreen me={me} />;
     else screen = <HomeScreen me={me} />;
   }
   return (
@@ -135,6 +144,22 @@ function TabsRoute({ me }: { me: MeResponse }) {
       {dock && <TabDock active={tab} />}
     </>
   );
+}
+
+/**
+ * Обязательный ролик после каждой 3-й партии: показываем, когда игрок вернулся с итогов к вкладкам.
+ * Закрыл раньше времени - не засчитано, ролик покажется снова перед следующей игрой.
+ */
+function useForcedAd(me: MeResponse) {
+  const wallet = useWallet();
+  const ad = useShop((s) => s.ad);
+  const skipped = useShop((s) => s.adSkipped);
+  const due = Boolean(wallet.data?.adDue && !wallet.data.adFree && me.docsAccepted);
+  useEffect(() => {
+    if (!due || ad || skipped) return;
+    const id = window.setTimeout(() => void shop.watchAd('forced'), 700);
+    return () => window.clearTimeout(id);
+  }, [due, ad, skipped]);
 }
 
 /** Итоги посчитаны (пришёл рейтинг) - профиль, история и лидерборд перезапрашиваются. */
@@ -259,6 +284,9 @@ function InTelegram({ session }: { session: TelegramSession }) {
       <ConsentSheet docs={config.data?.docs} />
       <ExitDialog />
       <OppSheet me={me.data} />
+      <ItemSheet me={me.data} />
+      {!gameOnScreen && <InviteBanner />}
+      <AdScreen />
       <ToastHost />
     </>
   );

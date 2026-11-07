@@ -30,10 +30,10 @@ export function VsScreen({ game, count }: { game: GameView; count: 1 | 2 | 3 }) 
 
       <div className="relative grid grid-cols-2 gap-3">
         <div className="qd-slide-l">
-          <PlayerCard id={game.me.userId} name={game.me.name} photoUrl={game.me.photoUrl} rating={game.me.rating} side="me" status="ready" />
+          <PlayerCard id={game.me.userId} name={game.me.name} photoUrl={game.me.photoUrl} glow={game.me.glow} rating={game.me.rating} side="me" status="ready" />
         </div>
         <div className="qd-slide-r">
-          <PlayerCard id={opp.userId} name={opp.name} photoUrl={opp.photoUrl} rating={opp.rating} side="opp" status="ready" />
+          <PlayerCard id={opp.userId} name={opp.name} photoUrl={opp.photoUrl} glow={opp.glow} rating={opp.rating} side="opp" status="ready" />
         </div>
         {/* VS - белая глянцевая сфера. */}
         <div

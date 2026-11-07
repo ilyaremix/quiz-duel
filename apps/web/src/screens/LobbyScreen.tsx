@@ -76,13 +76,14 @@ export function LobbyScreen({ game }: { game: GameView }) {
 
       <div className="relative grid grid-cols-2 gap-3">
         <div className="qd-in qd-d1">
-          <PlayerCard id={me.userId} name={me.name} photoUrl={me.photoUrl} rating={me.rating} side="me" status={meStatus} />
+          <PlayerCard id={me.userId} name={me.name} photoUrl={me.photoUrl} glow={me.glow} rating={me.rating} side="me" status={meStatus} />
         </div>
         <div key={opp.userId} className="qd-arrive">
           <PlayerCard
             id={opp.userId}
             name={opp.name}
             photoUrl={opp.photoUrl}
+            glow={opp.glow}
             rating={opp.rating}
             side="opp"
             status={oppStatus}

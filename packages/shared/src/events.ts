@@ -5,6 +5,7 @@
  */
 import type { GameView, PlayerProfile, Reaction } from './game.js';
 import type { GameCategory } from './categories.js';
+import type { PlayerBrief } from './api.js';
 
 export interface SessionHello {
   userId: number;
@@ -74,6 +75,8 @@ export interface GameFailure {
 export type Ack<T extends object = object> = ({ ok: true } & T) | GameFailure;
 
 export interface CreateGamePayload {
+  /** Вызов другу: он получит сообщение от бота и баннер в приложении. */
+  friendId?: number;
   category: GameCategory;
 }
 
@@ -167,6 +170,19 @@ export interface GameStateMeta {
 
 type AckFn<T extends object = object> = (result: Ack<T>) => void;
 
+export interface FriendInviteEvent {
+  gameId: string;
+  from: PlayerBrief;
+  category: GameCategory;
+  /** До какого времени действует вызов (лобби, мс). */
+  expiresAt: number;
+}
+
+export interface FriendChangedEvent {
+  kind: 'request' | 'accepted';
+  from: PlayerBrief;
+}
+
 export interface ServerToClientEvents {
   'session:hello': (payload: SessionHello) => void;
   /** Игра открыта на другом устройстве: это подключение закрывается. */
@@ -181,6 +197,10 @@ export interface ServerToClientEvents {
   'queue:timeout': () => void;
   /** Монеты или купленное изменились не по запросу этого экрана (оплата, награда за друга, партия). */
   'wallet:changed': () => void;
+  /** Друг зовёт на дуэль (баннер в приложении; в боте - сообщение). */
+  'friend:invite': (event: FriendInviteEvent) => void;
+  /** Заявка в друзья или её принятие: экран друзей обновится. */
+  'friend:changed': (event: FriendChangedEvent) => void;
 }
 
 export interface ClientToServerEvents {

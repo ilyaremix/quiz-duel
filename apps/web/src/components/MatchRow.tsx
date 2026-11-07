@@ -26,7 +26,7 @@ export function MatchRow({ match, onPress }: { match: MatchSummary; onPress?: ()
       className="qd-press box-border flex min-h-[58px] w-full cursor-pointer items-center gap-3 rounded-[24px] border-0 py-2 pr-3.5 pl-2.5 text-left text-text disabled:cursor-default"
       style={{ background: 'var(--qd-sheen), var(--qd-glass)', boxShadow: 'var(--qd-glass-edge)' }}
     >
-      <Avatar id={match.opponent.id} name={match.opponent.name} photoUrl={match.opponent.photoUrl} size={40} on="card" />
+      <Avatar id={match.opponent.id} name={match.opponent.name} photoUrl={match.opponent.photoUrl} size={40} on="card" glow={match.opponent.glow} />
       <div className="flex min-w-0 grow flex-col gap-0.5">
         <span className="truncate text-[16px] font-semibold">{match.opponent.name}</span>
         <span className="qd-num truncate text-[13px] font-medium text-hint">

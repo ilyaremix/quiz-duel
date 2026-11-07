@@ -13,7 +13,8 @@
     "back": "Back",
     "retry": "Retry",
     "games_one": "{{count}} game",
-    "games_other": "{{count}} games"
+    "games_other": "{{count}} games",
+    "soon": "This screen arrives in the next part of the prototype"
   },
   "s01": {
     "aria": "Loading",
@@ -44,13 +45,31 @@
     "tech": {
       "title": "Tech & Internet",
       "count": "20 questions"
+    },
+    "games": {
+      "title": "Video Games",
+      "count": "20 questions"
+    },
+    "space": {
+      "title": "Space",
+      "count": "20 questions"
+    },
+    "food": {
+      "title": "Food & Cuisine",
+      "count": "20 questions"
+    },
+    "crypto": {
+      "title": "Crypto & Web3",
+      "count": "20 questions"
     }
   },
   "tabs": {
     "aria": "Main menu",
     "home": "Home",
     "rating": "Leaderboard",
-    "profile": "Profile"
+    "profile": "Profile",
+    "friends": "Friends",
+    "shop": "Shop"
   },
   "status": {
     "ready": "Ready",
@@ -83,7 +102,40 @@
     "copiedResult": "Result copied",
     "settingsFailed": "Couldn’t save the setting - check your connection",
     "achTitle": "New achievement",
-    "achTitleMany": "New achievements"
+    "achTitleMany": "New achievements",
+    "achSample": "Lightning",
+    "docTerms": "Opens the Terms of Use",
+    "docPolicy": "Opens the Privacy Policy",
+    "bought": "Done - it’s yours",
+    "equipped": "Equipped: {{name}}",
+    "claimed": "+{{n}} {{coins}}",
+    "notEnough": "{{n}} {{coins}} short",
+    "inviteSent": "Challenge sent: {{name}}",
+    "declined": "Challenge declined: {{name}}",
+    "friendAdded": "{{name}} is now your friend",
+    "requestSent": "Request sent: {{name}}",
+    "subOk": "Subscribed! +{{n}} {{coins}}",
+    "subMissing": "Subscription not found - subscribe and check again",
+    "adCounted": "View counted",
+    "adNotCounted": "Ad closed early - not counted",
+    "adFree": "Ads are off for good",
+    "storyDone": "Story posted! +{{n}} {{coins}}",
+    "refCopied": "Invite link copied",
+    "topicPass": "“{{name}}” unlocked for 1 game",
+    "topicOwned": "“{{name}}” unlocked for good",
+    "coinsBought": "+{{n}} {{coins}} added",
+    "channelOpen": "Channel opened - subscribe and tap “Check”",
+    "refShared": "Invite sent: +{{n}} {{coins}} once your friend plays",
+    "passUsed": "1-game pass for “{{name}}” used",
+    "inviteLater": "{{name}}’s challenge will wait until the game ends",
+    "subCantCheck": "Couldn’t check the subscription - try again later",
+    "alreadyClaimed": "This reward is already claimed",
+    "adLimit": "No more rewarded videos today - come back tomorrow",
+    "storyUnavailable": "Stories aren’t available in this Telegram version",
+    "coinsPaid": "Paid! The coins are on your balance",
+    "payFailed": "Payment failed - please try again",
+    "friendNotPlayed": "You can only add players you have played with",
+    "friendRequest": "{{name}} wants to be friends"
   },
   "banner": {
     "resume": {
@@ -135,7 +187,15 @@
     "emptyTitle": "Your matches will show up here",
     "emptyText": "Play your first duel - a win earns the “First Blood” achievement",
     "recentAll": "All matches",
-    "recentFailed": "Couldn’t load your matches - check your connection"
+    "recentFailed": "Couldn’t load your matches - check your connection",
+    "profileAria": "Open profile",
+    "placeShort": "#{{n}}",
+    "coinsAria": "{{n}} {{coins}} - open the shop",
+    "daily": {
+      "title": "Daily reward",
+      "text": "Day {{d}} of 7 · +{{n}} {{coins}}",
+      "action": "Claim"
+    }
   },
   "s04": {
     "aria": "Choose a category",
@@ -143,7 +203,17 @@
     "sub": "10 questions, 15 seconds each",
     "create": "Create duel",
     "train": "Start practice",
-    "trainSub": "10 questions, no opponent, no rating"
+    "trainSub": "10 questions, no opponent, no rating",
+    "premium": "New topics",
+    "premiumHint": "1 game for an ad, or forever for coins",
+    "setup": "Mode & settings",
+    "setupAria": "Change mode and settings",
+    "friendTitle": "Challenge a friend",
+    "friendSub": "{{name}} will see it in the bot and in the game",
+    "friendSend": "Send challenge",
+    "lockAd": "1 game for an ad",
+    "pass": "1 game",
+    "owned": "Unlocked"
   },
   "s05": {
     "title": "Waiting for opponent",
@@ -154,7 +224,11 @@
     "invite": "Invite",
     "copy": "Copy link",
     "cancel": "Cancel game",
-    "shareText": "Up for a 1v1 quiz? Whoever opens the link first is my opponent"
+    "shareText": "Up for a 1v1 quiz? Whoever opens the link first is my opponent",
+    "friendTitle": "Waiting for a reply",
+    "friendSub": "{{name}} will see it in the bot and in the game",
+    "friendCard": "Challenge sent",
+    "friendHint": "You can also send the usual link - whoever opens it first plays you"
   },
   "s06": {
     "none": {
@@ -184,7 +258,8 @@
     "unready": "Cancel “Ready”",
     "starting": "Starting…",
     "leave": "Leave lobby",
-    "tease": "Tease your opponent"
+    "tease": "Tease your opponent",
+    "reactAria": "{{opp}}: {{r}}"
   },
   "consent": {
     "title": "{{opp}} challenges you",
@@ -310,7 +385,8 @@
       "w3": "Ready…",
       "w2": "Set…",
       "w1": "Go!"
-    }
+    },
+    "subRules": "{{mode}} · {{n}} {{questions}} · {{t}} s each"
   },
   "s09": {
     "optionsAria": "Answer options",
@@ -331,7 +407,14 @@
       "text": "Your opponent gets a technical win right away and you get a loss",
       "stay": "Stay",
       "leave": "Leave"
-    }
+    },
+    "reactAria": "{{opp}}: {{r}}",
+    "livesAria": "{{who}}: {{n}} of {{m}} lives",
+    "lifeLost": "{{who}}: minus a life",
+    "lastLife": "{{who}}: last life!",
+    "out": "{{who}}: out of lives",
+    "x2": "Points ×2",
+    "x2Hint": "Final - double points"
   },
   "s12": {
     "title": {
@@ -386,6 +469,13 @@
       "win": "Victory {{me}} : {{opp}} in Quiz Duel! Up for a game?",
       "loss": "Defeat {{me}} : {{opp}} in Quiz Duel. Up for a game?",
       "draw": "Draw {{me}} : {{opp}} in Quiz Duel. Up for a game?"
+    },
+    "unrated": "Unrated",
+    "reason": {
+      "livesWin": "Your opponent ran out of lives - early win",
+      "livesLoss": "Three mistakes - out of lives",
+      "suddenWin": "Your opponent slipped first",
+      "suddenLoss": "One mistake and it’s over"
     }
   },
   "when": {
@@ -440,7 +530,13 @@
     "error": "Couldn’t load the profile",
     "ach": "Achievements",
     "all": "All",
-    "achAria": "Achievements: {{n}} of {{m}}. Open all"
+    "achAria": "Achievements: {{n}} of {{m}}. Open all",
+    "more": "{{n}} more",
+    "style": "Style",
+    "glow": "Glow",
+    "pack": "Reactions",
+    "change": "Change",
+    "coinsAria": "{{n}} {{coins}}"
   },
   "s17": {
     "aria": "Opponent profile",
@@ -618,6 +714,569 @@
         "t": "Climb the leaderboard",
         "d": "Wins raise your rating, practice doesn’t affect it"
       }
-    ]
+    ],
+    "langOpts": "Auto|Русский|English",
+    "motionOpts": "Auto|On|Off",
+    "theme": "Appearance",
+    "themeOpts": "Auto|Light|Dark",
+    "themeAuto": "Auto follows Telegram, now {{name}}",
+    "themeFixed": "The app theme no longer follows Telegram",
+    "themeNames": {
+      "dark": "dark",
+      "light": "light"
+    },
+    "ads": "Ads",
+    "adsOn": "A short video after every 3rd game",
+    "adsOff": "Turned off for good",
+    "adsBuy": "Remove ads"
+  },
+  "s25": {
+    "title": "Friends",
+    "sub": "Challenge friends in one tap",
+    "addAria": "Invite a friend",
+    "ref": {
+      "title": "Invite a friend",
+      "text": "+{{me}} {{coinsMe}} for you and +{{fr}} {{coinsFr}} for your friend after their first game",
+      "invited": "Invited",
+      "earned": "Earned",
+      "invite": "Invite",
+      "copyAria": "Copy invite link"
+    },
+    "incoming": "Incoming",
+    "online": "Online · {{n}}",
+    "all": "All friends · {{n}}",
+    "recent": "Recent opponents",
+    "recentHint": "Add people you’ve already played",
+    "st": {
+      "online": "Online",
+      "ingame": "Playing now",
+      "offline": "Online {{when}}",
+      "request": "Wants to be friends",
+      "invite": "Challenges you",
+      "recent": "Played {{when}}"
+    },
+    "act": {
+      "challenge": "Challenge",
+      "add": "Add",
+      "accept": "Accept",
+      "decline": "Decline",
+      "busy": "Playing",
+      "sent": "Sent",
+      "play": "Play"
+    },
+    "declineAria": "Decline: {{name}}",
+    "emptyTitle": "No friends yet",
+    "emptyText": "Invite a friend by link - they’ll show up here and you’ll get coins",
+    "shareText": "Up for Quiz Duel, a 1v1 quiz? Use my link and get +50 coins after your first game"
+  },
+  "s26": {
+    "aria": "Incoming challenge",
+    "duelTitle": "{{name}} challenges you",
+    "duelMeta": "{{cat}} · {{mode}} · {{n}} {{questions}}",
+    "friendTitle": "{{name}} wants to be friends",
+    "friendMeta": "You played together {{when}}",
+    "accept": "Accept",
+    "later": "Later",
+    "decline": "Decline",
+    "progress": "Challenge valid for {{t}}",
+    "sentTitle": "Challenge sent",
+    "sentText": "{{name}} will see it in the bot and in the game"
+  },
+  "s27": {
+    "title": "Shop",
+    "tabs": "Tasks|Items",
+    "tabsAria": "Shop section",
+    "balance": "Balance",
+    "balanceHint": "Earn coins with tasks, spend them on style and new topics",
+    "buyCoins": "Buy",
+    "streak": {
+      "title": "Daily check-in",
+      "day": "Day {{n}}",
+      "claim": "Claim +{{n}}",
+      "claimed": "Today’s reward is claimed - come back tomorrow",
+      "hint": "Miss a day and the streak starts over",
+      "series": "Streak: {{n}} {{days}}"
+    },
+    "daily": "Today",
+    "once": "One-time",
+    "reset": "Resets in {{t}}",
+    "task": {
+      "play": {
+        "t": "Play {{g}} {{games}}",
+        "d": "{{n}} of {{g}} today"
+      },
+      "ads": {
+        "t": "Watch an ad",
+        "d": "{{n}} of {{g}} today · +{{r}} each"
+      },
+      "channel": {
+        "t": "Join the channel",
+        "d": "@aid_crypto - news and giveaways",
+        "dTemplate": "{{ch}} - news and giveaways"
+      },
+      "story": {
+        "t": "Post a story",
+        "d": "Telegram Premium only"
+      },
+      "invite": {
+        "t": "Invite a friend",
+        "d": "+{{r}} for each friend who plays"
+      }
+    },
+    "act": {
+      "go": "Play",
+      "watch": "Watch",
+      "sub": "Open",
+      "check": "Check",
+      "post": "Post",
+      "invite": "Invite",
+      "claim": "Claim",
+      "done": "Done"
+    },
+    "premium": "Premium",
+    "sec": {
+      "adFree": "No ads",
+      "glow": "Avatar glow",
+      "packs": "Reactions",
+      "topics": "New topics",
+      "coins": "Coins"
+    },
+    "adFree": {
+      "t": "Turn off ads for good",
+      "d": "No videos between games",
+      "on": "Ads are off for good"
+    },
+    "glowNote": "Opponents see your glow in the lobby, on VS, in the game and on the leaderboard",
+    "packNote": "Send reactions in the lobby, on reveal and on the results",
+    "price": {
+      "free": "Free",
+      "owned": "Owned",
+      "equipped": "Equipped",
+      "open": "Unlocked",
+      "pass": "1 game"
+    },
+    "glows": {
+      "none": "No glow",
+      "neon": "Neon",
+      "gold": "Gold",
+      "ice": "Ice",
+      "rainbow": "Rainbow",
+      "fire": "Flame"
+    },
+    "packs": {
+      "base": "Basic",
+      "bold": "Bold",
+      "warm": "Warm",
+      "party": "Party"
+    },
+    "coinPacks": {
+      "s": "Handful of coins",
+      "m": "Bag of coins",
+      "l": "Chest of coins"
+    },
+    "best": "Best value",
+    "bonus": "+{{n}}%",
+    "storyText": "Up for a Quiz Duel? A 1v1 quiz in Telegram"
+  },
+  "s28": {
+    "aria": "Item",
+    "glowStage": "How opponents will see you",
+    "packStage": "How the reactions look in a game",
+    "topicMeta": "20 questions: 6 easy, 8 medium, 6 hard",
+    "buy": "Buy for {{n}}",
+    "equip": "Equip",
+    "equipped": "Equipped",
+    "owned": "Already yours",
+    "use": "Use it",
+    "short": "{{n}} {{coins}} short",
+    "earn": "Earn with tasks",
+    "balance": "You have {{n}} {{coins}}",
+    "pay": "Pay {{n}}",
+    "coinsT": "{{n}} {{coins}}",
+    "coinsD": "Coins arrive right after payment",
+    "adFreeT": "No ads, forever",
+    "adFreeD": "Videos between games disappear on all your devices"
+  },
+  "s29": {
+    "aria": "Pay with stars",
+    "title": "Confirm purchase",
+    "note": "This is Telegram’s system payment window - simplified in the prototype",
+    "balance": "Balance: {{n}} {{stars}}",
+    "pay": "Pay {{n}}",
+    "paying": "Paying…",
+    "okTitle": "Paid!",
+    "ok": "Great",
+    "okText": {
+      "adFree": "You won’t see ads again",
+      "coins": "The coins are on your balance"
+    }
+  },
+  "s30": {
+    "aria": "Ad",
+    "label": "Ad",
+    "left": "{{t}} left",
+    "soundOn": "Turn sound on",
+    "soundOff": "Turn sound off",
+    "closeAria": "Close the ad",
+    "reward": "Watch to the end to get +{{n}} {{coins}}",
+    "rewardTopic": "Watch to the end to unlock the topic for 1 game",
+    "forced": "A short video after every 3rd game",
+    "noAds": "No ads",
+    "confirm": {
+      "title": "Close the ad?",
+      "reward": "The view won’t count and there’s no reward",
+      "forced": "The view won’t count - the video shows again before your next game",
+      "stay": "Keep watching",
+      "leave": "Close"
+    },
+    "done": {
+      "title": "Done!",
+      "reward": "+{{n}} {{coins}} added",
+      "topic": "“{{name}}” is unlocked for 1 game",
+      "forced": "Thanks for watching",
+      "next": "Continue",
+      "upsell": "Remove ads for good",
+      "upsellD": "Pay once - no more videos"
+    }
+  },
+  "s31": {
+    "aria": "Topic draft",
+    "badge": "Mix · pick a topic",
+    "title": "Pick a topic",
+    "sub": "Each of you got 3 topics. Questions come equally from your topic and your opponent’s",
+    "timerAria": "Time to pick: {{t}}",
+    "choosing": "{{opp}} is picking",
+    "chosen": "{{opp}} has picked",
+    "hint": "Run out of time and a topic is picked for you",
+    "waiting": "Waiting for your opponent",
+    "reveal": {
+      "title": "Topics are set!",
+      "mine": "Your topic",
+      "opp": "Opponent’s topic",
+      "same": "Same topic for both!",
+      "sub": "{{n}} {{questions}} from each topic"
+    }
+  },
+  "s32": {
+    "aria": "Mode and settings",
+    "title": "Mode & settings",
+    "modes": "Mode",
+    "time": "Time per answer",
+    "count": "Questions",
+    "timeOpts": "5 s|10 s|15 s|20 s",
+    "countOpts": "5|10|15|20",
+    "mode": {
+      "classic": {
+        "t": "Classic",
+        "d": "Faster means more points"
+      },
+      "lives": {
+        "t": "Three Lives",
+        "d": "3 mistakes and you lose"
+      },
+      "sudden": {
+        "t": "Sudden Death",
+        "d": "One mistake and it’s over"
+      },
+      "final": {
+        "t": "Final ×2",
+        "d": "Last 3 questions score double"
+      }
+    },
+    "summary": "{{mode}} · {{n}} {{questions}}, {{t}} s each",
+    "base": "Default: Classic, 10 questions, 15 s each",
+    "reset": "Reset",
+    "done": "Done",
+    "rated": "This game counts for rating",
+    "unrated": "Unrated - only Classic counts for rating"
+  },
+  "s33": {
+    "aria": "Locked topic",
+    "sample": "For example: “{{q}}”",
+    "once": {
+      "t": "Play once",
+      "d": "Watch a 15-second ad",
+      "a": "Watch"
+    },
+    "forever": {
+      "t": "Unlock for good",
+      "d": "{{n}} {{coins}}",
+      "a": "Buy"
+    },
+    "have": "You have {{n}} {{coins}}",
+    "short": "{{n}} short - earn them with tasks",
+    "earn": "Tasks",
+    "samples": {
+      "games": "What’s the name of the plumber who stars in Nintendo games?",
+      "space": "Which is the largest planet in the Solar System?",
+      "food": "Which country is paella from?",
+      "crypto": "What is the smallest unit of bitcoin called?"
+    }
+  },
+  "plural": {
+    "question_one": "question",
+    "question_other": "questions",
+    "point_one": "point",
+    "point_other": "points",
+    "game_one": "game",
+    "game_other": "games",
+    "coin_one": "coin",
+    "coin_other": "coins",
+    "star_one": "star",
+    "star_other": "stars",
+    "day_one": "day",
+    "day_other": "days",
+    "player_one": "player",
+    "player_other": "players",
+    "purchase_one": "purchase",
+    "purchase_other": "purchases"
+  },
+  "adm": {
+    "title": "Admin",
+    "sub": "Quiz Battle · visible to admins only",
+    "close": "Close admin",
+    "open": "Admin",
+    "openHint": "Stats, sources and tasks",
+    "live": "Online {{n}} · in games {{g}}",
+    "tabsAria": "Admin sections",
+    "tabs": {
+      "overview": "Overview",
+      "retention": "Retention",
+      "events": "Events",
+      "sources": "Sources",
+      "money": "Revenue",
+      "tasks": "Tasks",
+      "players": "Players"
+    },
+    "periodAria": "Period",
+    "period": "7 days|30 days|90 days",
+    "vsPrev": "Changes vs the previous {{n}} days",
+    "pp": "pp",
+    "up": "up",
+    "down": "down",
+    "kpi": {
+      "users": "Users",
+      "usersSub": "+{{n}} this period",
+      "newUsers": "New",
+      "dau": "Daily (DAU)",
+      "mau": "Monthly (MAU)",
+      "sticky": "Stickiness DAU/MAU",
+      "games": "Games",
+      "d1": "Came back on day 1",
+      "d7": "On day 7",
+      "d30": "On day 30",
+      "returning": "Returning",
+      "returningSub": "of daily actives are not new",
+      "stars": "Stars",
+      "buyers": "Buyers",
+      "buyersSub": "{{p}} of actives",
+      "arppu": "Average purchase",
+      "adFree": "“No ads”",
+      "adFreeSub": "bought this period"
+    },
+    "chart": {
+      "active": "Active",
+      "newbies": "New",
+      "title": "Users by day",
+      "weekly": "By week, daily average",
+      "aria": "{{name}}: from {{min}} to {{max}}, latest {{last}}",
+      "tip": "{{v}} · {{d}}"
+    },
+    "modes": "Games by mode",
+    "modesSub": "Only Classic counts for rating",
+    "ret": {
+      "curve": "Retention after the first visit",
+      "curveSub": "Share of players who opened the app again",
+      "day": "Day {{n}}",
+      "cohorts": "Cohorts by week of first visit",
+      "cohortsSub": "Percent of the cohort back on day N",
+      "week": "Week",
+      "size": "Players",
+      "cell": "Week of {{w}} · {{c}}: {{v}} ({{n}} {{players}})",
+      "empty": "too early",
+      "tapHint": "Tap a cell to see the players",
+      "sticky": "Stickiness by day",
+      "stickySub": "DAU / MAU, percent"
+    },
+    "ev": {
+      "funnel": "New player funnel",
+      "funnelSub": "All new players this period",
+      "fromPrev": "{{p}} of the previous step",
+      "steps": {
+        "open": "Opened the app",
+        "onboard": "Finished onboarding",
+        "first": "Played the 1st game",
+        "three": "Played 3 games",
+        "back": "Came back on day 2"
+      },
+      "clicks": "Taps and screens",
+      "clicksSub": "How many times and how many players",
+      "filter": "All|Actions|Screens",
+      "users": "{{n}} {{players}}",
+      "kind": {
+        "btn": "action",
+        "screen": "screen"
+      },
+      "names": {
+        "quick": "“Quick game”",
+        "create": "“Create a duel”",
+        "rematch": "“Rematch”",
+        "shop": "“Shop” tab",
+        "friends": "“Friends” tab",
+        "adDone": "Ad watched",
+        "share": "“Share result”",
+        "taskCh": "Task: subscribe",
+        "buyGlow": "Glow purchase",
+        "home": "Home",
+        "question": "Question",
+        "results": "Results",
+        "rating": "Ranking",
+        "profile": "Profile"
+      }
+    },
+    "src": {
+      "create": "Create a link",
+      "table": "Sources",
+      "tableSub": "Where new players came from this period",
+      "cols": {
+        "users": "Players",
+        "first": "1st game",
+        "d7": "D7",
+        "stars": "Stars"
+      },
+      "names": {
+        "aidpost": "Post in @aid_crypto",
+        "tgads": "Telegram Ads",
+        "ref": "Referrals",
+        "duel": "Duel links",
+        "inline": "Inline challenges",
+        "organic": "No tag"
+      },
+      "auto": "automatic",
+      "refTop": "Top inviters",
+      "invited": "Friends via link: {{n}}",
+      "copyAria": "Copy link: {{name}}"
+    },
+    "link": {
+      "title": "New link",
+      "name": "Name",
+      "nameVal": "Post in @aid_crypto Nov 7",
+      "code": "startapp tag",
+      "codeVal": "src_aid1107",
+      "url": "Link",
+      "copy": "Copy",
+      "done": "Done",
+      "copied": "Link copied",
+      "hint": "Everyone who opens the app with this link goes to the “{{name}}” source. Duel links, referrals and inline challenges are tracked automatically."
+    },
+    "money": {
+      "stars": "Stars by day",
+      "purchases": "Purchases for stars",
+      "sales": "{{n}} {{purchases}}",
+      "products": {
+        "coinsM": "1,000 coins",
+        "adFree": "No ads",
+        "coinsL": "2,500 coins",
+        "coinsS": "300 coins"
+      },
+      "ads": "Ads",
+      "adsSub": "Only ads watched to the end count",
+      "adsRows": {
+        "shown": "Required: shown",
+        "watched": "Watched to the end",
+        "skipped": "Closed early",
+        "reward": "For coins",
+        "topic": "For a 1-game topic"
+      },
+      "coins": "Coins",
+      "earned": "Issued",
+      "spent": "Spent",
+      "spend": "What coins are spent on",
+      "spendRows": {
+        "topics": "Topics",
+        "glow": "Glow",
+        "packs": "Reactions"
+      }
+    },
+    "tasks": {
+      "add": "Add a task",
+      "hint": "All players see tasks in the Shop. A task you turn off disappears at once; rewards already given stay.",
+      "done": "Completed {{n}}",
+      "freq": {
+        "once": "once",
+        "daily": "every day",
+        "perFriend": "per friend"
+      },
+      "botOk": "The bot is a channel admin, subscriptions are checked",
+      "botNo": "The bot is not a channel admin - make it an admin",
+      "types": {
+        "channel": "Channel subscription",
+        "play": "Play games",
+        "ads": "Ads for coins",
+        "story": "Story (Premium)",
+        "invite": "Invite a friend"
+      },
+      "toggleAria": "Show to players: {{name}}",
+      "meta": "+{{n}} · {{freq}}",
+      "goalPlay": "{{n}} games",
+      "goalAds": "up to {{n}} times",
+      "off": "Off"
+    },
+    "task": {
+      "title": "Task",
+      "newTitle": "New task",
+      "type": "Type",
+      "channel": "Channel",
+      "check": "Check",
+      "titleRu": "Title · RU",
+      "titleEn": "Title · EN",
+      "reward": "Reward, coins",
+      "goal": "How many times",
+      "freq": "How often",
+      "freqOpts": "Once|Every day",
+      "on": "Show to players",
+      "save": "Save",
+      "remove": "Delete task",
+      "minus": "Less",
+      "plus": "More",
+      "saved": "Task saved",
+      "removed": "Task deleted",
+      "newCh": "@new_channel",
+      "newTitleRu": "Подпишитесь на канал",
+      "newTitleEn": "Subscribe to the channel"
+    },
+    "pl": {
+      "search": "Name, @username or ID",
+      "filter": "All|New|Paying|Banned",
+      "count": "{{n}} {{players}}",
+      "seen": {
+        "now": "online",
+        "m5": "5 min ago",
+        "h2": "2 h ago",
+        "d1": "yesterday",
+        "d6": "6 days ago"
+      },
+      "banned": "Banned",
+      "payer": "Paying",
+      "fresh": "New"
+    },
+    "player": {
+      "id": "ID",
+      "source": "Source",
+      "first": "First visit",
+      "last": "Last seen",
+      "games": "Games",
+      "wins": "Wins",
+      "rating": "Rating",
+      "coins": "Coins",
+      "give": "Change balance",
+      "save": "Save",
+      "purchases": "Purchases",
+      "none": "No purchases",
+      "ban": "Block",
+      "banHint": "Cannot play or get rewards",
+      "close": "Close",
+      "saved": "Saved"
+    }
   }
 }

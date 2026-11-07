@@ -1,3 +1,4 @@
+import type { GlowId } from './economy.js';
 import type { Outcome } from './elo.js';
 import type { AchievementCode } from './achievements.js';
 import type { Category, GameCategory } from './categories.js';
@@ -30,6 +31,8 @@ export interface PlayerProfile {
   username: string | null;
   photoUrl: string | null;
   rating: number;
+  /** Свечение аватарки из магазина (видят соперники). */
+  glow: GlowId;
 }
 
 export interface PlayerView extends PlayerProfile {
@@ -174,7 +177,8 @@ export interface GameView {
 
 /** Реакции сопернику: фиксированный набор, свободного чата нет - модерировать нечего. */
 export const REACTIONS = ['👍', '😂', '😮', '😤', '🔥', '👏'] as const;
-export type Reaction = (typeof REACTIONS)[number];
+/** Реакция: базовый набор (REACTIONS) или купленный набор из магазина (REACTION_PACKS). */
+export type Reaction = string;
 /** Не чаще одной реакции в 2 с от игрока (сервер проверяет сам). */
 export const REACTION_COOLDOWN_MS = 2_000;
 /** Где можно слать реакции: лобби (и его часть отсчёта), раскрытие вопроса и итоги. Во время вопроса - нет. */

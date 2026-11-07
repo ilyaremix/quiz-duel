@@ -6,6 +6,7 @@ import { CategoryTile } from '../components/CategoryTile';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { gameActions, useGame } from '../lib/game';
+import { friendsActions, useFriends } from '../lib/friends';
 
 /** Экран 4: нижняя шторка выбора категории перед дуэлью или тренировкой. */
 export function CategorySheet() {
@@ -14,18 +15,27 @@ export function CategorySheet() {
   const solo = useGame((s) => s.categoryMode === 'solo');
   const creating = useGame((s) => Boolean(s.pending['game:create'] || s.pending['solo:start']));
   const [selected, setSelected] = useState<GameCategory | null>(null);
+  // Вызов другу из вкладки «Друзья»: его имя в шапке, кнопка «Отправить вызов».
+  const friend = useFriends((s) => s.target);
+  const forFriend = !solo && friend !== null;
+  const close = () => {
+    gameActions.closeCategory();
+    friendsActions.clearTarget();
+  };
 
   return (
-    <Sheet open={open} label={t('s04.aria')} onClose={gameActions.closeCategory}>
+    <Sheet open={open} label={t('s04.aria')} onClose={close}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="m-0 text-[22px] font-bold tracking-[-0.02em]">{t('s04.title')}</h2>
-          <p className="m-0 text-[14px] font-medium text-hint">{t(solo ? 's04.trainSub' : 's04.sub')}</p>
+          <h2 className="m-0 text-[22px] font-bold tracking-[-0.02em]">{forFriend ? t('s04.friendTitle') : t('s04.title')}</h2>
+          <p className="m-0 text-[14px] font-medium text-hint">
+            {forFriend ? t('s04.friendSub', { name: friend.name }) : t(solo ? 's04.trainSub' : 's04.sub')}
+          </p>
         </div>
         <button
           type="button"
           aria-label={t('common.close')}
-          onClick={gameActions.closeCategory}
+          onClick={close}
           className="qd-press qd-icon-btn"
           style={{ width: 44, height: 44 }}
         >
@@ -40,10 +50,16 @@ export function CategorySheet() {
       <div className="mt-1">
         <Button
           disabled={!selected || creating}
-          icon={<Icon glyph={solo ? 'target' : 'duel'} size={22} stroke={2.4} />}
-          onClick={() => selected && void (solo ? gameActions.startSolo(selected) : gameActions.create(selected))}
+          icon={<Icon glyph={solo ? 'target' : forFriend ? 'send' : 'duel'} size={22} stroke={2.4} />}
+          onClick={() => {
+            if (!selected) return;
+            if (solo) return void gameActions.startSolo(selected);
+            const to = forFriend ? friend.id : undefined;
+            friendsActions.clearTarget();
+            void gameActions.create(selected, to);
+          }}
         >
-          {t(solo ? 's04.train' : 's04.create')}
+          {t(solo ? 's04.train' : forFriend ? 's04.friendSend' : 's04.create')}
         </Button>
       </div>
     </Sheet>

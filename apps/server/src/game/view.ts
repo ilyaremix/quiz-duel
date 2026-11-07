@@ -16,7 +16,7 @@ import { isGone, otherOf, outcomeFor, playerOf, rematchAvailable, type GameState
 /** Карточка игрока по id; нет данных - нейтральная заглушка (имя покажется инициалом «?»). */
 export type ProfileLookup = (userId: number) => PlayerProfile | undefined;
 
-const UNKNOWN: PlayerProfile = { name: '', username: null, photoUrl: null, rating: 1000 };
+const UNKNOWN: PlayerProfile = { name: '', username: null, photoUrl: null, rating: 1000, glow: 'none' };
 
 const playerView = (state: GameState, p: PlayerState, profileOf: ProfileLookup): PlayerView => ({
   ...(profileOf(p.userId) ?? UNKNOWN),

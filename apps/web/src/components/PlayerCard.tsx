@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import type { GlowId } from '@quiz-duel/shared';
 import { Avatar, type AvatarBadge } from './Avatar';
 import { Icon, type IconGlyph } from './Icon';
 import { formatNumber } from '../i18n';
@@ -46,17 +47,18 @@ interface PlayerCardProps {
   /** Тап по аватарке - профиль игрока (шторка, экран 17). */
   onAvatar?: () => void;
   avatarLabel?: string;
+  glow?: GlowId;
 }
 
 /**
  * Карточка игрока в лобби: стекло с подсветкой цвета игрока сверху, аватар с кольцом своей стороны,
  * имя, рейтинг и статус. «Готов» - зелёная кромка со свечением.
  */
-export function PlayerCard({ id, name, photoUrl, rating, side, status, onAvatar, avatarLabel }: PlayerCardProps) {
+export function PlayerCard({ id, name, photoUrl, rating, side, status, onAvatar, avatarLabel, glow }: PlayerCardProps) {
   const { t, i18n } = useTranslation();
   const c = CHIPS[status];
   const tint = side === 'me' ? 'var(--qd-me-glow)' : 'var(--qd-opp-glow)';
-  const avatar = <Avatar id={id} name={name} photoUrl={photoUrl} size={64} ring={side} on="card" badge={c.badge} />;
+  const avatar = <Avatar id={id} name={name} photoUrl={photoUrl} size={64} ring={side} on="card" badge={c.badge} glow={glow} />;
   return (
     <div
       className="box-border flex min-h-[220px] w-full flex-col items-center gap-2.5 rounded-[26px] px-3.5 pt-[22px] pb-[18px] text-center"

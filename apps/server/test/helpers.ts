@@ -75,6 +75,7 @@ export function memoryUsers(): UsersRepo & { rows: Map<number, UserRecord>; cons
           username: r.username,
           photoUrl: r.photoUrl,
           rating: r.rating,
+          glow: 'none',
           lang: resolveLang(r.language, r.tgLanguage),
           docsVersion: r.docsVersion,
         });

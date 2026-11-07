@@ -1,12 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { langFromTelegram } from '@quiz-duel/shared';
 import { setupTelegram } from './lib/telegram';
 // Режим без анимаций ставится до первой отрисовки (настройка с прошлого входа, система, слабое устройство).
 import './lib/motion';
 import { cachedLang, initI18n } from './i18n';
 import { App } from './App';
+import { queryClient } from './lib/queryClient';
 import './styles.css';
 
 const session = setupTelegram();
@@ -15,11 +16,6 @@ const session = setupTelegram();
 // после /api/me его уточняет настройка профиля.
 initI18n(cachedLang() ?? langFromTelegram(session ? session.languageCode : navigator.language));
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { staleTime: 30_000, refetchOnWindowFocus: false },
-  },
-});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

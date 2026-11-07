@@ -1,5 +1,14 @@
 import {
   AUTH_SCHEME,
+  type AdDoneResponse,
+  type AdPurpose,
+  type AdStartResponse,
+  type ClaimResponse,
+  type FriendsResponse,
+  type PremiumTopic,
+  type ShopKind,
+  type StarsProduct,
+  type WalletResponse,
   type AchievementsResponse,
   type ApiError,
   type ConfigResponse,
@@ -26,6 +35,11 @@ export class ApiRequestError extends Error {
   /** initData отклонён - нужно открыть приложение заново. */
   get isAuth() {
     return this.status === 401;
+  }
+
+  /** Причина отказа магазина (no_coins, already_claimed...). */
+  get reason() {
+    return this.body?.reason ?? null;
   }
 }
 
@@ -68,6 +82,21 @@ export const api = {
   settings: (body: SettingsRequest) => request<SettingsResponse>('/api/settings', sessionAuth, body),
   achievements: () => request<AchievementsResponse>('/api/achievements', sessionAuth),
   review: (gameId: string) => request<ReviewResponse>(`/api/games/${encodeURIComponent(gameId)}/review`, sessionAuth),
+  // Обновление 2.0: монеты и магазин
+  wallet: () => request<WalletResponse>('/api/wallet', sessionAuth),
+  daily: () => request<ClaimResponse>('/api/daily', sessionAuth, {}),
+  claimTask: (id: string) => request<ClaimResponse>('/api/tasks/claim', sessionAuth, { id }),
+  buy: (kind: ShopKind, item: string) => request<WalletResponse>('/api/shop/buy', sessionAuth, { kind, item }),
+  equip: (kind: 'glow' | 'pack', item: string) => request<WalletResponse>('/api/shop/equip', sessionAuth, { kind, item }),
+  adStart: (purpose: AdPurpose, topic?: PremiumTopic) =>
+    request<AdStartResponse>('/api/ads/start', sessionAuth, topic ? { purpose, topic } : { purpose }),
+  adDone: (id: string) => request<AdDoneResponse>('/api/ads/done', sessionAuth, { id }),
+  invoice: (product: StarsProduct) => request<{ url: string }>('/api/stars/invoice', sessionAuth, { product }),
+  // Друзья
+  friends: () => request<FriendsResponse>('/api/friends', sessionAuth),
+  friendRequest: (id: number) => request<{ result: 'sent' | 'accepted' | 'already' }>('/api/friends/request', sessionAuth, { id }),
+  friendRespond: (id: number, accept: boolean) => request<{ ok: true }>('/api/friends/respond', sessionAuth, { id, accept }),
+  friendRemove: (id: number) => request<{ ok: true }>('/api/friends/remove', sessionAuth, { id }),
 };
 
 /** Ключи кэша TanStack Query: после партии профиль и рейтинг сбрасываются. */
@@ -77,4 +106,6 @@ export const queryKeys = {
   player: (id: number) => ['player', id] as const,
   review: (gameId: string) => ['review', gameId] as const,
   achievements: ['achievements'] as const,
+  wallet: ['wallet'] as const,
+  friends: ['friends'] as const,
 };

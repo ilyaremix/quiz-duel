@@ -54,7 +54,7 @@ export function LobbyWaitScreen({ game }: { game: GameView }) {
       </header>
 
       <div className="qd-in qd-d1 relative grid grid-cols-2 gap-3">
-        <PlayerCard id={game.me.userId} name={game.me.name} photoUrl={game.me.photoUrl} rating={game.me.rating} side="me" status="host" />
+        <PlayerCard id={game.me.userId} name={game.me.name} photoUrl={game.me.photoUrl} glow={game.me.glow} rating={game.me.rating} side="me" status="host" />
         <EmptySeat />
         <VsBadge />
       </div>

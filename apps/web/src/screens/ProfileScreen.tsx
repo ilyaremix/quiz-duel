@@ -11,6 +11,7 @@ import { MatchRow } from '../components/MatchRow';
 import { Notice } from '../components/Notice';
 import { StatTile } from '../components/StatTile';
 import { formatNumber } from '../i18n';
+import { shop, useWallet } from '../lib/economy';
 import { api, queryKeys } from '../lib/api';
 import { formatSec, percent } from '../lib/format';
 import { gameActions } from '../lib/game';
@@ -41,6 +42,7 @@ export function ProfileScreen({ me }: { me: MeResponse }) {
   const got = ach?.items.filter((a) => a.unlocked) ?? [];
   const shown = got.slice(0, 5);
   const rest = ach ? ach.total - shown.length : 0;
+  const w = useWallet().data;
   const p = profile.data;
   const newbie = p ? p.stats.games === 0 : me.games === 0;
   const stats = p?.stats ?? null;
@@ -49,7 +51,7 @@ export function ProfileScreen({ me }: { me: MeResponse }) {
     <div className="relative min-h-[var(--tg-viewport-stable-height,100dvh)]">
       <main className="qd-screen flex flex-col gap-4 pb-[120px]!">
         <header className="qd-in flex items-center gap-3.5">
-          <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={72} ring="me" on="none" />
+          <Avatar id={me.id} name={me.firstName} photoUrl={me.photoUrl} size={72} ring="me" on="none" glow={w?.glow} />
           <div className="flex min-w-0 flex-col gap-[7px]">
             <div className="flex min-w-0 flex-col">
               <span className="truncate text-[23px] font-bold tracking-[-0.02em]">{me.firstName}</span>
@@ -66,6 +68,34 @@ export function ProfileScreen({ me }: { me: MeResponse }) {
             </div>
           </div>
         </header>
+
+        {w && (
+          <section aria-label={t('s16.style')} className="qd-card qd-in qd-d1 flex items-center gap-3 rounded-[24px] py-2.5 pr-2.5 pl-3.5">
+            <div className="flex min-w-0 grow flex-col gap-1">
+              <span className="text-[15px] font-bold tracking-[-0.01em]">{t('s16.style')}</span>
+              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] font-medium text-hint">
+                <span>
+                  {t('s16.glow')}: <b className="font-semibold text-text">{t(`s27.glows.${w.glow}`)}</b>
+                </span>
+                <span>
+                  {t('s16.pack')}: <b className="font-semibold text-text">{t(`s27.packs.${w.pack}`)}</b>
+                </span>
+              </span>
+            </div>
+            <Button
+              variant="secondary"
+              size="s"
+              full={false}
+              icon={<Icon glyph="palette" size={18} stroke={2.3} />}
+              onClick={() => {
+                shop.setSection('items');
+                gameActions.setTab('shop');
+              }}
+            >
+              {t('s16.change')}
+            </Button>
+          </section>
+        )}
 
         <section aria-label={t('s16.statsAria')} aria-busy={profile.isPending} className="qd-in qd-d1 grid grid-cols-4 gap-2">
           {statTiles(newbie ? null : stats, t, lang).map((s) => (

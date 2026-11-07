@@ -27,6 +27,11 @@ export const REACTION_PACKS: Readonly<Record<PackId, readonly string[]>> = {
 /** Все реакции, какие вообще бывают (проверка входящего события). */
 export const ALL_REACTIONS: readonly string[] = PACKS.flatMap((p) => REACTION_PACKS[p]);
 
+/** Из какого набора реакция; null - такой нет. */
+export function packOf(emoji: string): PackId | null {
+  return PACKS.find((p) => REACTION_PACKS[p].includes(emoji)) ?? null;
+}
+
 /** Платные темы: на 1 игру за рекламу или навсегда за монеты. */
 export const PREMIUM_TOPICS = ['games', 'space', 'food', 'crypto'] as const;
 export type PremiumTopic = (typeof PREMIUM_TOPICS)[number];

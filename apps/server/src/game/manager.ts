@@ -16,6 +16,7 @@
  */
 import {
   ACTIVE_PHASES,
+  REACTIONS,
   FINAL_PHASES,
   gameLink,
   OPEN_PHASES,
@@ -91,7 +92,9 @@ export type AlertKind =
   /** Соперник предлагает реванш, а игрок закрыл приложение. */
   | 'rematch'
   /** Партия закончилась без игрока. */
-  | 'result';
+  | 'result'
+  /** Друг зовёт на дуэль (вызов из вкладки «Друзья»). */
+  | 'friendInvite';
 
 export interface GameAlert {
   kind: AlertKind;
@@ -149,6 +152,8 @@ export interface ManagerDeps {
    * награда за приглашение. Ошибка здесь не мешает игре.
    */
   onSettled?: (state: GameState) => Promise<void> | void;
+  /** Можно ли игроку эту реакцию (наборы из магазина). Без проверки - только базовые. */
+  canReact?: (userId: number, emoji: string) => Promise<boolean>;
   /** Часы и таймеры (по умолчанию настоящие). */
   clock?: ServerClock;
   /** Только часы (тесты менеджера с фейковыми таймерами vitest). */
@@ -381,6 +386,14 @@ export class GameManager {
 
   currentGameOf(userId: number): string | null {
     return this.current.get(userId) ?? null;
+  }
+
+  /** Для экрана друзей: в сети, в партии или не в сети. */
+  presenceOf(userId: number): 'online' | 'ingame' | 'offline' {
+    if (!this.isOnline(userId)) return 'offline';
+    const id = this.current.get(userId);
+    const phase = id ? this.games.get(id)?.state.phase : undefined;
+    return phase && ACTIVE_PHASES.includes(phase) ? 'ingame' : 'online';
   }
 
   /**
@@ -826,6 +839,8 @@ export class GameManager {
     const s = entry.state;
     if (!machine.playerOf(s, userId)) return fail('not_participant');
     if (s.mode === 'solo' || !s.opponent || !REACTION_PHASES.includes(s.phase)) return fail('wrong_phase');
+    const allowed = this.d.canReact ? await this.d.canReact(userId, emoji) : (REACTIONS as readonly string[]).includes(emoji);
+    if (!allowed) return fail('invalid');
     const now = this.now();
     const last = this.reacted.get(userId);
     if (last !== undefined && now - last < REACTION_COOLDOWN_MS) return fail('rate_limited');
@@ -1268,7 +1283,7 @@ export class GameManager {
   }
 
   private profile(card: UserCard) {
-    return { name: card.name, username: card.username, photoUrl: card.photoUrl, rating: card.rating };
+    return { name: card.name, username: card.username, photoUrl: card.photoUrl, rating: card.rating, glow: card.glow };
   }
 
   private async card(userId: number): Promise<UserCard | null> {

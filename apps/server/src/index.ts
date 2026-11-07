@@ -13,6 +13,8 @@ import { loadQuestionBank } from './questions/bank.js';
 import { createPrismaEconomyRepo } from './economy.js';
 import { attachPayments, botChannels, botInvoices } from './bot/payments.js';
 import { participants } from './game/machine.js';
+import { createPrismaFriendsRepo } from './friends.js';
+import { TIMINGS, packOf } from '@quiz-duel/shared';
 import { syncQuestions } from './questions/sync.js';
 
 async function main() {
@@ -38,12 +40,20 @@ async function main() {
   // Подписку на канал проверяет бот (getChatMember); логгер появится вместе с приложением.
   const economy = createPrismaEconomyRepo(prisma, bot ? botChannels(bot.api, () => logRef) : undefined);
   await economy.ensureTasks();
+  const friends = createPrismaFriendsRepo(prisma);
+  let io: IoServer | null = null;
+  const push = socketPush(() => io);
   const app = await buildApp({
     env,
     users,
     stats: createPrismaStatsRepo(prisma),
     economy,
     invoices: bot ? botInvoices(bot.api) : undefined,
+    friends,
+    presence: (userId) => gamesRef?.presenceOf(userId) ?? 'offline',
+    onFriendChanged: (userId, kind, fromId) => {
+      void friends.brief(fromId).then((from) => from && push.friendChanged(userId, { kind, from }));
+    },
     botUsername,
     onSettingsChanged: (userId) => gamesRef?.userChanged(userId),
   });
@@ -54,9 +64,8 @@ async function main() {
   const synced = await syncQuestions(prisma, questions.all);
   app.log.info(synced, 'questions synced');
 
-  let io: IoServer | null = null;
-  const push = socketPush(() => io);
   const appUrl = `https://t.me/${botUsername}/${env.APP_SHORT_NAME}`;
+  const alerts = bot ? botAlerts(bot.api, users, appUrl, app.log) : undefined;
   const games = new GameManager({
     repo: createPrismaGamesRepo(prisma),
     users,
@@ -66,9 +75,13 @@ async function main() {
     docsVersion: env.DOCS_VERSION,
     log: app.log,
     invites: bot ? botInvites(bot) : undefined,
-    alerts: bot ? botAlerts(bot.api, users, appUrl, app.log) : undefined,
+    alerts,
     sharer: bot ? botResults(bot) : undefined,
     clock: realClock,
+    canReact: async (userId, emoji) => {
+      const pack = packOf(emoji);
+      return pack !== null && (await economy.ownsPack(userId, pack));
+    },
     onSettled: async (state) => {
       const ids = participants(state).map((p) => p.userId);
       await economy.gamePlayed(ids, Date.now());
@@ -87,6 +100,15 @@ async function main() {
     log: app.log,
     games,
     now: realClock.now,
+    isFriend: (a, b) => friends.isFriend(a, b),
+    onChallenge: (fromId, friendId, game) => {
+      void friends.brief(fromId).then((from) => {
+        if (!from) return;
+        const expiresAt = game.lobbyExpiresAt ?? Date.now() + TIMINGS.lobbyTtlMs;
+        push.friendInvite(friendId, { gameId: game.id, from, category: game.category, expiresAt });
+        alerts?.send(friendId, { kind: 'friendInvite', gameId: game.id, opponent: from.name });
+      });
+    },
   });
 
   await app.listen({ host: env.HOST, port: env.PORT });

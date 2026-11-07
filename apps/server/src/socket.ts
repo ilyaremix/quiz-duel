@@ -13,7 +13,10 @@ import {
   SyncPayloadSchema,
   type Ack,
   type ClientToServerEvents,
+  type FriendChangedEvent,
+  type FriendInviteEvent,
   type GameCategory,
+  type GameView,
   type ServerToClientEvents,
   type SocketData,
 } from '@quiz-duel/shared';
@@ -35,6 +38,9 @@ export interface SocketDeps {
   now?: () => number;
   /** Пинг Socket.IO (по умолчанию HEARTBEAT). */
   heartbeat?: { intervalMs: number; timeoutMs: number };
+  /** Вызов другу: проверка дружбы и уведомление (бот и баннер в приложении). */
+  isFriend?: (a: number, b: number) => Promise<boolean>;
+  onChallenge?: (fromId: number, friendId: number, game: GameView) => void;
 }
 
 /** Комната игрока: все его вкладки и устройства. */
@@ -52,11 +58,17 @@ export const HEARTBEAT = { intervalMs: 10_000, timeoutMs: 8_000 } as const;
 const EVENT_LIMIT = { max: 30, windowMs: 10_000 } as const;
 
 /** Снимки партии уходят в комнату игрока. */
-/** Пуши игроку вне партии: кошелёк изменился (оплата, награды). */
+/** Пуши игроку вне партии: кошелёк изменился (оплата, награды), друзья. */
 export function socketPush(getIo: () => IoServer | null) {
   return {
     wallet(userId: number) {
       getIo()?.to(userRoom(userId)).emit('wallet:changed');
+    },
+    friendInvite(userId: number, event: FriendInviteEvent) {
+      getIo()?.to(userRoom(userId)).emit('friend:invite', event);
+    },
+    friendChanged(userId: number, event: FriendChangedEvent) {
+      getIo()?.to(userRoom(userId)).emit('friend:changed', event);
     },
   };
 }
@@ -150,7 +162,16 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
     }
 
     if (games) {
-      on('game:create', CreateGamePayloadSchema, (p) => games.create(userId, p.category as GameCategory));
+      on('game:create', CreateGamePayloadSchema, async (p) => {
+        const friendId = p.friendId;
+        // Вызов другу - только тому, кто в друзьях.
+        if (friendId !== undefined && !(deps.isFriend && (await deps.isFriend(userId, friendId)))) {
+          return { ok: false, error: 'not_participant' } as const;
+        }
+        const res = await games.create(userId, p.category as GameCategory);
+        if (res.ok && friendId !== undefined) deps.onChallenge?.(userId, friendId, res.game);
+        return res;
+      });
       on('solo:start', CreateGamePayloadSchema, (p) => games.soloStart(userId, p.category as GameCategory));
       on('game:join', GameIdPayloadSchema, (p) => games.join(userId, p.gameId));
       on('game:sync', SyncPayloadSchema, (p) => games.sync(userId, p.gameId));
