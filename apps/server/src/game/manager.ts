@@ -215,6 +215,11 @@ interface Entry {
 export const CREATE_LIMIT = { max: 10, windowMs: 60_000 } as const;
 /** Сколько держим завершённую партию в памяти (её итоги ещё могут запросить). */
 const KEEP_FINISHED_MS = 10 * 60_000;
+/**
+ * Как часто чистим память об игроках, которых сейчас нет ни в сети, ни в партиях в памяти:
+ * карточки, темы «Микса», отметки реакций и созданий игр. Иначе карты росли бы с числом всех игроков.
+ */
+export const SWEEP_MS = 10 * 60_000;
 /** Запас, с которым переиспользуем подготовленное приглашение. */
 const INVITE_MARGIN_MS = 5 * 60_000;
 /**
@@ -272,6 +277,7 @@ export class GameManager {
   /** Быстрая игра: кто ищет соперника, с какого времени и с каким рейтингом (порядок вставки = кто раньше встал). */
   private readonly queue = new Map<number, { since: number; rating: number }>();
   private queueTimer: unknown = null;
+  private sweepTimer: unknown = null;
   /** Подбор идёт строго по одному: два прохода не создадут две партии на одного игрока. */
   private matching: Promise<unknown> = Promise.resolve();
   private readonly deps: MachineDeps;
@@ -357,6 +363,8 @@ export class GameManager {
     this.queueTimer = null;
     for (const timer of this.alertTimers) this.clock.clearTimeout(timer);
     this.alertTimers.clear();
+    if (this.sweepTimer) this.clock.clearTimeout(this.sweepTimer);
+    this.sweepTimer = null;
     for (const entry of this.games.values()) {
       if (entry.timer) this.clock.clearTimeout(entry.timer);
       if (entry.evictTimer) this.clock.clearTimeout(entry.evictTimer);
@@ -383,6 +391,7 @@ export class GameManager {
 
   async connect(userId: number): Promise<string | null> {
     if (this.shuttingDown) return null;
+    this.scheduleSweep();
     const count = (this.online.get(userId) ?? 0) + 1;
     this.online.set(userId, count);
     await this.refreshCards([userId]);
@@ -1524,6 +1533,46 @@ export class GameManager {
     } catch (error) {
       this.d.log.warn({ err: error }, 'user cards failed');
     }
+  }
+
+  private scheduleSweep() {
+    if (this.sweepTimer || this.stopped) return;
+    this.sweepTimer = this.clock.setTimeout(() => {
+      this.sweepTimer = null;
+      this.sweep();
+      if (this.games.size > 0 || this.online.size > 0) this.scheduleSweep();
+    }, SWEEP_MS);
+    (this.sweepTimer as { unref?: () => void } | null)?.unref?.();
+  }
+
+  /** Забыть игроков, которых нет ни в сети, ни в очереди, ни в одной партии в памяти. */
+  sweep() {
+    const now = this.now();
+    const keep = new Set<number>([...this.online.keys(), ...this.queue.keys(), ...this.lastResults.keys(), ...this.missedResults.keys()]);
+    for (const entry of this.games.values()) for (const p of machine.participants(entry.state)) keep.add(p.userId);
+    for (const id of this.cardCache.keys()) if (!keep.has(id)) this.cardCache.delete(id);
+    for (const id of this.mixTopics.keys()) if (!keep.has(id)) this.mixTopics.delete(id);
+    for (const [id, at] of this.reacted) if (now - at >= REACTION_COOLDOWN_MS) this.reacted.delete(id);
+    // Лимит создания игр не сбрасываем: удаляем, только когда все отметки старше окна.
+    for (const [id, list] of this.creates) if (list.every((t) => now - t >= CREATE_LIMIT.windowMs)) this.creates.delete(id);
+  }
+
+  /** Сколько записей в картах менеджера (тесты и диагностика утечек). */
+  memoryStats() {
+    return {
+      games: this.games.size,
+      current: this.current.size,
+      online: this.online.size,
+      cards: this.cardCache.size,
+      mixTopics: this.mixTopics.size,
+      reacted: this.reacted.size,
+      creates: this.creates.size,
+      lastResults: this.lastResults.size,
+      missedResults: this.missedResults.size,
+      challenges: this.challenges.size,
+      queue: this.queue.size,
+      alertTimers: this.alertTimers.size,
+    };
   }
 
   private allowCreate(userId: number) {

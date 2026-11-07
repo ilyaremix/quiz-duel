@@ -238,6 +238,8 @@ describe('Этап 8: отправка уведомлений', () => {
     expect(calls[1]!.text).toContain('Victory - you vs <b>Илья</b>: 6,224 : 5,027');
     expect(calls[1]!.text).toContain('Rating 1,016 (+16)');
     expect(calls[1]!.button).toBe('Results');
+    // Отправленные уведомления в памяти не копятся.
+    expect(sender.pending).toBe(0);
   });
 
   it('не пишем, если бот не может писать или уведомления выключены', async () => {

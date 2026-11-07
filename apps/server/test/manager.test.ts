@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { pointsFor, TIMINGS, type GameStateMeta, type GameView } from '@quiz-duel/shared';
-import { ALERT_DELAY_MS, CREATE_LIMIT, GameManager, type GameAlerts, type InviteMaker } from '../src/game/manager.js';
+import { ALERT_DELAY_MS, CREATE_LIMIT, GameManager, SWEEP_MS, type GameAlerts, type InviteMaker } from '../src/game/manager.js';
 import { memoryGamesRepo } from '../src/game/repo.js';
 import { loadQuestionBank } from '../src/questions/bank.js';
 import type { TelegramUser } from '../src/auth/initData.js';
@@ -657,5 +657,40 @@ describe('встречные вызовы друзей', () => {
     expect(await games.challenge(C, B, 'sport')).toMatchObject({ ok: true });
     await games.cancel(A, first.game.id);
     expect(await games.challenge(B, A, 'sport')).toMatchObject({ ok: true, game: { phase: 'waiting' } });
+  });
+});
+
+describe('память менеджера', () => {
+  it('партия закончилась, игроки ушли - через выгрузку и чистку о них ничего не осталось', async () => {
+    const { games } = await setup();
+    const id = await lobby(games);
+    await games.react(A, id, '👍');
+    expect(games.memoryStats()).toMatchObject({ games: 1, cards: 2, online: 2, reacted: 1, creates: 1 });
+    await games.cancel(A, id);
+    await games.disconnect(A);
+    await games.disconnect(B);
+    // Завершённая партия живёт 10 минут (итоги), потом выгружается; чистка забывает игроков.
+    await vi.advanceTimersByTimeAsync(10 * 60_000 + SWEEP_MS + 1_000);
+    expect(games.memoryStats()).toEqual({
+      games: 0,
+      current: 0,
+      online: 0,
+      cards: 0,
+      mixTopics: 0,
+      reacted: 0,
+      creates: 0,
+      lastResults: 0,
+      missedResults: 0,
+      challenges: 0,
+      queue: 0,
+      alertTimers: 0,
+    });
+  });
+
+  it('чистка не трогает тех, кто в сети или в партии', async () => {
+    const { games } = await setup();
+    await lobby(games);
+    games.sweep();
+    expect(games.memoryStats()).toMatchObject({ games: 1, cards: 2, online: 2 });
   });
 });

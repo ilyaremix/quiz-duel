@@ -50,8 +50,10 @@ export async function sendCard(
  * (startapp=g_<id>): лобби, идущая дуэль или её итоги. Сверху - анимированная карточка.
  * Telegram ответил 403 - больше не пробуем, пока игрок снова не разрешит.
  */
-export function botAlerts(api: AlertApi, users: UsersRepo, appUrl: string, log: Log, cards?: CardMedia): GameAlerts & { flush(): Promise<void> } {
-  let pending: Promise<unknown> = Promise.resolve();
+export function botAlerts(api: AlertApi, users: UsersRepo, appUrl: string, log: Log, cards?: CardMedia): GameAlerts & { flush(): Promise<void>; readonly pending: number } {
+  // Отправки в полёте. Раньше была цепочка Promise.all([pending, job]): она держала в памяти
+  // вложенные массивы всех когда-либо отправленных уведомлений (+12 МБ на 200 000).
+  const inflight = new Set<Promise<unknown>>();
   const deliver = async (userId: number, alert: GameAlert) => {
     const target = await users.alertTarget(userId);
     if (!target?.notifications || !target.writeAccess) return;
@@ -73,11 +75,16 @@ export function botAlerts(api: AlertApi, users: UsersRepo, appUrl: string, log: 
   return {
     send(userId, alert) {
       const job = deliver(userId, alert).catch((error: unknown) => log.warn({ err: error, userId, kind: alert.kind }, 'bot alert failed'));
-      pending = Promise.all([pending, job]);
+      inflight.add(job);
+      void job.finally(() => inflight.delete(job));
     },
     /** Дождаться отправки всех уведомлений (тесты). */
     async flush() {
-      await pending;
+      while (inflight.size > 0) await Promise.all([...inflight]);
+    },
+    /** Сколько отправок ещё идёт (тесты: после отправки ничего не остаётся). */
+    get pending() {
+      return inflight.size;
     },
   };
 }
