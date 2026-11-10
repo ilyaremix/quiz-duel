@@ -6,6 +6,7 @@
  * (economy.useTopic): один неиспользованный билет гасится один раз, повтор с тем же gameId - не второй раз.
  */
 import { describe, expect, it } from 'vitest';
+import { TIMINGS } from '@quiz-duel/shared';
 import type { ManagerDeps } from '../src/game/manager.js';
 import { ilya, lobby, mark, player, playOut, start, stateWhere, world } from './socketWorld.js';
 
@@ -115,6 +116,66 @@ describe('билет на платную тему - на одну партию',
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(t.left.get(ilya.id)).toBe(1);
     expect(await w.games.soloStart(ilya.id, 'space')).toMatchObject({ ok: true });
+    expect(t.left.get(ilya.id)).toBe(0);
+  });
+
+  it('лобби в платной теме: создатель отменил игру на отсчёте - билет возвращается', async () => {
+    const t = tickets({ [ilya.id]: 1 });
+    const w = await world(t.deps);
+    const a = await player(w, ilya);
+    const b = await player(w, mark);
+    const gameId = await lobby(a, b, 'space');
+    await a.socket.emitWithAck('game:ready', { gameId, ready: true });
+    await b.socket.emitWithAck('game:ready', { gameId, ready: true });
+    await stateWhere(a, 'отсчёт', (v) => v.id === gameId && v.phase === 'countdown');
+    expect(t.left.get(ilya.id)).toBe(0);
+    expect(await a.socket.emitWithAck('game:cancel', { gameId })).toMatchObject({ ok: true });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // Партия не состоялась: ни одного вопроса игроки не увидели.
+    expect(t.left.get(ilya.id)).toBe(1);
+    expect(t.spentOn.size).toBe(0);
+  });
+
+  it('лобби в платной теме: соперник снял «Готов» на отсчёте, лобби истекло - билет возвращается', async () => {
+    const t = tickets({ [ilya.id]: 1 });
+    const w = await world(t.deps);
+    const a = await player(w, ilya);
+    const b = await player(w, mark);
+    const gameId = await lobby(a, b, 'space');
+    await a.socket.emitWithAck('game:ready', { gameId, ready: true });
+    await b.socket.emitWithAck('game:ready', { gameId, ready: true });
+    await stateWhere(a, 'отсчёт', (v) => v.id === gameId && v.phase === 'countdown');
+    await b.socket.emitWithAck('game:ready', { gameId, ready: false });
+    await stateWhere(a, 'снова лобби', (v) => v.id === gameId && v.phase === 'lobby');
+    // Билет пока за этой партией: «Готов» ещё раз - второй не спишется.
+    expect(t.left.get(ilya.id)).toBe(0);
+    await w.clock.advance(TIMINGS.lobbyTtlMs + 1_000);
+    await stateWhere(a, 'лобби истекло', (v) => v.id === gameId && v.phase === 'expired');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(t.left.get(ilya.id)).toBe(1);
+  });
+
+  it('лобби в платной теме: билет списать не удалось (база не ответила) - отсчёт не начинается', async () => {
+    const t = tickets({ [ilya.id]: 1 });
+    let down = false;
+    const w = await world({
+      ...t.deps,
+      useTopic: async (userId, topic, gameId) => {
+        if (down) throw new Error("Can't reach database server");
+        return t.deps.useTopic!(userId, topic, gameId);
+      },
+    });
+    const a = await player(w, ilya);
+    const b = await player(w, mark);
+    const gameId = await lobby(a, b, 'space');
+    await a.socket.emitWithAck('game:ready', { gameId, ready: true });
+    down = true;
+    expect(await b.socket.emitWithAck('game:ready', { gameId, ready: true })).toMatchObject({ ok: false, error: 'internal' });
+    expect(w.repo.rows.get(gameId)!.state.phase).toBe('lobby');
+    expect(t.left.get(ilya.id)).toBe(1);
+    // База вернулась - тот же «Готов» запускает отсчёт и тратит билет.
+    down = false;
+    expect(await b.socket.emitWithAck('game:ready', { gameId, ready: true })).toMatchObject({ ok: true, game: { phase: 'countdown' } });
     expect(t.left.get(ilya.id)).toBe(0);
   });
 

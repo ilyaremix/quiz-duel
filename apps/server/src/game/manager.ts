@@ -237,6 +237,9 @@ const SETTLE_RETRY = { firstMs: 2_000, maxMs: 60_000, attempts: 10 } as const;
 const fail = (error: GameErrorCode, extra: Partial<GameFailure> = {}): GameFailure => ({ ok: false, error, ...extra });
 
 /** Ошибки машины → коды протокола. */
+/** Фазы до первого вопроса: игроки ещё ничего не сыграли. */
+const BEFORE_PLAY: readonly GameState['phase'][] = ['waiting', 'lobby', 'draft', 'countdown'];
+
 function mapError(error: GameError): GameErrorCode {
   switch (error) {
     case 'taken':
@@ -285,6 +288,8 @@ export class GameManager {
   private sweepTimer: unknown = null;
   /** Подбор идёт строго по одному: два прохода не создадут две партии на одного игрока. */
   private matching: Promise<unknown> = Promise.resolve();
+  /** Очередь действий игрока, которые ведут его в партию (см. exclusive). */
+  private readonly userLocks = new Map<number, Promise<void>>();
   private readonly deps: MachineDeps;
   private readonly now: () => number;
   private readonly clock: ServerClock;
@@ -500,7 +505,11 @@ export class GameManager {
   // -------------------------------------------------------------------------
   // Лобби
 
-  async create(userId: number, category: GameCategory, rules?: GameRules): Promise<Result<{ game: GameView }>> {
+  create(userId: number, category: GameCategory, rules?: GameRules): Promise<Result<{ game: GameView }>> {
+    return this.exclusive(userId, () => this.createNow(userId, category, rules));
+  }
+
+  private async createNow(userId: number, category: GameCategory, rules?: GameRules): Promise<Result<{ game: GameView }>> {
     this.unqueue(userId);
     if (!this.allowCreate(userId)) return fail('rate_limited');
     const card = await this.card(userId);
@@ -615,7 +624,11 @@ export class GameManager {
   }
 
   /** Вход по ссылке. Участник получает снимок своей партии в любой фазе. */
-  async join(userId: number, gameId: string): Promise<Result<{ game: GameView }>> {
+  join(userId: number, gameId: string): Promise<Result<{ game: GameView }>> {
+    return this.exclusive(userId, () => this.joinNow(userId, gameId));
+  }
+
+  private async joinNow(userId: number, gameId: string): Promise<Result<{ game: GameView }>> {
     const entry = await this.entry(gameId);
     if (!entry) return fail('not_found');
     const peek = entry.state;
@@ -667,18 +680,33 @@ export class GameManager {
   }
 
   async ready(userId: number, gameId: string, ready: boolean): Promise<Result<{ game: GameView }>> {
-    return this.mutate(userId, gameId, async (entry) => {
+    const entry = await this.entry(gameId);
+    if (!entry) return fail('not_found');
+    return this.run(entry, async () => {
       const s = entry.state;
+      if (!machine.playerOf(s, userId)) return fail('not_participant');
       const other = machine.otherOf(s, userId);
-      // Этот «Готов» запустит отсчёт - заранее узнаём, какие вопросы игроки уже видели.
-      if (ready && s.phase === 'lobby' && other?.ready && machine.playerOf(s, userId)) {
+      // Этот «Готов» запустит отсчёт.
+      const starts = ready && s.phase === 'lobby' && Boolean(other?.ready);
+      if (starts && other) {
+        // Заранее узнаём, какие вопросы игроки уже видели.
         entry.seen = await this.d.repo.seenQuestions([s.creator.userId, other.userId]).catch((error: unknown) => {
           this.d.log.warn({ err: error, gameId }, 'seen questions failed');
           return new Map<string, number>();
         });
         if (s.category === 'mix') await this.loadMixTopics([s.creator.userId, other.userId]);
+        // Платная тема: билет создателя списывается до отсчёта, а не «вдогонку» после него - иначе при сбое
+        // базы партия шла бы бесплатно. Отсчёт не состоялся (отмена, истёкшее лобби) - билет вернётся (apply).
+        const charge = await this.chargeTopic(s.creator.userId, s.category, s.id);
+        if (charge !== 'ok') return fail(charge === 'none' ? 'locked' : 'internal');
       }
-      return machine.setReady(entry.state, userId, ready, this.now(), this.deps);
+      const step = machine.setReady(entry.state, userId, ready, this.now(), this.deps);
+      if (!step.ok) {
+        if (starts) this.refundTopic(s.creator.userId, s.category, s.id);
+        return fail(mapError(step.error));
+      }
+      await this.apply(entry, step);
+      return { ok: true as const, game: this.viewOf(entry.state, userId)! };
     });
   }
 
@@ -748,7 +776,11 @@ export class GameManager {
    * без рейтинга. Вопрос закрывается сразу после ответа. Пока идёт дуэль или открыто своё лобби
    * (кто-то может прийти по ссылке) - busy: в двух партиях сразу играть нельзя.
    */
-  async soloStart(userId: number, category: GameCategory): Promise<Result<{ game: GameView }>> {
+  soloStart(userId: number, category: GameCategory): Promise<Result<{ game: GameView }>> {
+    return this.exclusive(userId, () => this.soloStartNow(userId, category));
+  }
+
+  private async soloStartNow(userId: number, category: GameCategory): Promise<Result<{ game: GameView }>> {
     this.unqueue(userId);
     if (!this.allowCreate(userId)) return fail('rate_limited');
     const card = await this.card(userId);
@@ -776,7 +808,8 @@ export class GameManager {
 
     // Тренировка начинается сразу, поэтому билет на платную тему списывается до её создания: проверка
     // выше только заглядывает в базу, и два запроса подряд прошли бы её оба с одним билетом.
-    if (!(await this.chargeTopic(userId, category, id))) return fail('locked');
+    const charge = await this.chargeTopic(userId, category, id);
+    if (charge !== 'ok') return fail(charge === 'none' ? 'locked' : 'internal');
 
     const [seen, soloBest] = await Promise.all([
       this.d.repo.seenQuestions([userId]).catch(() => new Map<string, number>()),
@@ -849,7 +882,11 @@ export class GameManager {
    * попадают в обычное лобби «Микс» с «Готов» - дальше это обычная рейтинговая дуэль.
    * Через 60 с - queue:timeout. Посреди партии или в открытом лобби - busy.
    */
-  async queueJoin(userId: number): Promise<Result<QueueJoined>> {
+  queueJoin(userId: number): Promise<Result<QueueJoined>> {
+    return this.exclusive(userId, () => this.queueJoinNow(userId));
+  }
+
+  private async queueJoinNow(userId: number): Promise<Result<QueueJoined>> {
     const card = await this.card(userId);
     if (!card) return fail('internal');
     if (card.banned) return fail('banned');
@@ -1115,7 +1152,10 @@ export class GameManager {
 
     // Реванш стартует сразу, мимо лобби и «Готов»: билет на платную тему списывается здесь же.
     // Раньше реванш темы не проверял и билет не тратил - один билет давал сколько угодно партий подряд.
-    if (!(await this.chargeTopic(s.creator.userId, s.category, id))) {
+    const charge = await this.chargeTopic(s.creator.userId, s.category, id);
+    // Сбой базы - предложение остаётся, можно согласиться ещё раз; билета нет - реванша не будет.
+    if (charge === 'failed') return fail('internal');
+    if (charge === 'none') {
       await this.apply(entry, machine.rematchGone(s));
       return fail('locked');
     }
@@ -1259,6 +1299,27 @@ export class GameManager {
     return entry;
   }
 
+  /**
+   * Действия одного игрока, которые ведут его в партию (создать, тренировка, вход по ссылке, очередь),
+   * идут строго по очереди. У каждого из них проверка «не занят ли игрок» и само создание партии разделены
+   * ожиданием базы: два запроса сразу проходили проверку оба и давали две партии одному игроку.
+   * Внутри можно ждать очередь партии (run), наоборот - нельзя: операции партии эту очередь не берут.
+   */
+  private exclusive<T>(userId: number, fn: () => Promise<T>): Promise<T> {
+    const prev = this.userLocks.get(userId) ?? Promise.resolve();
+    const result = prev.then(fn);
+    const tail: Promise<void> = result
+      .then(
+        () => undefined,
+        () => undefined,
+      )
+      .then(() => {
+        if (this.userLocks.get(userId) === tail) this.userLocks.delete(userId);
+      });
+    this.userLocks.set(userId, tail);
+    return result;
+  }
+
   /** Очередь изменений одной партии: следующая операция ждёт предыдущую. */
   private run<T>(entry: Entry, fn: () => Promise<T>): Promise<T> {
     const result = entry.queue.then(fn);
@@ -1287,6 +1348,11 @@ export class GameManager {
         this.spendTopic(entry.state);
       }
       if (event.type === 'finished') finished = true;
+      // Партия закрылась, не дойдя до первого вопроса (отмена на отсчёте, истёкшее лобби): билет, списанный
+      // на неё, возвращается. Если билет не списывали, возвращать нечего - запрос ничего не меняет.
+      if ((event.type === 'cancelled' || event.type === 'expired') && BEFORE_PLAY.includes(prev.phase)) {
+        this.refundTopic(prev.creator.userId, prev.category, prev.id);
+      }
       if (event.type === 'seatFreed') {
         freed.push(event.userId);
         meta.seatFreed ??= 'timeout';
@@ -1497,31 +1563,31 @@ export class GameManager {
   }
 
   /**
-   * Списать билет создателя на эту партию до её старта. true - можно начинать: тема обычная, куплена
-   * навсегда или билет списан. false - билета нет или списать не удалось (тогда партия не начинается:
-   * бесплатная игра в платной теме хуже, чем отказ с понятной причиной).
+   * Списать билет создателя на эту партию до её старта. ok - можно начинать: тема обычная, куплена
+   * навсегда или билет списан. none - билета нет. failed - списать не удалось (база): партия тоже не
+   * начинается - бесплатная игра в платной теме хуже, чем отказ, который можно повторить.
    */
-  private async chargeTopic(userId: number, category: GameCategory, gameId: string): Promise<boolean> {
-    if (!isPremiumCategory(category)) return true;
-    if (!this.d.useTopic) return false;
+  private async chargeTopic(userId: number, category: GameCategory, gameId: string): Promise<'ok' | 'none' | 'failed'> {
+    if (!isPremiumCategory(category)) return 'ok';
+    if (!this.d.useTopic) return 'none';
     try {
-      return await this.d.useTopic(userId, category, gameId);
+      return (await this.d.useTopic(userId, category, gameId)) ? 'ok' : 'none';
     } catch (error) {
       this.d.log.error({ err: error, userId, gameId, category }, 'topic pass charge failed');
-      return false;
+      return 'failed';
     }
   }
 
-  /** Партия не создалась после списания: билет возвращается владельцу. */
+  /** Партия не создалась или не состоялась после списания: билет возвращается владельцу. */
   private refundTopic(userId: number, category: GameCategory, gameId: string) {
     if (!isPremiumCategory(category) || !this.d.releaseTopic) return;
     this.d.releaseTopic(userId, gameId).catch((error: unknown) => this.d.log.error({ err: error, userId, gameId }, 'topic pass refund failed'));
   }
 
   /**
-   * Лобби в платной теме дошло до отсчёта: у создателя тратится билет на 1 игру (купленная тема - бесплатно).
-   * Доступ проверен при создании лобби, а открытая партия у игрока одна, так что билет на месте; если
-   * списать всё же не вышло, партию уже не остановить - это ошибка в журнале, а не тихий warn.
+   * Страховка на отсчёте: билет к этому моменту уже списан (ready, реванш, тренировка), повтор с тем же
+   * gameId второй не тратит. Если партия в платной теме дошла сюда без билета - значит, появился путь
+   * мимо списания: билет берётся здесь, а в журнале остаётся ошибка.
    */
   private spendTopic(state: GameState) {
     if (!isPremiumCategory(state.category) || !this.d.useTopic) return;
