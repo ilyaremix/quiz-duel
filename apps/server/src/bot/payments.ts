@@ -84,16 +84,29 @@ export function botChannels(api: Api, log: () => FastifyBaseLogger | null): Chan
   };
 }
 
+/** Оплата из списка Telegram, которой нет в базе и которая старше окна автозачисления. */
+export interface StalePayment {
+  chargeId: string;
+  userId: number;
+  product: StarsProduct;
+  stars: number;
+  /** Когда прошла оплата, мс. */
+  at: number;
+}
+
 export interface PaymentHooks {
   /** Монеты зачислены: экран магазина обновится сам. */
   changed(userId: number): void;
   lang(userId: number): Promise<Lang>;
+  /** Сверка нашла старые оплаты без зачисления: сама их не раздаёт, решает владелец (см. STARS_RECONCILE_DAYS). */
+  stale?(payments: StalePayment[]): void;
 }
 
-/** Настройки для тестов. */
 export interface PaymentOptions {
   /** Через сколько повторить сверку, если зачисление не удалось (база недоступна). */
   retryMs?: number;
+  /** Окно автозачисления в днях (STARS_RECONCILE_DAYS), по умолчанию 7. */
+  grantWindowDays?: number;
 }
 
 export interface ReconcileReport {
@@ -111,11 +124,14 @@ const MAX_PAGES = 200;
 const RETRY_MS = 15_000;
 const RETRY_MAX_MS = 5 * 60_000;
 /**
- * Сверка сама зачисляет только свежие оплаты: потерянный платёж находится за минуты. Старая операция
- * без записи в базе - не потеря при выкатке, а что-то другое (базу пересоздавали, платёж до появления
- * таблицы): такое автоматически не раздаём, а пишем в журнал для разбора вручную.
+ * Сверка сама зачисляет только свежие оплаты: потерянный платёж она находит за минуты, в худшем случае
+ * после простоя сервера - за дни. Оплата старше окна без записи в базе - уже не потеря при выкатке, а
+ * что-то другое (базу пересоздавали или восстановили из старой копии), и раздавать монеты за всю историю
+ * автоматически нельзя. Но и молчать о ней нельзя: звёзды у игрока списаны. Такие оплаты уходят владельцу
+ * сообщением от бота (hooks.stale); проверив их, он расширяет окно (STARS_RECONCILE_DAYS) и перезапускает
+ * сервер - сверка их зачислит.
  */
-const AUTO_GRANT_WINDOW_MS = 7 * 86_400_000;
+const GRANT_WINDOW_DAYS = 7;
 
 /**
  * Обновление successful_payment приходит один раз, и потерять его можно: сервер выключили между
@@ -145,7 +161,8 @@ export function attachPayments(bot: QuizBot, economy: EconomyRepo, hooks: Paymen
 
   async function scan(): Promise<ReconcileReport> {
     const report: ReconcileReport = { scanned: 0, granted: 0, revoked: 0 };
-    const stale: string[] = [];
+    const stale: StalePayment[] = [];
+    const windowMs = (options.grantWindowDays ?? GRANT_WINDOW_DAYS) * 86_400_000;
     for (let page = 0; page < MAX_PAGES; page++) {
       const { transactions } = await bot.api.getStarTransactions({ offset: cursor, limit: PAGE });
       if (transactions.length === 0) break;
@@ -158,8 +175,8 @@ export function attachPayments(bot: QuizBot, economy: EconomyRepo, hooks: Paymen
             log.error({ chargeId: tx.id, payload: tx.source.invoice_payload, amount: tx.amount }, 'stars transaction does not match its invoice');
             continue;
           }
-          if (tx.date * 1000 < Date.now() - AUTO_GRANT_WINDOW_MS) {
-            stale.push(tx.id);
+          if (tx.date * 1000 < Date.now() - windowMs) {
+            stale.push({ chargeId: tx.id, userId: parsed.userId, product: parsed.product, stars: tx.amount, at: tx.date * 1000 });
             continue;
           }
           try {
@@ -190,8 +207,13 @@ export function attachPayments(bot: QuizBot, economy: EconomyRepo, hooks: Paymen
       if (page === MAX_PAGES - 1) log.warn({ cursor }, 'stars reconcile stopped at the page limit, will continue next time');
     }
     if (report.granted > 0 || report.revoked > 0) log.warn(report, 'stars reconcile fixed missed payments');
-    if (stale.length > 0)
-      log.warn({ count: stale.length, chargeIds: stale.slice(0, 20) }, 'old stars payments without a purchase record, not granted automatically');
+    if (stale.length > 0) {
+      log.warn(
+        { count: stale.length, chargeIds: stale.slice(0, 20).map((p) => p.chargeId) },
+        'old stars payments without a purchase record, not granted automatically',
+      );
+      hooks.stale?.(stale);
+    }
     return report;
   }
 

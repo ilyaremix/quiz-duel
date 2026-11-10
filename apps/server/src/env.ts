@@ -41,6 +41,12 @@ const EnvSchema = z.object({
    * в общую с сервером папку. Нет файла - в /api/health backupAgoSec: null.
    */
   BACKUP_STATUS_FILE: z.string().default('/backups/.last-ok'),
+  /**
+   * За сколько последних дней сверка оплат сама зачисляет платёж, найденный у Telegram, но не записанный
+   * в базе (bot/payments.ts). Более старые уходят владельцу сообщением: проверив их, окно расширяют и
+   * перезапускают сервер.
+   */
+  STARS_RECONCILE_DAYS: z.coerce.number().int().min(1).max(3650).default(7),
   /** Обновление 2.0: кто видит админку - Telegram id через запятую. Пусто - владелец из автодеплоя. */
   ADMIN_IDS: z.string().default(''),
   DEPLOY_NOTIFY_CHAT_ID: z.string().default(''),

@@ -12,7 +12,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { Bot, type Transformer } from 'grammy';
 import { createPrisma } from '../src/db.js';
 import { createPrismaEconomyRepo, type EconomyRepo } from '../src/economy.js';
-import { attachPayments, invoicePayload } from '../src/bot/payments.js';
+import { attachPayments, invoicePayload, type StalePayment } from '../src/bot/payments.js';
 import { startBot, type QuizBot } from '../src/bot/index.js';
 import { starsProduct, type StarsProduct } from '@quiz-duel/shared';
 import { lockDb } from './dbLock.js';
@@ -131,12 +131,13 @@ describe.skipIf(!url)('оплата звёздами не теряется', () 
   const stops: Array<() => Promise<void>> = [];
 
   const coins = async (id: number) => (await prisma.user.findUniqueOrThrow({ where: { id: BigInt(id) } })).coins;
-  const hooks = { changed: () => undefined, lang: async () => 'ru' as const };
+  const stale: StalePayment[] = [];
+  const hooks = { changed: () => undefined, lang: async () => 'ru' as const, stale: (list: StalePayment[]) => void stale.push(...list) };
 
   /** «Новый процесс поднялся»: обработчики оплаты и опрос Telegram, как в index.ts. */
-  function boot(telegram: ReturnType<typeof fakeTelegram>, economy: EconomyRepo = eco) {
+  function boot(telegram: ReturnType<typeof fakeTelegram>, economy: EconomyRepo = eco, grantWindowDays?: number) {
     const bot = fakeBot(telegram);
-    const payments = attachPayments(bot, economy, hooks, silentLog, { retryMs: 30 });
+    const payments = attachPayments(bot, economy, hooks, silentLog, { retryMs: 30, grantWindowDays });
     const poller = startBot(bot, silentLog);
     stops.push(() => poller.stop());
     return { bot, payments, poller };
@@ -158,6 +159,7 @@ describe.skipIf(!url)('оплата звёздами не теряется', () 
       'TRUNCATE coin_ledger, inventory, task_progress, purchases, ad_views, topic_passes, tasks, answers, user_achievements, category_stats, consents, games, users CASCADE',
     );
     await prisma.user.create({ data: { id: BigInt(A), firstName: 'Илья' } });
+    stale.length = 0;
   });
 
   afterEach(async () => {
@@ -228,11 +230,24 @@ describe.skipIf(!url)('оплата звёздами не теряется', () 
     );
     const { payments } = boot(telegram);
     const report = await payments.reconcile();
+    // Старую оплату сверка не зачислила, но и не промолчала: о ней узнаёт владелец.
+    expect(stale).toEqual([{ chargeId: 'ancient', userId: A, product: 'coins_l', stars: 150, at: expect.any(Number) }]);
     expect(report).toMatchObject({ scanned: 10, granted: 2, revoked: 1 });
     // 300 (known) + 2500 (missed) + 300 (missed-2); 1000 за refunded забрали.
     expect(await coins(A)).toBe(3100);
     // Следующий проход читает только новое.
     expect(await payments.reconcile()).toEqual({ scanned: 0, granted: 0, revoked: 0 });
+  });
+
+  it('владелец проверил старую оплату и расширил окно (STARS_RECONCILE_DAYS): после перезапуска она зачисляется', async () => {
+    const telegram = fakeTelegram();
+    telegram.transactions.push(incoming(A, 'coins_l', 'ancient', ago(30 * 86_400)));
+    expect(await boot(telegram).payments.reconcile()).toMatchObject({ granted: 0 });
+    expect(stale.map((p) => p.chargeId)).toEqual(['ancient']);
+    expect(await coins(A)).toBe(0);
+    // Новый процесс с окном 60 дней.
+    expect(await boot(telegram, eco, 60).payments.reconcile()).toMatchObject({ granted: 1 });
+    expect(await coins(A)).toBe(2500);
   });
 
   it('остановка сервера ждёт обработчик, который уже зачисляет платёж', async () => {

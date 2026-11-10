@@ -140,7 +140,7 @@ export async function configureBot(bot: QuizBot, webAppUrl: string, log: Fastify
 }
 
 /** Что сломалось в боте или на сервере - пишем владельцу (не чаще раза в полчаса на каждый вид сбоя). */
-export type BotTrouble = (kind: 'polling' | 'inline' | 'crash', detail: string) => void;
+export type BotTrouble = (kind: 'polling' | 'inline' | 'crash' | 'payments', detail: string) => void;
 
 /**
  * Inline-режим подключается, когда менеджер партий уже создан.

@@ -73,6 +73,8 @@ async function main() {
       polling: '⚠️ Quiz Duel: бот потерял связь с Telegram и сам перезапускает опрос.',
       inline: '⚠️ Quiz Duel: inline-запрос не прошёл.',
       crash: '⚠️ Quiz Duel: на сервере необработанная ошибка (подробности в журнале).',
+      payments:
+        '⚠️ Quiz Duel: у Telegram есть старые оплаты звёздами, которых нет в базе. Сами они не зачисляются: проверьте и, если всё верно, увеличьте STARS_RECONCILE_DAYS.',
     }[kind];
     void bot.api.sendMessage(ownerChat, `${head}\n${detail}`, { link_preview_options: { is_disabled: true } }).catch(() => undefined);
   };
@@ -203,8 +205,20 @@ async function main() {
     payments = attachPayments(
       bot,
       economy,
-      { changed: (userId) => push.wallet(userId), lang: async (userId) => (await users.alertTarget(userId))?.lang ?? 'en' },
+      {
+        changed: (userId) => push.wallet(userId),
+        lang: async (userId) => (await users.alertTarget(userId))?.lang ?? 'en',
+        stale: (list) =>
+          trouble(
+            'payments',
+            list
+              .slice(0, 10)
+              .map((p) => `${new Date(p.at).toISOString().slice(0, 10)} · игрок ${p.userId} · ${p.product} · ${p.stars}⭐ · ${p.chargeId}`)
+              .join('\n') + (list.length > 10 ? `\n…и ещё ${list.length - 10}` : ''),
+          ),
+      },
       app.log,
+      { grantWindowDays: env.STARS_RECONCILE_DAYS },
     );
     await configureBot(bot, env.WEB_APP_URL, app.log);
     poller = startBot(bot, app.log, trouble);
