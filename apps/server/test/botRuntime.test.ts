@@ -36,13 +36,13 @@ const until = async (check: () => boolean) => {
 };
 
 describe('опрос Telegram', () => {
-  it('409 при запуске - опрос перезапускается сам, старые обновления выбрасываются только в первый раз', async () => {
+  it('409 при запуске - опрос перезапускается сам, накопившиеся обновления не выбрасываются (в них может быть оплата)', async () => {
     const { bot, calls, raw } = fakePollingBot(['fail409', 'run']);
     const trouble = vi.fn();
     const before = botHealth().restarts;
     const poller = startBot(bot, silentLog, trouble, async () => undefined);
     await until(() => calls.length === 2 && botHealth().state === 'polling');
-    expect(calls.map((c) => c.drop)).toEqual([true, false]);
+    expect(calls.map((c) => c.drop)).toEqual([false, false]);
     expect(botHealth().restarts).toBe(before + 1);
     expect(trouble).toHaveBeenCalledWith('polling', expect.stringContaining('409'));
     await poller.stop();

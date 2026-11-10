@@ -82,6 +82,7 @@ async function main() {
   });
   let io: IoServer | null = null;
   let poller: ReturnType<typeof startBot> | null = null;
+  let payments: ReturnType<typeof attachPayments> | null = null;
   const push = socketPush(() => io);
   const app = await buildApp({
     env,
@@ -182,7 +183,7 @@ async function main() {
         reply_markup: new InlineKeyboard().url(ru ? 'Открыть админку' : 'Open admin', `${appUrl}?startapp=admin`),
       });
     });
-    attachPayments(
+    payments = attachPayments(
       bot,
       economy,
       { changed: (userId) => push.wallet(userId), lang: async (userId) => (await users.alertTarget(userId))?.lang ?? 'en' },
@@ -190,6 +191,11 @@ async function main() {
     );
     await configureBot(bot, env.WEB_APP_URL, app.log);
     poller = startBot(bot, app.log, trouble);
+    // Сверка оплат со списком операций Telegram: при запуске (платёж мог потеряться при прошлой
+    // остановке) и каждые 10 минут. Ошибки сверка пишет в журнал сама.
+    const sweepPayments = () => void payments?.sweep();
+    sweepPayments();
+    setInterval(sweepPayments, 10 * 60_000).unref();
     // Напоминание о ежедневной награде: проход раз в 5 минут, пишет только вечером по Москве.
     const reminders = dailyReminders({ prisma, users, api: bot.api, cards, appUrl, log: app.log });
     const remind = () =>
@@ -206,6 +212,7 @@ async function main() {
     stopping = true;
     app.log.info({ signal }, 'shutting down');
     try {
+      payments?.stop();
       await poller?.stop();
       // Сначала партии: таймеры стоп, начатые изменения дописываются в базу. Отключения
       // сокетов при остановке - не уход игроков, отсчёт до техпоражения из-за выкатки не пойдёт.

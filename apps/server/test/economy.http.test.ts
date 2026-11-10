@@ -43,6 +43,7 @@ function fakeEconomy(calls: string[]): EconomyRepo {
     gamePlayed: async () => undefined,
     grantPurchase: async () => true,
     revokePurchase: async () => true,
+    knownPurchases: async () => new Map(),
     looks: async () => new Map(),
     ownsPack: async () => true,
     ownedTopics: async () => [],

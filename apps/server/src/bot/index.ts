@@ -192,18 +192,25 @@ const ALLOWED_UPDATES = ['message', 'inline_query', 'callback_query', 'my_chat_m
  * выкатки: не отвечал на inline-запросы, /start и оплату. Теперь опрос перезапускается сам:
  * через 2, 4, 8… секунд (не дольше минуты), владельцу приходит сообщение о сбое.
  */
-export function startBot(bot: QuizBot, log: FastifyBaseLogger, trouble?: BotTrouble, sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))) {
+export function startBot(
+  bot: QuizBot,
+  log: FastifyBaseLogger,
+  trouble?: BotTrouble,
+  sleep = (ms: number) => new Promise((r) => setTimeout(r, ms)),
+  stopWaitMs = 5_000,
+) {
   bot.catch(({ error, ctx }) => {
     log.error({ err: error, updateId: ctx.update.update_id }, 'bot handler failed');
   });
   let stopped = false;
   let failures = 0;
   const loop = async () => {
-    for (let first = true; !stopped; first = false) {
+    while (!stopped) {
       try {
         await bot.start({
-          // Старые обновления выбрасываем только при запуске сервера, при перезапуске опроса - нет.
-          drop_pending_updates: first,
+          // Накопившиеся обновления не выбрасываем никогда: среди них может быть оплата,
+          // пришедшая, пока сервер перезапускался (звёзды списаны, а монеты не зачислены).
+          drop_pending_updates: false,
           allowed_updates: [...ALLOWED_UPDATES],
           onStart: (info) => {
             pollState.state = 'polling';
@@ -224,11 +231,21 @@ export function startBot(bot: QuizBot, log: FastifyBaseLogger, trouble?: BotTrou
       await sleep(Math.min(60_000, 1_000 * 2 ** Math.min(failures, 6)));
     }
   };
-  void loop();
+  const running = loop();
   return {
+    /**
+     * Останавливает опрос и ждёт обработчики, которые уже работают (start() возвращается, когда
+     * текущая пачка обновлений обработана): иначе выкатка обрывала бы зачисление платежа на середине.
+     * Ждём не бесконечно - Docker даёт процессу на остановку 10 секунд.
+     */
     async stop() {
       stopped = true;
       await bot.stop();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<'timeout'>((resolve) => (timer = setTimeout(() => resolve('timeout'), stopWaitMs)));
+      const result = await Promise.race([running.then(() => 'done' as const), timeout]);
+      clearTimeout(timer);
+      if (result === 'timeout') log.warn({ waitedMs: stopWaitMs }, 'bot handlers still running at shutdown');
     },
   };
 }

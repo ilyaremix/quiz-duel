@@ -81,6 +81,8 @@ export interface EconomyRepo {
   grantPurchase(input: PurchaseInput, now: number): Promise<boolean>;
   /** Звёзды вернули: забрать монеты (сколько есть) или «Без рекламы». */
   revokePurchase(chargeId: string, now: number): Promise<boolean>;
+  /** Какие из этих платежей уже записаны (и возвращены ли) - для сверки с операциями Telegram. */
+  knownPurchases(chargeIds: readonly string[]): Promise<Map<string, { refunded: boolean }>>;
   /** Надетое оформление игроков. */
   looks(ids: readonly number[]): Promise<Map<number, Looks>>;
   /** Набор реакций у игрока (купленные): для проверки реакции в партии. */
@@ -487,6 +489,12 @@ export function createPrismaEconomyRepo(prisma: PrismaClient, checker?: ChannelC
         if (what.adFree) await tx.user.update({ where: { id: purchase.userId }, data: { adFree: false } });
       });
       return true;
+    },
+
+    async knownPurchases(chargeIds) {
+      if (chargeIds.length === 0) return new Map();
+      const rows = await prisma.purchase.findMany({ where: { id: { in: [...chargeIds] } }, select: { id: true, refundedAt: true } });
+      return new Map(rows.map((r) => [r.id, { refunded: r.refundedAt !== null }]));
     },
 
     async looks(ids) {
