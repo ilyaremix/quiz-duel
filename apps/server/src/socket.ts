@@ -225,7 +225,7 @@ export function attachSocket(httpServer: HttpServer, deps: SocketDeps): IoServer
       old.emit('session:replaced');
       old.disconnect(true);
     }
-    void socket.join(userRoom(userId));
+    Promise.resolve(socket.join(userRoom(userId))).catch((error: unknown) => deps.log.error({ err: error, userId }, 'socket room join failed'));
 
     connecting.then(hello, (error: unknown) => {
       deps.log.error({ err: error, userId }, 'connect failed');

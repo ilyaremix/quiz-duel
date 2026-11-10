@@ -19,6 +19,16 @@ export default tseslint.config(
     },
   },
   {
+    // Сервер: промис, отказ которого никто не ловит, завершает процесс Node (так сервер однажды
+    // перезапустился из-за ошибки базы в фоновом уведомлении). Правило не пропускает ни «void promise»,
+    // ни .then() без обработчика отказа: фоновые дела идут через background() или заканчиваются .catch().
+    files: ['apps/server/src/**/*.ts'],
+    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
+    rules: {
+      '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: false }],
+    },
+  },
+  {
     files: ['apps/web/**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser } },
     plugins: { 'react-hooks': reactHooks },

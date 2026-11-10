@@ -80,9 +80,10 @@ export function botAlerts(
   };
   return {
     send(userId, alert) {
-      const job = deliver(userId, alert).catch((error: unknown) => log.warn({ err: error, userId, kind: alert.kind }, 'bot alert failed'));
+      const job: Promise<void> = deliver(userId, alert)
+        .catch((error: unknown) => log.warn({ err: error, userId, kind: alert.kind }, 'bot alert failed'))
+        .then(() => void inflight.delete(job));
       inflight.add(job);
-      void job.finally(() => inflight.delete(job));
     },
     /** Дождаться отправки всех уведомлений (тесты). */
     async flush() {

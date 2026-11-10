@@ -62,7 +62,7 @@ export async function createBot(token: string, webAppUrl: string, users?: UsersR
       const user = await users.upsertFromTelegram(ctx.from as TelegramUser, 'bot');
       await users.setWriteAccess(ctx.from.id, true);
       // Меню команд в этом чате - на языке из настроек приложения.
-      void syncChatCommands(bot, ctx.from.id, user.language === 'auto' ? null : resolveLang(user.language, user.tgLanguage));
+      void syncChatCommands(bot, ctx.from.id, user.language === 'auto' ? null : resolveLang(user.language, user.tgLanguage)).catch(() => undefined);
     }
     const t = botTexts[await langOf(ctx.from as TelegramUser)];
     await ctx.reply(t.start, {
@@ -139,8 +139,8 @@ export async function configureBot(bot: QuizBot, webAppUrl: string, log: Fastify
   }
 }
 
-/** Что сломалось в боте - пишем владельцу (не чаще раза в полчаса на каждый вид сбоя). */
-export type BotTrouble = (kind: 'polling' | 'inline', detail: string) => void;
+/** Что сломалось в боте или на сервере - пишем владельцу (не чаще раза в полчаса на каждый вид сбоя). */
+export type BotTrouble = (kind: 'polling' | 'inline' | 'crash', detail: string) => void;
 
 /**
  * Inline-режим подключается, когда менеджер партий уже создан.

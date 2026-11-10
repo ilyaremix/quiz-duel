@@ -276,6 +276,8 @@ export class GameManager {
   private readonly reacted = new Map<number, number>();
   /** Быстрая игра: кто ищет соперника, с какого времени и с каким рейтингом (порядок вставки = кто раньше встал). */
   private readonly queue = new Map<number, { since: number; rating: number }>();
+  /** Игроки, для которых прямо сейчас создаётся партия (из очереди уже вынуты, но пара ещё не сложилась). */
+  private readonly pairing = new Map<number, { since: number; rating: number }>();
   private queueTimer: unknown = null;
   private sweepTimer: unknown = null;
   /** Подбор идёт строго по одному: два прохода не создадут две партии на одного игрока. */
@@ -420,7 +422,7 @@ export class GameManager {
     }
     this.online.delete(userId);
     // Закрыл приложение во время поиска - из очереди вышел.
-    this.queue.delete(userId);
+    this.unqueue(userId);
     const gameId = this.current.get(userId);
     if (gameId) await this.presence(userId, gameId, false);
     // На итогах: соперник видит «Соперник вышел», реванш ему не предложить.
@@ -496,7 +498,7 @@ export class GameManager {
   // Лобби
 
   async create(userId: number, category: GameCategory, rules?: GameRules): Promise<Result<{ game: GameView }>> {
-    this.queue.delete(userId);
+    this.unqueue(userId);
     if (!this.allowCreate(userId)) return fail('rate_limited');
     const card = await this.card(userId);
     if (!card) return fail('internal');
@@ -558,14 +560,15 @@ export class GameManager {
       if (created.ok) this.challenges.set(created.game.id, friendId);
       return created;
     });
-    const tail = run.then(
-      () => undefined,
-      () => undefined,
-    );
+    const tail: Promise<void> = run
+      .then(
+        () => undefined,
+        () => undefined,
+      )
+      .then(() => {
+        if (this.pairLocks.get(key) === tail) this.pairLocks.delete(key);
+      });
     this.pairLocks.set(key, tail);
-    void tail.then(() => {
-      if (this.pairLocks.get(key) === tail) this.pairLocks.delete(key);
-    });
     return run;
   }
 
@@ -637,7 +640,7 @@ export class GameManager {
 
     const busy = await this.releaseOpenGame(userId, gameId);
     if (busy) return busy;
-    this.queue.delete(userId);
+    this.unqueue(userId);
 
     return this.run(entry, async () => {
       // Повторная проверка внутри очереди: из двух одновременных входов место получит один.
@@ -743,7 +746,7 @@ export class GameManager {
    * (кто-то может прийти по ссылке) - busy: в двух партиях сразу играть нельзя.
    */
   async soloStart(userId: number, category: GameCategory): Promise<Result<{ game: GameView }>> {
-    this.queue.delete(userId);
+    this.unqueue(userId);
     if (!this.allowCreate(userId)) return fail('rate_limited');
     const card = await this.card(userId);
     if (!card) return fail('internal');
@@ -863,7 +866,7 @@ export class GameManager {
   }
 
   queueLeave(userId: number): Result<object> {
-    this.queue.delete(userId);
+    this.unqueue(userId);
     return { ok: true };
   }
 
@@ -871,11 +874,21 @@ export class GameManager {
     return this.queue.has(userId);
   }
 
+  /** Игрок вышел из очереди (сам, ушёл в другую игру, отключился) - в том числе если его пара как раз складывается. */
+  private unqueue(userId: number) {
+    this.queue.delete(userId);
+    this.pairing.delete(userId);
+  }
+
   private scheduleQueue() {
     if (this.queueTimer || this.stopped || this.queue.size === 0) return;
     this.queueTimer = this.clock.setTimeout(() => {
       this.queueTimer = null;
-      void this.matchQueue().finally(() => this.scheduleQueue());
+      // Сбой прохода уже записан в журнал (matchQueue). Здесь его надо поймать: .finally() отдаёт
+      // новый промис с тем же отказом, и без catch он завершил бы процесс.
+      this.matchQueue()
+        .finally(() => this.scheduleQueue())
+        .catch(() => undefined);
     }, QUEUE.tickMs);
     (this.queueTimer as { unref?: () => void } | null)?.unref?.();
   }
@@ -914,27 +927,41 @@ export class GameManager {
   /** Пара найдена: обычное лобби «Микс» на двоих, «Готов» ещё не нажат. */
   private async startQuick(a: number, b: number) {
     // Пока шёл подбор, кто-то мог уйти из очереди.
-    if (!this.queue.has(a) || !this.queue.has(b)) return;
+    const qa = this.queue.get(a);
+    const qb = this.queue.get(b);
+    if (!qa || !qb) return;
     this.queue.delete(a);
     this.queue.delete(b);
-    let id: string | null = null;
-    for (let attempt = 0; attempt < 3 && !id; attempt++) {
-      const candidate = (this.d.newId ?? newGameId)();
-      if (!this.games.has(candidate) && !(await this.d.repo.load(candidate))) id = candidate;
-    }
-    if (!id) return;
-    // Кто встал раньше - «создатель» (на экране это ни на что не влияет).
-    const state = machine.createGame({ id, mode: 'quick', category: 'mix', creatorId: a, opponentId: b }, this.now(), this.deps);
+    this.pairing.set(a, qa);
+    this.pairing.set(b, qb);
+    let state: GameState;
     try {
+      let id: string | null = null;
+      for (let attempt = 0; attempt < 3 && !id; attempt++) {
+        const candidate = (this.d.newId ?? newGameId)();
+        if (!this.games.has(candidate) && !(await this.d.repo.load(candidate))) id = candidate;
+      }
+      if (!id) throw new Error('no free game id');
+      // Кто встал раньше - «создатель» (на экране это ни на что не влияет).
+      state = machine.createGame({ id, mode: 'quick', category: 'mix', creatorId: a, opponentId: b }, this.now(), this.deps);
       await this.d.repo.save(state);
     } catch (error) {
-      this.d.log.error({ err: error, gameId: id }, 'quick game create failed');
+      // База не ответила: пара не сложилась. Игроки возвращаются в очередь с прежним временем входа
+      // (кроме тех, кто за это время сам вышел) - следующий проход попробует снова.
+      this.d.log.error({ err: error }, 'quick game create failed');
+      for (const userId of [a, b]) {
+        const q = this.pairing.get(userId);
+        if (q && !this.queue.has(userId)) this.queue.set(userId, q);
+      }
       return;
+    } finally {
+      this.pairing.delete(a);
+      this.pairing.delete(b);
     }
     const entry = this.adopt(state);
     this.schedule(entry);
     this.notifyAll(entry);
-    for (const userId of [a, b]) this.d.notify.queue?.(userId, { type: 'matched', gameId: id });
+    for (const userId of [a, b]) this.d.notify.queue?.(userId, { type: 'matched', gameId: state.id });
   }
 
   /**
@@ -1475,11 +1502,12 @@ export class GameManager {
     entry.settleAttempts += 1;
     entry.settleTimer = this.clock.setTimeout(() => {
       entry.settleTimer = null;
-      void this.run(entry, async () => {
+      // Ошибку шага записывает сама очередь партии (run), здесь её остаётся только не уронить в процесс.
+      this.run(entry, async () => {
         if (entry.state.settlement) return;
         if (await this.settleNow(entry)) this.notifyAll(entry);
         else this.scheduleSettleRetry(entry);
-      });
+      }).catch(() => undefined);
     }, delay);
   }
 
@@ -1501,7 +1529,7 @@ export class GameManager {
     entry.timer = this.clock.setTimeout(
       () => {
         entry.timer = null;
-        void this.run(entry, () => this.apply(entry, machine.tick(entry.state, this.now(), this.deps)));
+        this.run(entry, () => this.apply(entry, machine.tick(entry.state, this.now(), this.deps))).catch(() => undefined);
       },
       Math.max(0, at - this.now()),
     );

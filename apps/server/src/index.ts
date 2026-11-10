@@ -33,6 +33,7 @@ import { InlineKeyboard } from 'grammy';
 import { TIMINGS, packOf } from '@quiz-duel/shared';
 import { syncQuestions } from './questions/sync.js';
 import { lastBackupAt } from './backup.js';
+import { background, guardProcess } from './background.js';
 
 async function main() {
   const env = loadEnv();
@@ -68,7 +69,11 @@ async function main() {
     const at = Date.now();
     if (at - (troubleAt.get(kind) ?? 0) < 30 * 60_000) return;
     troubleAt.set(kind, at);
-    const head = kind === 'polling' ? '⚠️ Quiz Duel: бот потерял связь с Telegram и сам перезапускает опрос.' : '⚠️ Quiz Duel: inline-запрос не прошёл.';
+    const head = {
+      polling: '⚠️ Quiz Duel: бот потерял связь с Telegram и сам перезапускает опрос.',
+      inline: '⚠️ Quiz Duel: inline-запрос не прошёл.',
+      crash: '⚠️ Quiz Duel: на сервере необработанная ошибка (подробности в журнале).',
+    }[kind];
     void bot.api.sendMessage(ownerChat, `${head}\n${detail}`, { link_preview_options: { is_disabled: true } }).catch(() => undefined);
   };
   const channels = bot ? botChannels(bot.api, () => logRef) : undefined;
@@ -97,13 +102,19 @@ async function main() {
     onWalletChanged: (userId) => push.wallet(userId),
     presence: (userId) => gamesRef?.presenceOf(userId) ?? 'offline',
     onFriendChanged: (userId, kind, fromId) => {
-      void friends.brief(fromId).then((from) => from && push.friendChanged(userId, { kind, from }));
+      background(app.log, 'friend changed push', async () => {
+        const from = await friends.brief(fromId);
+        if (from) push.friendChanged(userId, { kind, from });
+      });
     },
     botUsername,
     onSettingsChanged: (userId) => {
-      gamesRef?.userChanged(userId);
-      // Язык, выбранный в мини-аппе, сразу переносится на меню команд бота в чате игрока.
-      if (bot) void users.alertTarget(userId).then((t) => t && syncChatCommands(bot, userId, t.lang));
+      background(app.log, 'settings changed', async () => {
+        await gamesRef?.userChanged(userId);
+        // Язык, выбранный в мини-аппе, сразу переносится на меню команд бота в чате игрока.
+        const target = bot ? await users.alertTarget(userId) : null;
+        if (bot && target) await syncChatCommands(bot, userId, target.lang);
+      });
     },
     botStatus: bot ? botHealth : undefined,
     backupStatus: () => lastBackupAt(env.BACKUP_STATUS_FILE),
@@ -162,7 +173,8 @@ async function main() {
     now: realClock.now,
     isFriend: (a, b) => friends.isFriend(a, b),
     onChallenge: (fromId, friendId, game) => {
-      void friends.brief(fromId).then((from) => {
+      background(app.log, 'friend challenge push', async () => {
+        const from = await friends.brief(fromId);
         if (!from) return;
         const expiresAt = game.lobbyExpiresAt ?? Date.now() + TIMINGS.lobbyTtlMs;
         push.friendInvite(friendId, { gameId: game.id, from, category: game.category, rules: game.rules, expiresAt });
@@ -193,22 +205,26 @@ async function main() {
     poller = startBot(bot, app.log, trouble);
     // Сверка оплат со списком операций Telegram: при запуске (платёж мог потеряться при прошлой
     // остановке) и каждые 10 минут. Ошибки сверка пишет в журнал сама.
-    const sweepPayments = () => void payments?.sweep();
+    const sweepPayments = () => background(app.log, 'stars reconcile', () => payments?.sweep());
     sweepPayments();
     setInterval(sweepPayments, 10 * 60_000).unref();
     // Напоминание о ежедневной награде: проход раз в 5 минут, пишет только вечером по Москве.
     const reminders = dailyReminders({ prisma, users, api: bot.api, cards, appUrl, log: app.log });
     const remind = () =>
-      void reminders
-        .run(Date.now())
-        .then((n) => n > 0 && app.log.info({ sent: n }, 'daily reminders sent'))
-        .catch((error: unknown) => app.log.warn({ err: error }, 'daily reminders failed'));
+      background(app.log, 'daily reminders', async () => {
+        const sent = await reminders.run(Date.now());
+        if (sent > 0) app.log.info({ sent }, 'daily reminders sent');
+      });
     setInterval(remind, 5 * 60_000).unref();
   }
 
   let stopping = false;
-  const shutdown = async (signal: string) => {
-    if (stopping) return;
+  const shutdown = async (signal: string, exitCode = 0) => {
+    // Вторая причина остановиться, пока идёт первая (ошибка уже во время остановки): выходим сразу.
+    if (stopping) {
+      if (exitCode !== 0) process.exit(exitCode);
+      return;
+    }
     stopping = true;
     app.log.info({ signal }, 'shutting down');
     try {
@@ -220,12 +236,19 @@ async function main() {
       await new Promise<void>((resolve) => (io ? io.close(() => resolve()) : resolve()));
       await app.close();
       await prisma.$disconnect();
+    } catch (error) {
+      app.log.error({ err: error }, 'shutdown failed');
     } finally {
-      process.exit(0);
+      process.exit(exitCode);
     }
   };
-  process.on('SIGTERM', () => void shutdown('SIGTERM'));
-  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => background(app.log, 'shutdown', () => shutdown('SIGTERM')));
+  process.on('SIGINT', () => background(app.log, 'shutdown', () => shutdown('SIGINT')));
+  // Пропущенная ошибка не должна молча ронять сервер посреди партий (см. background.ts).
+  guardProcess(process, app.log, {
+    alert: (_kind, detail) => trouble('crash', detail),
+    fatal: () => background(app.log, 'shutdown', () => shutdown('uncaughtException', 1)),
+  });
 }
 
 main().catch((error: unknown) => {
