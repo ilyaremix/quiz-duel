@@ -314,7 +314,7 @@ npm run format:check    # Prettier
 npm test
 ```
 
-434 теста на Vitest (shared 77, сервер 340, мини-апп 17). Тесты на настоящем Postgres (`*.db.test.ts`) включаются
+448 тестов на Vitest (shared 77, сервер 354, мини-апп 17). Тесты на настоящем Postgres (`*.db.test.ts`) включаются
 переменной `TEST_DATABASE_URL`, база при этом очищается; без неё они пропускаются. В CI
 ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) они идут всегда: сервис postgres, миграции, типы, ESLint, Prettier,
 тесты и сборка на каждый push. Второе задание CI собирает оба Docker-образа и поднимает `docker compose` на чистой машине:
