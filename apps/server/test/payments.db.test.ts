@@ -24,6 +24,9 @@ const A = 4001;
 
 type Json = Record<string, unknown>;
 
+/** Время операции в Telegram (секунды): минуту назад, если не сказано иначе. */
+const ago = (sec = 60) => Math.floor(Date.now() / 1000) - sec;
+
 /** Обновление «оплата прошла», как его присылает Telegram. */
 function paymentUpdate(updateId: number, userId: number, product: StarsProduct, chargeId: string): Json {
   const user = { id: userId, is_bot: false, first_name: 'Илья' };
@@ -31,7 +34,7 @@ function paymentUpdate(updateId: number, userId: number, product: StarsProduct, 
     update_id: updateId,
     message: {
       message_id: updateId,
-      date: 1_794_000_000,
+      date: ago(),
       chat: { id: userId, type: 'private', first_name: 'Илья' },
       from: user,
       successful_payment: {
@@ -46,11 +49,11 @@ function paymentUpdate(updateId: number, userId: number, product: StarsProduct, 
 }
 
 /** Строка из getStarTransactions: входящая оплата счёта. */
-function incoming(userId: number, product: StarsProduct, chargeId: string): Json {
+function incoming(userId: number, product: StarsProduct, chargeId: string, date = ago()): Json {
   return {
     id: chargeId,
     amount: starsProduct(product).stars,
-    date: 1_794_000_000,
+    date,
     source: {
       type: 'user',
       transaction_type: 'invoice_payment',
@@ -65,7 +68,7 @@ function refund(userId: number, product: StarsProduct, chargeId: string): Json {
   return {
     id: chargeId,
     amount: starsProduct(product).stars,
-    date: 1_794_000_100,
+    date: ago(30),
     receiver: { type: 'user', transaction_type: 'invoice_payment', user: { id: userId, is_bot: false, first_name: 'Илья' } },
   };
 }
@@ -217,12 +220,19 @@ describe.skipIf(!url)('оплата звёздами не теряется', () 
       { id: 'fragment', amount: 1000, date: 2, receiver: { type: 'fragment' } },
       incoming(A, 'coins_l', 'missed'),
       refund(A, 'coins_m', 'refunded'),
+      // Старая операция без записи (базу пересоздавали) - не раздаём автоматически.
+      incoming(A, 'coins_l', 'ancient', ago(30 * 86_400)),
+      // Игрока нет в базе - сверку остальных это не останавливает.
+      incoming(999_001, 'coins_s', 'ghost'),
+      incoming(A, 'coins_s', 'missed-2'),
     );
     const { payments } = boot(telegram);
     const report = await payments.reconcile();
-    expect(report).toMatchObject({ granted: 1, revoked: 1 });
-    // 300 (known) + 2500 (missed); 1000 за refunded забрали.
-    expect(await coins(A)).toBe(2800);
+    expect(report).toMatchObject({ scanned: 10, granted: 2, revoked: 1 });
+    // 300 (known) + 2500 (missed) + 300 (missed-2); 1000 за refunded забрали.
+    expect(await coins(A)).toBe(3100);
+    // Следующий проход читает только новое.
+    expect(await payments.reconcile()).toEqual({ scanned: 0, granted: 0, revoked: 0 });
   });
 
   it('остановка сервера ждёт обработчик, который уже зачисляет платёж', async () => {

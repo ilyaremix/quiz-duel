@@ -240,7 +240,8 @@ export function startBot(
      */
     async stop() {
       stopped = true;
-      await bot.stop();
+      // Последний запрос к Telegram мог не пройти (сеть): остановка сервера из-за этого не срывается.
+      await bot.stop().catch((error: unknown) => log.warn({ err: error }, 'bot stop failed'));
       let timer: ReturnType<typeof setTimeout> | undefined;
       const timeout = new Promise<'timeout'>((resolve) => (timer = setTimeout(() => resolve('timeout'), stopWaitMs)));
       const result = await Promise.race([running.then(() => 'done' as const), timeout]);

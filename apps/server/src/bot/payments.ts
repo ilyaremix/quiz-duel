@@ -7,7 +7,7 @@
 import type { Api } from 'grammy';
 import type { FastifyBaseLogger } from 'fastify';
 import { COIN_PACKS, isStarsProduct, starsProduct, type Lang, type StarsProduct } from '@quiz-duel/shared';
-import type { ChannelChecker, EconomyRepo } from '../economy.js';
+import { isMissingUser, type ChannelChecker, type EconomyRepo } from '../economy.js';
 import type { InvoiceMaker } from '../http/app.js';
 import type { QuizBot } from './index.js';
 
@@ -90,6 +90,7 @@ export interface PaymentHooks {
   lang(userId: number): Promise<Lang>;
 }
 
+/** Настройки для тестов. */
 export interface PaymentOptions {
   /** Через сколько повторить сверку, если зачисление не удалось (база недоступна). */
   retryMs?: number;
@@ -109,6 +110,12 @@ const PAGE = 100;
 const MAX_PAGES = 200;
 const RETRY_MS = 15_000;
 const RETRY_MAX_MS = 5 * 60_000;
+/**
+ * Сверка сама зачисляет только свежие оплаты: потерянный платёж находится за минуты. Старая операция
+ * без записи в базе - не потеря при выкатке, а что-то другое (базу пересоздавали, платёж до появления
+ * таблицы): такое автоматически не раздаём, а пишем в журнал для разбора вручную.
+ */
+const AUTO_GRANT_WINDOW_MS = 7 * 86_400_000;
 
 /**
  * Обновление successful_payment приходит один раз, и потерять его можно: сервер выключили между
@@ -138,6 +145,7 @@ export function attachPayments(bot: QuizBot, economy: EconomyRepo, hooks: Paymen
 
   async function scan(): Promise<ReconcileReport> {
     const report: ReconcileReport = { scanned: 0, granted: 0, revoked: 0 };
+    const stale: string[] = [];
     for (let page = 0; page < MAX_PAGES; page++) {
       const { transactions } = await bot.api.getStarTransactions({ offset: cursor, limit: PAGE });
       if (transactions.length === 0) break;
@@ -150,7 +158,18 @@ export function attachPayments(bot: QuizBot, economy: EconomyRepo, hooks: Paymen
             log.error({ chargeId: tx.id, payload: tx.source.invoice_payload, amount: tx.amount }, 'stars transaction does not match its invoice');
             continue;
           }
-          if (await deliver({ chargeId: tx.id, userId: parsed.userId, product: parsed.product, stars: tx.amount }, 'reconcile')) report.granted += 1;
+          if (tx.date * 1000 < Date.now() - AUTO_GRANT_WINDOW_MS) {
+            stale.push(tx.id);
+            continue;
+          }
+          try {
+            if (await deliver({ chargeId: tx.id, userId: parsed.userId, product: parsed.product, stars: tx.amount }, 'reconcile')) report.granted += 1;
+          } catch (error) {
+            // Игрока нет в базе - повтор не поможет, и одна такая операция не должна останавливать сверку остальных.
+            if (!isMissingUser(error)) throw error;
+            log.error({ chargeId: tx.id, userId: parsed.userId }, 'stars payment from a user missing in the database');
+            continue;
+          }
           known.set(tx.id, { refunded: false });
         } else if (tx.receiver?.type === 'user') {
           // Возврат: id тот же, что у исходной оплаты.
@@ -171,6 +190,8 @@ export function attachPayments(bot: QuizBot, economy: EconomyRepo, hooks: Paymen
       if (page === MAX_PAGES - 1) log.warn({ cursor }, 'stars reconcile stopped at the page limit, will continue next time');
     }
     if (report.granted > 0 || report.revoked > 0) log.warn(report, 'stars reconcile fixed missed payments');
+    if (stale.length > 0)
+      log.warn({ count: stale.length, chargeIds: stale.slice(0, 20) }, 'old stars payments without a purchase record, not granted automatically');
     return report;
   }
 

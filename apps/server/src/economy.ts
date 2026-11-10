@@ -109,6 +109,9 @@ function refuse(code: EconomyErrorCode): never {
 }
 
 const isUniqueViolation = (error: unknown) => error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+/** Запись ссылается на игрока, которого нет в базе (платёж пришёл от неизвестного пользователя). */
+export const isMissingUser = (error: unknown) =>
+  (error instanceof Refusal && error.code === 'not_found') || (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003');
 
 function asTask(row: {
   id: string;
