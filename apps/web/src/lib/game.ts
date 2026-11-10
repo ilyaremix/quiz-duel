@@ -358,9 +358,11 @@ async function wake() {
   if (cur && (!isFinal(cur) || cur.phase === 'finished')) await gameActions.resync(cur.id);
 }
 
-/** Реванш не вышел: соперник ушёл, предложение уже закрыто, нет связи - экран обновит свежий снимок. */
+/** Реванш не вышел: соперник ушёл, предложение уже закрыто, тема закрыта, нет связи - экран обновит свежий снимок. */
 function rematchFailed(error: GameErrorCode, gameId: string) {
   if (error === 'opponent_left') showToast('info', 'toast.rmGone');
+  // Реванш в платной теме - новая партия: билет на 1 игру уже потрачен, нужен новый или купленная тема.
+  else if (error === 'locked') showToast('info', 'toast.topicLocked');
   else if (error === 'internal' || error === 'rate_limited') showToast('error', 'toast.connection');
   void gameActions.resync(gameId);
 }

@@ -49,6 +49,7 @@ function fakeEconomy(calls: string[]): EconomyRepo {
     ownedTopics: async () => [],
     topicAccess: async () => 'locked',
     useTopic: async () => false,
+    releaseTopic: async () => undefined,
   };
 }
 

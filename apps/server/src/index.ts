@@ -146,7 +146,12 @@ async function main() {
     topicAccess: async (userId, topic) => (await economy.topicAccess(userId, topic)) !== 'locked',
     ownedTopics: (userId) => economy.ownedTopics(userId),
     useTopic: async (userId, topic, gameId) => {
-      await economy.useTopic(userId, topic, gameId, Date.now());
+      const spent = await economy.useTopic(userId, topic, gameId, Date.now());
+      push.wallet(userId);
+      return spent;
+    },
+    releaseTopic: async (userId, gameId) => {
+      await economy.releaseTopic(userId, gameId);
       push.wallet(userId);
     },
     canReact: async (userId, emoji) => {

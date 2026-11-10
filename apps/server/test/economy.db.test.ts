@@ -231,6 +231,25 @@ describe.skipIf(!url)('экономика на Postgres', () => {
     expect(await eco.useTopic(A, 'games', 'g000000003', T0)).toBe(true);
   });
 
+  it('один билет - одна партия: два списания сразу проходит одно, несозданная партия возвращает билет', async () => {
+    const s = await eco.adStart(A, 'topic', 'space', T0);
+    if (!s.ok) throw new Error('нет ролика');
+    await eco.adDone(A, s.id, T0 + 15_000);
+    // Две партии стартуют одновременно (двойной запрос): билет достаётся одной.
+    const spent = await Promise.all([eco.useTopic(A, 'space', 'g00000000a', T0), eco.useTopic(A, 'space', 'g00000000b', T0)]);
+    expect(spent.filter(Boolean)).toHaveLength(1);
+    expect(await eco.topicAccess(A, 'space')).toBe('locked');
+    const used = spent[0] ? 'g00000000a' : 'g00000000b';
+    // Чужой и неизвестный gameId ничего не возвращают.
+    await eco.releaseTopic(B, used);
+    await eco.releaseTopic(A, 'g00000000z');
+    expect(await eco.topicAccess(A, 'space')).toBe('locked');
+    await eco.releaseTopic(A, used);
+    expect(await eco.topicAccess(A, 'space')).toBe('pass');
+    expect(await eco.useTopic(A, 'space', 'g00000000c', T0)).toBe(true);
+    expect(await eco.useTopic(A, 'space', 'g00000000d', T0)).toBe(false);
+  });
+
   it('звёзды: монеты зачисляются один раз на платёж, возврат забирает', async () => {
     expect(await eco.grantPurchase({ chargeId: 'ch1', userId: A, product: 'coins_m', stars: 75 }, T0)).toBe(true);
     expect(await eco.grantPurchase({ chargeId: 'ch1', userId: A, product: 'coins_m', stars: 75 }, T0)).toBe(false);

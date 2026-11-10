@@ -173,9 +173,12 @@ export interface ManagerDeps {
   /**
    * Платные темы: открыта ли тема игроку (куплена или есть билет на 1 игру) и списание билета,
    * когда партия началась. Без этих функций платные темы закрыты для всех.
+   * useTopic отвечает, получилось ли: true - тема куплена или билет списан на эту партию (повтор с тем же
+   * gameId второй билет не тратит), false - билета нет. releaseTopic возвращает билет, если партия не создалась.
    */
   topicAccess?: (userId: number, topic: PremiumCategory) => Promise<boolean>;
-  useTopic?: (userId: number, topic: PremiumCategory, gameId: string) => Promise<void>;
+  useTopic?: (userId: number, topic: PremiumCategory, gameId: string) => Promise<boolean>;
+  releaseTopic?: (userId: number, gameId: string) => Promise<void>;
   /** Платные темы, купленные навсегда: они тоже выпадают игроку в «Миксе». */
   ownedTopics?: (userId: number) => Promise<PremiumCategory[]>;
   /** Обновление 2.0: в «Миксе» на двоих - выбор темы перед отсчётом (без флага - сразу отсчёт). */
@@ -771,6 +774,10 @@ export class GameManager {
     }
     if (!id) return fail('internal');
 
+    // Тренировка начинается сразу, поэтому билет на платную тему списывается до её создания: проверка
+    // выше только заглядывает в базу, и два запроса подряд прошли бы её оба с одним билетом.
+    if (!(await this.chargeTopic(userId, category, id))) return fail('locked');
+
     const [seen, soloBest] = await Promise.all([
       this.d.repo.seenQuestions([userId]).catch(() => new Map<string, number>()),
       this.d.repo.soloBest(userId, category).catch(() => null),
@@ -788,13 +795,12 @@ export class GameManager {
       await this.d.repo.save(state, { startedAt: now });
     } catch (error) {
       this.d.log.error({ err: error, gameId: id }, 'solo create failed');
+      this.refundTopic(userId, category, id);
       return fail('internal');
     }
     const entry = this.adopt(state);
     entry.seen = seen;
     this.schedule(entry);
-    // Тренировка начинается сразу: билет на платную тему тратится сейчас.
-    this.spendTopic(entry.state);
     return { ok: true, game: this.viewOf(entry.state, userId)! };
   }
 
@@ -1044,6 +1050,8 @@ export class GameManager {
       // Предлагать можно, только если соперник на итогах и на связи - сверяем с реальными подключениями.
       const other = machine.otherOf(s, userId);
       if (other && !this.isOnline(other.userId)) return fail('opponent_left');
+      // Реванш - новая партия: в платной теме создателю снова нужен билет (или купленная тема).
+      if (!(await this.topicOpen(s.creator.userId, s.category))) return fail('locked');
       const step = machine.offerRematch(s, userId, this.now());
       if (!step.ok) return fail(mapError(step.error));
       await this.apply(entry, step);
@@ -1105,6 +1113,13 @@ export class GameManager {
     }
     if (!id) return fail('internal');
 
+    // Реванш стартует сразу, мимо лобби и «Готов»: билет на платную тему списывается здесь же.
+    // Раньше реванш темы не проверял и билет не тратил - один билет давал сколько угодно партий подряд.
+    if (!(await this.chargeTopic(s.creator.userId, s.category, id))) {
+      await this.apply(entry, machine.rematchGone(s));
+      return fail('locked');
+    }
+
     const ids = players.map((p) => p.userId);
     const seen = await this.d.repo.seenQuestions(ids).catch((error: unknown) => {
       this.d.log.warn({ err: error, gameId: s.id }, 'seen questions failed');
@@ -1135,6 +1150,7 @@ export class GameManager {
       await this.d.repo.save(next, { startedAt: now });
     } catch (error) {
       this.d.log.error({ err: error, gameId: id }, 'rematch create failed');
+      this.refundTopic(s.creator.userId, s.category, id);
       return fail('internal');
     }
     const nextEntry = this.adopt(next);
@@ -1480,12 +1496,41 @@ export class GameManager {
     }
   }
 
-  /** Партия в платной теме началась: у создателя тратится билет на 1 игру (купленная тема - бесплатно). */
+  /**
+   * Списать билет создателя на эту партию до её старта. true - можно начинать: тема обычная, куплена
+   * навсегда или билет списан. false - билета нет или списать не удалось (тогда партия не начинается:
+   * бесплатная игра в платной теме хуже, чем отказ с понятной причиной).
+   */
+  private async chargeTopic(userId: number, category: GameCategory, gameId: string): Promise<boolean> {
+    if (!isPremiumCategory(category)) return true;
+    if (!this.d.useTopic) return false;
+    try {
+      return await this.d.useTopic(userId, category, gameId);
+    } catch (error) {
+      this.d.log.error({ err: error, userId, gameId, category }, 'topic pass charge failed');
+      return false;
+    }
+  }
+
+  /** Партия не создалась после списания: билет возвращается владельцу. */
+  private refundTopic(userId: number, category: GameCategory, gameId: string) {
+    if (!isPremiumCategory(category) || !this.d.releaseTopic) return;
+    this.d.releaseTopic(userId, gameId).catch((error: unknown) => this.d.log.error({ err: error, userId, gameId }, 'topic pass refund failed'));
+  }
+
+  /**
+   * Лобби в платной теме дошло до отсчёта: у создателя тратится билет на 1 игру (купленная тема - бесплатно).
+   * Доступ проверен при создании лобби, а открытая партия у игрока одна, так что билет на месте; если
+   * списать всё же не вышло, партию уже не остановить - это ошибка в журнале, а не тихий warn.
+   */
   private spendTopic(state: GameState) {
     if (!isPremiumCategory(state.category) || !this.d.useTopic) return;
-    void Promise.resolve(this.d.useTopic(state.creator.userId, state.category, state.id)).catch((error: unknown) =>
-      this.d.log.warn({ err: error, gameId: state.id }, 'topic pass spend failed'),
-    );
+    this.d
+      .useTopic(state.creator.userId, state.category, state.id)
+      .then((spent) => {
+        if (!spent) this.d.log.error({ gameId: state.id, userId: state.creator.userId, category: state.category }, 'premium game started without a topic pass');
+      })
+      .catch((error: unknown) => this.d.log.error({ err: error, gameId: state.id }, 'topic pass spend failed'));
   }
 
   /** Хук после итогов: не ждём его и не даём его сбою сломать партию. */

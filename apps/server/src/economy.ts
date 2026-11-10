@@ -93,6 +93,8 @@ export interface EconomyRepo {
   ownedTopics(userId: number): Promise<PremiumTopic[]>;
   /** Партия в платной теме началась: билет на 1 игру использован (если тема не куплена). */
   useTopic(userId: number, topic: PremiumTopic, gameId: string, now: number): Promise<boolean>;
+  /** Партия не создалась: билет, списанный на неё, снова можно использовать. */
+  releaseTopic(userId: number, gameId: string): Promise<void>;
 }
 
 export const AD_SRC = '/ads/ad1.mp4';
@@ -532,6 +534,10 @@ export function createPrismaEconomyRepo(prisma: PrismaClient, checker?: ChannelC
       if (!pass) return false;
       const done = await prisma.topicPass.updateMany({ where: { id: pass.id, usedAt: null }, data: { usedAt: new Date(now), gameId } });
       return done.count === 1;
+    },
+
+    async releaseTopic(userId, gameId) {
+      await prisma.topicPass.updateMany({ where: { userId: BigInt(userId), gameId, usedAt: { not: null } }, data: { usedAt: null, gameId: null } });
     },
 
     async ownsPack(userId, pack) {
